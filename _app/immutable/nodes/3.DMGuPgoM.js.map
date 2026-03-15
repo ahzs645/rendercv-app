@@ -1,1 +1,0 @@
-{"version":3,"file":"3.DMGuPgoM.js","sources":["../../../../../../src/routes/[shared_cv=shared_cv]/+layout@.svelte"],"sourcesContent":["<script lang=\"ts\">\n  import '../../app.css';\n\n  let { children } = $props();\n</script>\n\n{@render children?.()}\n"],"names":[],"mappings":"gjBAAA,+CAIQ"}
