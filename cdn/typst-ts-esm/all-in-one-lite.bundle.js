@@ -42,8 +42,8 @@ function Mr(n) {
   const e = [];
   if (n && (n == null ? void 0 : n.assets) !== !1 && ((t = n == null ? void 0 : n.assets) != null && t.length) && ((r = n == null ? void 0 : n.assets) == null ? void 0 : r.length) > 0) {
     let i = {
-      text: "/cdn/typst-fonts/",
-      _: "/cdn/typst-fonts/"
+      text: "/rendercv-app/cdn/typst-fonts/",
+      _: "/rendercv-app/cdn/typst-fonts/"
     }, s = n.assetUrlPrefix ?? i;
     typeof s == "string" ? s = { _: s } : s = { ...i, ...s };
     for (const a of Object.keys(s)) {
@@ -3259,8 +3259,8 @@ function mn(n) {
   const e = [];
   if (n && (n == null ? void 0 : n.assets) !== !1 && ((t = n == null ? void 0 : n.assets) != null && t.length) && ((r = n == null ? void 0 : n.assets) == null ? void 0 : r.length) > 0) {
     let i = {
-      text: "/cdn/typst-fonts/",
-      _: "/cdn/typst-fonts/"
+      text: "/rendercv-app/cdn/typst-fonts/",
+      _: "/rendercv-app/cdn/typst-fonts/"
     }, s = n.assetUrlPrefix ?? i;
     typeof s == "string" ? s = { _: s } : s = { ...i, ...s };
     for (const a of Object.keys(s)) {
