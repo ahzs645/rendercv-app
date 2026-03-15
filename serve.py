@@ -26,10 +26,7 @@ class RenderCVHandler(http.server.SimpleHTTPRequestHandler):
     }
 
     def end_headers(self):
-        # COOP enables SharedArrayBuffer; COEP credentialless avoids SRI
-        # conflicts that 'require-corp' causes with pyodide's integrity checks.
-        self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
-        self.send_header('Cross-Origin-Embedder-Policy', 'credentialless')
+        # No COOP/COEP needed — app doesn't use SharedArrayBuffer
         self.send_header('Access-Control-Allow-Origin', '*')
         super().end_headers()
 
