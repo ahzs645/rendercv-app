@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
+import { classicTheme, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { useStore } from '../lib/use-store';
@@ -55,7 +55,31 @@ export function Workspace() {
           onCollapse={() => setSidebarCollapsed(true)}
           onExpand={() => setSidebarCollapsed(false)}
         >
-          <Sidebar />
+          <Sidebar
+            validateYamlImport={async (content) => {
+              const result = await viewer.validateSections({
+                cv: content,
+                design: classicTheme.design,
+                locale: classicTheme.locale,
+                settings: classicTheme.settings
+              });
+
+              return (result.errors ?? []).map((error) => ({
+                message: error.message || '',
+                schema_location: error.schema_location || [],
+                input: error.input || '',
+                yaml_source:
+                  error.yaml_source === 'design_yaml_file'
+                    ? 'design'
+                    : error.yaml_source === 'locale_yaml_file'
+                      ? 'locale'
+                      : error.yaml_source === 'settings_yaml_file'
+                        ? 'settings'
+                        : 'cv',
+                yaml_location: error.yaml_location || null
+              }));
+            }}
+          />
         </Panel>
         <PanelResizeHandle className={`workspace-resize-handle ${sidebarCollapsed ? 'hidden' : ''}`} />
         <Panel defaultSize={82} minSize={35}>

@@ -11,7 +11,7 @@ export interface RenderError {
   yaml_location: [[number, number], [number, number]] | null;
 }
 
-interface RenderResult {
+export interface ViewerValidationResult {
   content: string | null;
   errors: Array<{
     message: string;
@@ -107,7 +107,10 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const checkAndLoadFonts = useCallback((typstContent: string) => {
     let fontsAdded = false;
     const requestedFonts = new Set(
-      Array.from(typstContent.matchAll(/font-family-\w+:\s*"([^"]+)"/g), (match) => match[1])
+      Array.from(
+        typstContent.matchAll(/(?:font-family-\w+|font)\s*:\s*"([^"]+)"/g),
+        (match) => match[1]
+      )
     );
 
     for (const fontFamily of Object.keys(FONT_VARIANTS)) {
@@ -135,7 +138,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
   const renderToTypst = useCallback(
     async (renderSections: CvFileSections) => {
-      const result = await postMessageToPyodide<RenderResult>('RENDER', renderSections);
+      const result = await postMessageToPyodide<ViewerValidationResult>('RENDER', renderSections);
       if (!result.content) return null;
       const fontsChanged = checkAndLoadFonts(result.content);
       if (fontsChanged) {
@@ -203,7 +206,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
           if (type === 'ERROR') {
             pending.reject(errorFromWorker(payload as WorkerErrorPayload));
           } else {
-            pending.resolve(payload as RenderResult);
+            pending.resolve(payload as ViewerValidationResult);
           }
           pyodidePending.current.delete(id);
         };
@@ -253,7 +256,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
     const requestId = ++currentRenderRequest.current;
     const timer = window.setTimeout(async () => {
       try {
-        const result = await postMessageToPyodide<RenderResult>('RENDER', renderSections);
+        const result = await postMessageToPyodide<ViewerValidationResult>('RENDER', renderSections);
         if (requestId !== currentRenderRequest.current) {
           return;
         }
@@ -341,6 +344,13 @@ export function useViewerRenderer(sections?: CvFileSections) {
     [postMessageToPyodide]
   );
 
+  const validateSections = useCallback(
+    async (renderSections: CvFileSections) => {
+      return await postMessageToPyodide<ViewerValidationResult>('RENDER', renderSections);
+    },
+    [postMessageToPyodide]
+  );
+
   const zoomIn = useCallback(() => {
     setZoomFactor((current) => Math.min(MAX_ZOOM, current + ZOOM_STEP));
   }, []);
@@ -367,7 +377,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomReset,
       renderToPdf,
       renderToTypst,
-      importThemeArchive
+      importThemeArchive,
+      validateSections
     }),
     [
       svgPages,
@@ -382,7 +393,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomReset,
       renderToPdf,
       renderToTypst,
-      importThemeArchive
+      importThemeArchive,
+      validateSections
     ]
   );
 }

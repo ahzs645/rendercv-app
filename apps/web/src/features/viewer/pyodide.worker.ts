@@ -154,9 +154,6 @@ COMPATIBILITY_REPLACEMENTS = {
     "design-entries-vertical-space-between-entries": "design_entries_vertical_space_between_entries",
 }
 
-LINE_TEXT_WITH_ARGS_PATTERN = re.compile(r'\\btext\\((.+),\\s*"((?:[^"\\\\]|\\\\.)*)"\\)')
-LINE_TEXT_SIMPLE_PATTERN = re.compile(r'\\btext\\("((?:[^"\\\\]|\\\\.)*)"\\)')
-
 MULTILINE_COMPATIBILITY_REPLACEMENTS = {
     '#text(\\n  size: 26pt,\\n  weight: "bold",\\n  "{{ cv.name }}"\\n)': '#text(size: 26pt, weight: "bold")[{{ cv.name }}]',
     '''        heading(
@@ -189,7 +186,16 @@ MULTILINE_COMPATIBILITY_REPLACEMENTS = {
     )[ #text(size: {{ design.section_heading_size }}, weight: "bold")[#upper(title)] ]''',
 }
 
+TEXT_WITH_TEMPLATE_ARGUMENT_PATTERN = re.compile(
+    r'(?P<prefix>\\b#?text)\\((?P<args>.+?),\\s*"(?P<expr>\\{\\{.*\\}\\})"\\)'
+)
+TEXT_WITH_ONLY_TEMPLATE_ARGUMENT_PATTERN = re.compile(
+    r'(?P<prefix>\\b#?text)\\(\\s*"(?P<expr>\\{\\{.*\\}\\})"\\s*\\)'
+)
+
 def normalize_typst_template(text):
+    original_had_trailing_newline = text.endswith("\\n")
+
     for source_text, target_text in COMPATIBILITY_REPLACEMENTS.items():
         text = text.replace(source_text, target_text)
 
@@ -198,14 +204,23 @@ def normalize_typst_template(text):
 
     normalized_lines = []
     for line in text.splitlines():
-        line = LINE_TEXT_WITH_ARGS_PATTERN.sub(r'text(\\1)[\\2]', line)
-        line = LINE_TEXT_SIMPLE_PATTERN.sub(r'text[\\1]', line)
+        if "{{" in line and "text(" in line and "{{ cv." not in line:
+            line = TEXT_WITH_TEMPLATE_ARGUMENT_PATTERN.sub(
+                r'\\g<prefix>(\\g<args>)[\\g<expr>]',
+                line,
+            )
+            line = TEXT_WITH_ONLY_TEMPLATE_ARGUMENT_PATTERN.sub(
+                r'[\\g<expr>]',
+                line,
+            )
         normalized_lines.append(line)
 
-    normalized_text = "\\n".join(normalized_lines)
-    if text.endswith("\\n"):
-        normalized_text += "\\n"
-    return normalized_text
+    text = "\\n".join(normalized_lines)
+    if original_had_trailing_newline:
+        return text + "\\n"
+
+    return text
+
 
 archive_name = _custom_theme_archive_name
 archive_bytes = bytes(_custom_theme_bytes.to_py())

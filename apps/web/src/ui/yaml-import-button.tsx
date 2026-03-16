@@ -2,10 +2,17 @@ import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { fileStore } from '@rendercv/core';
+import type { RenderError } from '../features/viewer/use-viewer-renderer';
 
 const MAX_YAML_SIZE = 1024 * 1024;
 
-export function YamlImportButton({ mode = 'full' }: { mode?: 'full' | 'compact' | 'mini' }) {
+export function YamlImportButton({
+  mode = 'full',
+  validateYamlImport
+}: {
+  mode?: 'full' | 'compact' | 'mini';
+  validateYamlImport?: (content: string) => Promise<RenderError[]>;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const mini = mode === 'mini';
@@ -33,6 +40,19 @@ export function YamlImportButton({ mode = 'full' }: { mode?: 'full' | 'compact' 
       if (!/^\s*cv\s*:/m.test(content)) {
         toast.error('Expected a RenderCV YAML file with a top-level cv: key.');
         return;
+      }
+
+      if (validateYamlImport) {
+        const errors = await validateYamlImport(content);
+        if (errors.length > 0) {
+          const firstError = errors[0]?.message?.trim();
+          toast.error(
+            firstError
+              ? `This file is not valid RenderCV YAML. ${firstError}`
+              : 'This file is not valid RenderCV YAML.'
+          );
+          return;
+        }
       }
 
       const name = file.name.replace(/\.ya?ml$/i, '') || 'Imported CV';
