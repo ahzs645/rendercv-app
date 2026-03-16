@@ -29,11 +29,19 @@ export const LOCALE_LABELS: Record<string, { flag: string; name: string }> = {
   turkish: { flag: '🇹🇷', name: 'Turkish' }
 };
 
+function humanizeKey(key: string) {
+  return key
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export function themeLabel(key: string) {
-  return THEME_LABELS[key] ?? key.charAt(0).toUpperCase() + key.slice(1);
+  return THEME_LABELS[key] ?? humanizeKey(key);
 }
 
 export function localeLabel(key: string) {
   const locale = LOCALE_LABELS[key];
-  return locale ? `${locale.flag} ${locale.name}` : key.charAt(0).toUpperCase() + key.slice(1);
+  return locale ? `${locale.flag} ${locale.name}` : humanizeKey(key);
 }

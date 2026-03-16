@@ -25,8 +25,8 @@ export function SectionTabs({
   const variant =
     active === 'design'
       ? {
-          label: 'Theme',
-          options: Object.keys(selectedFile?.designs ?? {}),
+          label: 'Theme library',
+          options: selectedFile ? fileStore.availableThemes : [],
           renderLabel: themeLabel,
           value: selectedFile?.selectedTheme,
           onChange: (value: string) => {

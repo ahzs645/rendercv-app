@@ -10,10 +10,13 @@ import {
   moderncvTheme,
   sb2novTheme
 } from '../data/rendercv-examples';
-import { defaultDesigns, defaultLocales } from '../data/rendercv-variants';
+import { defaultDesigns, defaultLocales, themes as builtInThemes } from '../data/rendercv-variants';
 
 const designDefaults = defaultDesigns as Record<string, string>;
 const localeDefaults = defaultLocales as Record<string, string>;
+const BUILT_IN_THEME_KEYS = builtInThemes as string[];
+const BUILT_IN_THEME_SET = new Set(BUILT_IN_THEME_KEYS);
+const THEME_LIBRARY_STORAGE_KEY = 'rendercv-theme-library';
 
 type FileStateSnapshot = {
   files: CvFile[];
@@ -65,6 +68,98 @@ const DEFAULT_EXAMPLES = [
 ] as const;
 
 export const DEFAULT_FILE_IDS = new Set(DEFAULT_EXAMPLES.map((example) => example.id));
+
+function readStoredThemeLibrary(): Record<string, string> {
+  if (typeof localStorage === 'undefined') {
+    return {};
+  }
+
+  try {
+    const raw = localStorage.getItem(THEME_LIBRARY_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      return {};
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([themeKey, design]) => !BUILT_IN_THEME_SET.has(themeKey) && typeof design === 'string'
+      )
+    ) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredThemeLibrary(themeLibrary: Record<string, string>) {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  try {
+    localStorage.setItem(THEME_LIBRARY_STORAGE_KEY, JSON.stringify(themeLibrary));
+  } catch {
+    // Ignore localStorage failures and keep the in-memory catalog alive.
+  }
+}
+
+function collectCustomThemeDesigns(files: Array<Pick<CvFile, 'designs'>>): Record<string, string> {
+  return Object.fromEntries(
+    files.flatMap((file) =>
+      Object.entries(file.designs).filter(
+        ([themeKey, design]) => !BUILT_IN_THEME_SET.has(themeKey) && design.trim().length > 0
+      )
+    )
+  );
+}
+
+function buildThemeLibrary(
+  files: Array<Pick<CvFile, 'designs'>>,
+  storedThemeLibrary: Record<string, string>
+): Record<string, string> {
+  return {
+    ...designDefaults,
+    ...storedThemeLibrary,
+    ...collectCustomThemeDesigns(files)
+  };
+}
+
+function sortThemeKeys(themeLibrary: Record<string, string>): string[] {
+  const customThemeKeys = Object.keys(themeLibrary)
+    .filter((themeKey) => !BUILT_IN_THEME_SET.has(themeKey))
+    .sort((left, right) => left.localeCompare(right));
+
+  return [
+    ...BUILT_IN_THEME_KEYS.filter((themeKey) => themeKey in themeLibrary),
+    ...customThemeKeys
+  ];
+}
+
+function withSelectedThemeDesign(
+  file: Omit<CvFile, 'isReadOnly'>,
+  themeLibrary: Record<string, string>
+): Omit<CvFile, 'isReadOnly'> {
+  if (file.designs[file.selectedTheme]) {
+    return file;
+  }
+
+  const design = themeLibrary[file.selectedTheme];
+  if (!design) {
+    return file;
+  }
+
+  return {
+    ...file,
+    designs: {
+      ...file.designs,
+      [file.selectedTheme]: design
+    }
+  };
+}
 
 function stringifySection<T>(key: keyof CvFileSections, value: T | undefined) {
   if (value === undefined) {
@@ -169,6 +264,7 @@ export class FileStore {
     canUndo: false,
     canRedo: false
   });
+  #customThemeLibrary = readStoredThemeLibrary();
   #undoStack: UndoEntry[] = [];
   #redoStack: UndoEntry[] = [];
   persistence: FilePersistence | undefined;
@@ -204,6 +300,14 @@ export class FileStore {
     return this.selectedFile ? resolveFileSections(this.selectedFile) : emptySections();
   }
 
+  get themeLibrary() {
+    return buildThemeLibrary(this.files, this.#customThemeLibrary);
+  }
+
+  get availableThemes() {
+    return sortThemeKeys(this.themeLibrary);
+  }
+
   get activeFiles() {
     return this.files
       .filter((file) => !file.isArchived && !file.isTrashed)
@@ -225,12 +329,14 @@ export class FileStore {
   hydrate(files: Omit<CvFile, 'isReadOnly'>[]) {
     this.#undoStack = [];
     this.#redoStack = [];
-    const nextFiles = files.map((file) =>
-      withReadOnly({
-        ...file,
-        chatMessages: file.chatMessages ?? [],
-        editCount: file.editCount ?? 0
-      })
+    const hydratedFiles = files.map((file) => ({
+      ...file,
+      chatMessages: file.chatMessages ?? [],
+      editCount: file.editCount ?? 0
+    }));
+    const themeLibrary = buildThemeLibrary(hydratedFiles, this.#customThemeLibrary);
+    const nextFiles = hydratedFiles.map((file) =>
+      withReadOnly(withSelectedThemeDesign(file, themeLibrary))
     );
     const selectedFileId = nextFiles[0]?.id;
     this.#store.setSnapshot({
@@ -240,6 +346,7 @@ export class FileStore {
       canUndo: false,
       canRedo: false
     });
+    this.#syncThemeLibrary(nextFiles);
     preferencesStore.patch({ selectedFileId });
   }
 
@@ -253,24 +360,32 @@ export class FileStore {
       canUndo: false,
       canRedo: false
     });
+    this.#syncThemeLibrary(files);
     preferencesStore.patch({ selectedFileId });
   }
 
   createFile(name?: string, options?: CreateFileOptions) {
+    const selectedTheme = options?.selectedTheme ?? 'classic';
+    const designs =
+      options?.designs && Object.keys(options.designs).length > 0
+        ? { ...options.designs }
+        : {};
+    designs[selectedTheme] =
+      designs[selectedTheme] ??
+      this.themeLibrary[selectedTheme] ??
+      `design:\n  theme: ${selectedTheme}\n`;
+
     const file = withReadOnly({
       id: generateId(),
       name: name ?? `CV ${this.activeFiles.length + 1}`,
       cv: options?.cv ?? classicTheme.cv,
       settings: options?.settings ?? classicTheme.settings,
-      designs:
-        options?.designs && Object.keys(options.designs).length > 0
-          ? { ...options.designs }
-          : { classic: classicTheme.design },
+      designs,
       locales:
         options?.locales && Object.keys(options.locales).length > 0
           ? { ...options.locales }
           : { english: classicTheme.locale },
-      selectedTheme: options?.selectedTheme ?? 'classic',
+      selectedTheme,
       selectedLocale: options?.selectedLocale ?? 'english',
       isLocked: false,
       isArchived: false,
@@ -286,6 +401,7 @@ export class FileStore {
       files: [...current.files, file],
       selectedFileId: file.id
     }));
+    this.#syncThemeLibrary(this.files);
     preferencesStore.patch({ selectedFileId: file.id });
     this.persistence?.onCreateFile?.(file);
     return file;
@@ -357,7 +473,26 @@ export class FileStore {
   }
 
   setTheme(id: string, selectedTheme: string) {
-    this.#updateMeta(id, { selectedTheme });
+    const file = this.files.find((current) => current.id === id);
+    if (!file) {
+      return;
+    }
+
+    const patch: Record<string, unknown> = { selectedTheme };
+    const selectedThemeDesign =
+      file.designs[selectedTheme] ??
+      this.themeLibrary[selectedTheme] ??
+      `design:\n  theme: ${selectedTheme}\n`;
+
+    if (file.designs[selectedTheme] !== selectedThemeDesign) {
+      patch.designs = { ...file.designs, [selectedTheme]: selectedThemeDesign };
+    }
+
+    if (file.selectedTheme === selectedTheme && !patch.designs) {
+      return;
+    }
+
+    this.#updateMeta(id, patch);
   }
 
   addDesignVariant(id: string, themeKey: string, design: string) {
@@ -549,11 +684,23 @@ export class FileStore {
       preferencesStore.patch({ selectedFileId });
     }
 
+    this.#syncThemeLibrary(this.files);
+
     if (kind === 'content') {
       this.persistence?.onContentChange?.(id);
     } else {
       this.persistence?.onUpdateMeta?.(id, patch);
     }
+  }
+
+  #syncThemeLibrary(files: Array<Pick<CvFile, 'designs'>>) {
+    const nextThemeLibrary = {
+      ...this.#customThemeLibrary,
+      ...collectCustomThemeDesigns(files)
+    };
+
+    this.#customThemeLibrary = nextThemeLibrary;
+    writeStoredThemeLibrary(nextThemeLibrary);
   }
 }
 
