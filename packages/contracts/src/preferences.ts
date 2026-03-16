@@ -4,6 +4,7 @@ export type ColorMode = 'light' | 'dark' | 'system';
 
 export interface UserPreferences {
   yamlEditor: boolean;
+  aiEditorOpen: boolean;
   linksCollapsed: boolean;
   selectedFileId?: string;
   colorMode: ColorMode;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useChat, type UIMessage } from '@ai-sdk/react';
 import type { CvFileSections } from '@rendercv/contracts';
-import { SendHorizontal } from 'lucide-react';
+import { SendHorizontal, X } from 'lucide-react';
 import { fileStore } from '@rendercv/core';
 import { api } from '../lib/api';
 
@@ -16,12 +16,18 @@ export function AiChatPanel({
   fileId,
   sections,
   model,
-  initialMessages
+  initialMessages,
+  onClose,
+  onModelChange,
+  className
 }: {
   fileId: string;
   sections: CvFileSections;
   model: string;
   initialMessages: UIMessage[];
+  onClose?: () => void;
+  onModelChange?: (model: string) => void;
+  className?: string;
 }) {
   const [input, setInput] = useState('');
   const [usageLabel, setUsageLabel] = useState<string>('Usage unavailable');
@@ -45,7 +51,11 @@ export function AiChatPanel({
   }, [messages.length, status]);
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card">
+    <section
+      className={['flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card', className]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className="border-b border-border px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -56,9 +66,32 @@ export function AiChatPanel({
               Ask for rewrites, bullet tightening, or section-level guidance.
             </p>
           </div>
-          <div className="text-right text-xs text-muted-foreground">
-            <p>{usageLabel}</p>
-            <p>{status === 'ready' ? model : 'Thinking…'}</p>
+          <div className="flex items-start gap-3">
+            <div className="text-right text-xs text-muted-foreground">
+              <p>{usageLabel}</p>
+              {onModelChange ? (
+                <select
+                  className="mt-1 rounded-lg border border-border bg-background px-2 py-1 text-foreground"
+                  value={model}
+                  onChange={(event) => onModelChange(event.target.value)}
+                >
+                  <option value="gpt-5-mini">GPT-5 Mini</option>
+                  <option value="gpt-5">GPT-5</option>
+                </select>
+              ) : (
+                <p>{status === 'ready' ? model : 'Thinking…'}</p>
+              )}
+            </div>
+            {onClose ? (
+              <button
+                type="button"
+                aria-label="Close AI editor"
+                className="rounded-lg border border-border bg-background p-2 text-muted-foreground transition-colors hover:text-foreground"
+                onClick={onClose}
+              >
+                <X className="size-4" />
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

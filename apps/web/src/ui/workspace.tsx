@@ -1,5 +1,4 @@
 import { fileStore, localeLabel, preferencesStore, resolveFileSections, themeLabel } from '@rendercv/core';
-import type { UIMessage } from '@ai-sdk/react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useStore } from '../lib/use-store';
 import { MonacoEditor } from './monaco-editor';
@@ -7,7 +6,7 @@ import { PreviewPane } from './preview-pane';
 import { SectionTabs } from './section-tabs';
 import { Sidebar } from './sidebar';
 import { FormEditor } from '../features/form/form-editor';
-import { AiChatPanel } from './ai-chat-panel';
+import { WorkspaceAiEditor } from './workspace-ai-editor';
 
 export function Workspace() {
   const fileSnapshot = useStore(fileStore);
@@ -72,22 +71,12 @@ export function Workspace() {
                     ))}
                   </select>
                 </label>
-                <label className="flex items-center gap-2">
-                  AI Model
-                  <select
-                    className="rounded-lg border border-border bg-card px-2 py-1 text-foreground"
-                    value={preferences.selectedModel}
-                    onChange={(event) => preferencesStore.patch({ selectedModel: event.target.value })}
-                  >
-                    <option value="gpt-5-mini">GPT-5 Mini</option>
-                    <option value="gpt-5">GPT-5</option>
-                  </select>
-                </label>
+                <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} />
               </div>
             </header>
             <div className="flex min-h-0 flex-1 flex-col gap-4 p-5">
               <SectionTabs active={activeSection} onSelect={(section) => preferencesStore.patch({ activeSection: section })} />
-              <div className="min-h-0 flex-[0.58]">
+              <div className="min-h-0 flex-1">
                 {preferences.yamlEditor ? (
                   <MonacoEditor
                     value={currentValue}
@@ -101,17 +90,6 @@ export function Workspace() {
                   />
                 )}
               </div>
-              {selectedFile && sections ? (
-                <div className="min-h-0 flex-[0.42]">
-                  <AiChatPanel
-                    key={selectedFile.id}
-                    fileId={selectedFile.id}
-                    initialMessages={(selectedFile.chatMessages as UIMessage[] | undefined) ?? []}
-                    model={preferences.selectedModel}
-                    sections={sections}
-                  />
-                </div>
-              ) : null}
             </div>
           </div>
         </Panel>

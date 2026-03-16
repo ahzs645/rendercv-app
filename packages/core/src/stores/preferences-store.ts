@@ -5,6 +5,7 @@ export const DEFAULT_MODEL_ID = 'gpt-5-mini';
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
   yamlEditor: true,
+  aiEditorOpen: false,
   linksCollapsed: false,
   selectedFileId: undefined,
   colorMode: 'system',
