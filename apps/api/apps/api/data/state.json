@@ -108,7 +108,7 @@
   ],
   "preferences": {},
   "aiUsage": {
-    "used": 4,
+    "used": 5,
     "limit": 25
   },
   "githubConnection": {
@@ -116,7 +116,7 @@
     "repoFullName": "rendercv-local/rendercv-test",
     "repoUrl": "https://github.com/rendercv-local/rendercv-test",
     "isPrivate": true,
-    "lastSyncedAt": "2026-03-16T05:36:18.690Z"
+    "lastSyncedAt": "2026-03-16T05:45:20.919Z"
   },
   "feedback": [],
   "billing": {

@@ -182,7 +182,6 @@ function EntryArrayEditor({
   entries,
   template,
   onChange,
-  onTemplateChange,
   showHeader = true,
   addLabel
 }: {
@@ -190,11 +189,9 @@ function EntryArrayEditor({
   entries: unknown[];
   template: EntryTemplate | 'text';
   onChange: (entries: unknown[]) => void;
-  onTemplateChange?: (templateName: string) => void;
   showHeader?: boolean;
   addLabel?: string;
 }) {
-  const templateName = template === 'text' ? 'text' : template.name;
   const labelWidth = labelWidthForTemplate(template);
 
   function addEntry() {
@@ -236,19 +233,6 @@ function EntryArrayEditor({
                 {title}
               </span>
               <div className="flex flex-1 items-center justify-end gap-3">
-                {onTemplateChange ? (
-                  <select
-                    className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
-                    value={templateName}
-                    onChange={(event) => onTemplateChange(event.target.value)}
-                  >
-                    {entryTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
                 <button
                   className="flex items-center gap-0.5 text-[11px] text-muted-foreground/70 hover:text-foreground"
                   onClick={addEntry}
@@ -265,7 +249,7 @@ function EntryArrayEditor({
               <div>
                 {entries.map((entry, index) => (
                   <EntryArrayItem
-                    key={`${templateName}-${index}`}
+                    key={`${template === 'text' ? 'text' : template.name}-${index}`}
                     entry={entry}
                     index={index}
                     entriesLength={entries.length}
@@ -284,7 +268,7 @@ function EntryArrayEditor({
         <div className="pl-4">
           {entries.map((entry, index) => (
             <EntryArrayItem
-              key={`${templateName}-${index}`}
+              key={`${template === 'text' ? 'text' : template.name}-${index}`}
               entry={entry}
               index={index}
               entriesLength={entries.length}
@@ -320,7 +304,7 @@ function SectionMapEditor({
     const key = createUniqueSectionKey(sections, 'new_section');
     onChange({
       ...sections,
-      [key]: ['']
+      [key]: []
     });
   }
 
@@ -400,35 +384,22 @@ function SectionEditor({
 }) {
   const [title, setTitle] = useState(dictionaryKeyToTitle(sectionKey));
   const detectedTemplate = detectEntryType(entries[0]);
+  const isEmpty = entries.length === 0;
 
   useEffect(() => {
     setTitle(dictionaryKeyToTitle(sectionKey));
   }, [sectionKey]);
 
-  function changeTemplate(nextTemplateName: string) {
-    const currentTemplateName = detectedTemplate === 'text' ? 'text' : detectedTemplate.name;
-    if (nextTemplateName === currentTemplateName) {
-      return;
-    }
-
-    if (
-      entries.length > 0 &&
-      !window.confirm('Changing the section type will reset the existing entries in this section.')
-    ) {
-      return;
-    }
-
+  function chooseEntryType(nextTemplateName: string) {
     if (nextTemplateName === 'text') {
       onChangeEntries(['']);
       return;
     }
 
     const nextTemplate = findTemplateByName(nextTemplateName);
-    if (!nextTemplate) {
-      return;
+    if (nextTemplate) {
+      onChangeEntries([createDefaultEntry(nextTemplate)]);
     }
-
-    onChangeEntries([createDefaultEntry(nextTemplate)]);
   }
 
   return (
@@ -473,14 +444,17 @@ function SectionEditor({
           <X className="size-3" />
         </button>
       </div>
-      <EntryArrayEditor
-        title={dictionaryKeyToTitle(sectionKey)}
-        entries={entries}
-        template={detectedTemplate}
-        onChange={onChangeEntries}
-        onTemplateChange={changeTemplate}
-        showHeader={false}
-      />
+      {isEmpty ? (
+        <EntryTypeChooser onChoose={chooseEntryType} />
+      ) : (
+        <EntryArrayEditor
+          title={dictionaryKeyToTitle(sectionKey)}
+          entries={entries}
+          template={detectedTemplate}
+          onChange={onChangeEntries}
+          showHeader={false}
+        />
+      )}
     </article>
   );
 }
@@ -623,6 +597,26 @@ function TemplateEntryFields({
             ))}
           </div>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+function EntryTypeChooser({ onChoose }: { onChoose: (entryType: string) => void }) {
+  return (
+    <div className="flex flex-col gap-2 pt-1 pb-3 pl-4">
+      <p className="text-[11px] tracking-wider text-muted-foreground/50 uppercase">Entry type</p>
+      <div className="flex flex-wrap gap-1">
+        {entryTypeOptions.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className="rounded border border-border/60 px-2 py-1 text-xs text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
+            onClick={() => onChoose(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
     </div>
   );
