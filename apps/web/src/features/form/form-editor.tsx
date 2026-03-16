@@ -282,13 +282,13 @@ function EntryArrayEditor({
           {entries.map((entry, index) => (
             <EntryArrayItem
               key={`${template === 'text' ? 'text' : template.name}-${index}`}
-            entry={entry}
-            index={index}
-            entriesLength={entries.length}
-            entriesExpanded={entriesExpanded}
-            onChange={updateEntry}
-            onRemove={removeEntry}
-            template={template}
+              entry={entry}
+              index={index}
+              entriesLength={entries.length}
+              entriesExpanded={entriesExpanded}
+              onChange={updateEntry}
+              onRemove={removeEntry}
+              template={template}
             />
           ))}
           <button

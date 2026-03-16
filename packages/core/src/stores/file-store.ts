@@ -432,8 +432,7 @@ export class FileStore {
       previous,
       next: patch,
       kind: 'meta',
-      selectedFileId: this.selectedFileId
-      ,
+      selectedFileId: this.selectedFileId,
       timestamp: Date.now()
     });
     this.#applyPatch(id, patch, 'meta', this.selectedFileId);

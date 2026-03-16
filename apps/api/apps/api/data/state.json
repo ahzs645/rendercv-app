@@ -106,9 +106,21 @@
       "lastEdited": 1773629555943
     }
   ],
-  "preferences": {},
+  "preferences": {
+    "yamlEditor": false,
+    "aiEditorOpen": false,
+    "linksCollapsed": false,
+    "selectedFileId": "9095852a-6651-4bb9-82b3-176e562c3005",
+    "colorMode": "dark",
+    "showArchive": false,
+    "showTrash": false,
+    "activeSection": "settings",
+    "wordWrap": true,
+    "entriesExpanded": true,
+    "selectedModel": "gpt-5-mini"
+  },
   "aiUsage": {
-    "used": 5,
+    "used": 6,
     "limit": 25
   },
   "githubConnection": {
@@ -116,7 +128,7 @@
     "repoFullName": "rendercv-local/rendercv-test",
     "repoUrl": "https://github.com/rendercv-local/rendercv-test",
     "isPrivate": true,
-    "lastSyncedAt": "2026-03-16T05:45:20.919Z"
+    "lastSyncedAt": "2026-03-16T05:57:31.523Z"
   },
   "feedback": [],
   "billing": {

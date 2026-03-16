@@ -110,14 +110,18 @@ export function WorkspaceToolbar({
         <ToolbarIconButton
           ariaLabel="Undo"
           disabled={!fileSnapshot.canUndo}
-          onClick={() => fileStore.undo()}
+          onClick={() => {
+            fileStore.undo();
+          }}
         >
           <Undo2 className="size-4" />
         </ToolbarIconButton>
         <ToolbarIconButton
           ariaLabel="Redo"
           disabled={!fileSnapshot.canRedo}
-          onClick={() => fileStore.redo()}
+          onClick={() => {
+            fileStore.redo();
+          }}
         >
           <Redo2 className="size-4" />
         </ToolbarIconButton>
