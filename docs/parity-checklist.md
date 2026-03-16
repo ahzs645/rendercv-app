@@ -40,4 +40,4 @@
 - `pnpm build` succeeds for all workspace packages.
 - `pnpm test` succeeds.
 - The web app serves correctly from `/rendercv-app`.
-- Deleting the Svelte implementation becomes a mechanical cleanup step after parity verification.
+- The legacy Svelte implementation has been removed from the repo root.
