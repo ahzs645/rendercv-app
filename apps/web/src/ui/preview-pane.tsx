@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
-import { AppWindow, Download, FileCode2, Minus, Plus } from 'lucide-react';
-import type { CvFileSections } from '@rendercv/contracts';
+import { AppWindow, Copy, Download, FileCode2, Minus, Moon, Plus, Share2, Sun } from 'lucide-react';
+import type { CvFile, CvFileSections } from '@rendercv/contracts';
+import { fileStore, preferencesStore } from '@rendercv/core';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+import { useStore } from '../lib/use-store';
 
 export type ViewerRenderer = ReturnType<typeof useViewerRenderer>;
 
@@ -33,22 +35,55 @@ export function PreviewPane({
 export function PreviewPaneView({
   fileName,
   sections,
+  selectedFile,
   viewer,
   onOpenPopup,
   showHeader = true
 }: {
   fileName: string;
   sections?: CvFileSections;
+  selectedFile?: CvFile;
   viewer: ViewerRenderer;
   onOpenPopup?: () => void;
   showHeader?: boolean;
 }) {
+  const isWorkspacePreview = !showHeader;
+
   return (
-    <div className={`flex h-full flex-col p-6 ${showHeader ? 'gap-4' : ''}`}>
+    <div className={`flex h-full flex-col ${showHeader ? 'gap-4 p-6' : ''}`}>
       {showHeader ? (
         <PreviewPaneHeader fileName={fileName} onOpenPopup={onOpenPopup} sections={sections} viewer={viewer} />
       ) : null}
-      <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-border bg-sidebar p-6">
+      {isWorkspacePreview ? (
+        <PreviewPaneToolbar
+          fileName={fileName}
+          onOpenPopup={onOpenPopup}
+          sections={sections}
+          selectedFile={selectedFile}
+          viewer={viewer}
+        />
+      ) : null}
+      <PreviewCanvas fileName={fileName} viewer={viewer} workspaceInset={isWorkspacePreview} />
+    </div>
+  );
+}
+
+function PreviewCanvas({
+  fileName,
+  viewer,
+  workspaceInset
+}: {
+  fileName: string;
+  viewer: ViewerRenderer;
+  workspaceInset: boolean;
+}) {
+  const shellClassName = workspaceInset
+    ? 'min-h-0 flex-1 p-6 pt-4'
+    : 'min-h-0 flex-1';
+
+  return (
+    <div className={shellClassName}>
+      <div className="h-full overflow-auto rounded-2xl border border-border bg-sidebar p-6">
         {viewer.initError ? (
           <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{viewer.initError}</div>
         ) : viewer.renderErrors.length > 0 ? (
@@ -148,6 +183,163 @@ function PreviewPaneHeader({
   );
 }
 
+function PreviewPaneToolbar({
+  fileName,
+  sections,
+  selectedFile,
+  viewer,
+  onOpenPopup
+}: {
+  fileName: string;
+  sections?: CvFileSections;
+  selectedFile?: CvFile;
+  viewer: ViewerRenderer;
+  onOpenPopup?: () => void;
+}) {
+  const preferences = useStore(preferencesStore);
+  const prefersDark =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark =
+    preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
+  const canPreviewActions = Boolean(sections);
+
+  async function copyPublicLink() {
+    if (!selectedFile) {
+      return;
+    }
+
+    if (!selectedFile.isPublic) {
+      fileStore.makePublic(selectedFile.id);
+    }
+
+    const url = new URL(`${import.meta.env.BASE_URL}${selectedFile.id}`, window.location.origin).toString();
+    await navigator.clipboard.writeText(url);
+  }
+
+  async function sharePdf() {
+    if (!sections) {
+      return;
+    }
+
+    const bytes = await viewer.renderToPdf(sections);
+    if (!bytes) {
+      return;
+    }
+
+    const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
+    const file = new File([blob], `${fileName}.pdf`, { type: 'application/pdf' });
+
+    try {
+      if (navigator.canShare?.({ files: [file] }) && typeof navigator.share === 'function') {
+        await navigator.share({ title: fileName, files: [file] });
+        return;
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
+    }
+
+    await downloadBlob(blob, `${fileName}.pdf`);
+  }
+
+  return (
+    <div className="shrink-0 border-b border-border bg-background px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Preview</p>
+          <p className="truncate text-sm text-foreground">{fileName}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1">
+            <PreviewBarButton
+              label="Zoom out"
+              disabled={!canPreviewActions}
+              variant="ghost"
+              onClick={viewer.zoomOut}
+            >
+              <Minus className="size-4" />
+            </PreviewBarButton>
+            <button
+              type="button"
+              className="min-w-12 rounded-md px-2 py-1 text-sm text-foreground disabled:pointer-events-none disabled:opacity-40"
+              disabled={!canPreviewActions}
+              onClick={viewer.zoomReset}
+            >
+              {viewer.zoomPercent}%
+            </button>
+            <PreviewBarButton
+              label="Zoom in"
+              disabled={!canPreviewActions}
+              variant="ghost"
+              onClick={viewer.zoomIn}
+            >
+              <Plus className="size-4" />
+            </PreviewBarButton>
+          </div>
+          <PreviewBarButton
+            label="Popup preview"
+            disabled={!canPreviewActions || !onOpenPopup}
+            onClick={() => onOpenPopup?.()}
+          >
+            <AppWindow className="size-4" />
+          </PreviewBarButton>
+          <PreviewBarButton
+            label="Download PDF"
+            disabled={!canPreviewActions}
+            onClick={async () => {
+              if (!sections) return;
+              const bytes = await viewer.renderToPdf(sections);
+              if (!bytes) return;
+              await downloadBlob(
+                new Blob([bytes as BlobPart], { type: 'application/pdf' }),
+                `${fileName}.pdf`
+              );
+            }}
+          >
+            <Download className="size-4" />
+          </PreviewBarButton>
+          <PreviewBarButton
+            label="Download Typst"
+            disabled={!canPreviewActions}
+            onClick={async () => {
+              if (!sections) return;
+              const typst = await viewer.renderToTypst(sections);
+              if (!typst) return;
+              await downloadBlob(
+                new Blob([typst], { type: 'application/octet-stream' }),
+                `${fileName}.typ`
+              );
+            }}
+          >
+            <FileCode2 className="size-4" />
+          </PreviewBarButton>
+          <PreviewBarButton
+            label="Share PDF"
+            disabled={!canPreviewActions}
+            onClick={sharePdf}
+          >
+            <Share2 className="size-4" />
+          </PreviewBarButton>
+          <PreviewBarButton
+            label="Copy public link"
+            disabled={!selectedFile}
+            onClick={() => void copyPublicLink()}
+          >
+            <Copy className="size-4" />
+          </PreviewBarButton>
+          <PreviewBarButton
+            label="Toggle color mode"
+            onClick={() => preferencesStore.patch({ colorMode: isDark ? 'light' : 'dark' })}
+          >
+            {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          </PreviewBarButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PreviewButton({
   children,
   label,
@@ -164,6 +356,37 @@ function PreviewButton({
       aria-label={label}
       title={label}
       type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
+function PreviewBarButton({
+  children,
+  disabled = false,
+  label,
+  onClick,
+  variant = 'default'
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  label: string;
+  onClick: () => void | Promise<void>;
+  variant?: 'default' | 'ghost';
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={() => void onClick()}
+      className={`inline-flex size-8 items-center justify-center rounded-md text-sm transition-colors ${
+        variant === 'ghost'
+          ? 'hover:bg-accent hover:text-accent-foreground'
+          : 'border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground'
+      } disabled:pointer-events-none disabled:opacity-40`}
     >
       {children}
     </button>

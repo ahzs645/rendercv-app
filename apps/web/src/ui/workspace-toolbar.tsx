@@ -172,9 +172,9 @@ export function WorkspaceToolbar({
           </button>
           <span className="text-xs font-medium text-foreground">YAML</span>
         </div>
+        <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} />
         <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1">
           <ToolbarIconButton
             ariaLabel="Zoom out"
@@ -186,7 +186,7 @@ export function WorkspaceToolbar({
           </ToolbarIconButton>
           <button
             type="button"
-            className="min-w-12 rounded-md px-2 py-1 text-sm text-foreground"
+            className="min-w-12 rounded-md px-2 py-1 text-sm text-foreground disabled:pointer-events-none disabled:opacity-40"
             disabled={!canPreviewActions}
             onClick={viewer.zoomReset}
           >

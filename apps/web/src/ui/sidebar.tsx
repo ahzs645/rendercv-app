@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Copy,
-  DollarSign,
   EllipsisVertical,
   FilePlus2,
   FileText,
@@ -127,10 +126,7 @@ export function Sidebar() {
             Links
           </p>
         ) : null}
-        <nav className={`grid gap-1 ${isMini ? 'grid-cols-3' : ''}`}>
-          <SidebarLinkButton compact={isCompact} icon={<DollarSign className="size-4" />} mini={isMini} to="/pricing">
-            Pricing
-          </SidebarLinkButton>
+        <nav className={`grid gap-1 ${isMini ? 'grid-cols-2' : ''}`}>
           <SidebarLinkButton compact={isCompact} icon={<Shield className="size-4" />} mini={isMini} to="/privacy-policy">
             Privacy Policy
           </SidebarLinkButton>

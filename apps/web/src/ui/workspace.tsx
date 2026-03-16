@@ -28,8 +28,28 @@ export function Workspace() {
   const viewer = useViewerRenderer(sections);
 
   return (
-    <div className="h-screen overflow-hidden bg-background">
-      <PanelGroup direction="horizontal">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
+      <header className="shrink-0 border-b border-border">
+        <WorkspaceToolbar
+          editorRef={monacoRef}
+          onOpenPopup={() => {
+            window.open(`${import.meta.env.BASE_URL}preview`, '_blank', 'noopener,noreferrer');
+          }}
+          onToggleSidebar={() => {
+            if (sidebarRef.current?.isCollapsed()) {
+              sidebarRef.current.expand(SIDEBAR_DEFAULT_SIZE);
+              return;
+            }
+
+            sidebarRef.current?.collapse();
+          }}
+          sections={sections}
+          selectedFile={selectedFile}
+          sidebarCollapsed={sidebarCollapsed}
+          viewer={viewer}
+        />
+      </header>
+      <PanelGroup className="min-h-0 flex-1" direction="horizontal">
         <Panel
           ref={sidebarRef}
           collapsedSize={0}
@@ -44,26 +64,6 @@ export function Workspace() {
         <PanelResizeHandle className={`workspace-resize-handle ${sidebarCollapsed ? 'hidden' : ''}`} />
         <Panel defaultSize={41} minSize={28}>
           <div className="flex h-full flex-col">
-            <header className="border-b border-border">
-              <WorkspaceToolbar
-                editorRef={monacoRef}
-                onOpenPopup={() => {
-                  window.open(`${import.meta.env.BASE_URL}preview`, '_blank', 'noopener,noreferrer');
-                }}
-                onToggleSidebar={() => {
-                  if (sidebarRef.current?.isCollapsed()) {
-                    sidebarRef.current.expand(SIDEBAR_DEFAULT_SIZE);
-                    return;
-                  }
-
-                  sidebarRef.current?.collapse();
-                }}
-                sections={sections}
-                selectedFile={selectedFile}
-                sidebarCollapsed={sidebarCollapsed}
-                viewer={viewer}
-              />
-            </header>
             <div className="flex min-h-0 flex-1 flex-col">
               <SectionTabs
                 active={activeSection}
@@ -92,6 +92,7 @@ export function Workspace() {
         <Panel defaultSize={40} minSize={25}>
           <PreviewPaneView
             fileName={selectedFile?.name ?? 'RenderCV'}
+            selectedFile={selectedFile}
             sections={sections}
             showHeader={false}
             viewer={viewer}
