@@ -6,6 +6,7 @@ export interface UserPreferences {
   yamlEditor: boolean;
   aiEditorOpen: boolean;
   linksCollapsed: boolean;
+  themeLibrary: Record<string, string>;
   selectedFileId?: string;
   colorMode: ColorMode;
   showArchive: boolean;

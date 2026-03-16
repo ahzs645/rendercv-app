@@ -2,10 +2,12 @@ import { useRef, useState } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import type { CvFile, SectionKey } from '@rendercv/contracts';
 import { SECTION_LABELS } from '@rendercv/contracts';
-import { fileStore, localeLabel, themeLabel } from '@rendercv/core';
+import { defaultDesigns, fileStore, localeLabel, preferencesStore, themeLabel } from '@rendercv/core';
 import { toast } from 'sonner';
+import { useStore } from '../lib/use-store';
 
 const TAB_ORDER = Object.keys(SECTION_LABELS) as SectionKey[];
+const BUILT_IN_THEME_KEYS = Object.keys(defaultDesigns);
 
 export function SectionTabs({
   active,
@@ -22,11 +24,19 @@ export function SectionTabs({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const preferences = useStore(preferencesStore);
+  const themeOptions = Array.from(
+    new Set([
+      ...BUILT_IN_THEME_KEYS,
+      ...Object.keys(preferences.themeLibrary),
+      ...Object.keys(selectedFile?.designs ?? {})
+    ])
+  );
   const variant =
     active === 'design'
       ? {
           label: 'Theme',
-          options: Object.keys(selectedFile?.designs ?? {}),
+          options: themeOptions,
           renderLabel: themeLabel,
           value: selectedFile?.selectedTheme,
           onChange: (value: string) => {
@@ -51,10 +61,14 @@ export function SectionTabs({
 
   const currentIndex = variant?.value ? variant.options.indexOf(variant.value) : -1;
   const canCycle = Boolean(variant && variant.options.length > 1 && currentIndex >= 0);
+  const designLibraryThemes =
+    active === 'design'
+      ? Array.from(new Set([...themeOptions]))
+      : [];
 
   return (
     <div className="shrink-0 border-b border-border px-2 pt-1">
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+      <div className="flex items-center gap-2 overflow-x-auto">
         <div className="inline-flex h-9 w-fit items-center justify-center rounded-lg bg-transparent p-[3px] text-muted-foreground">
           {TAB_ORDER.map((section) => (
             <button
@@ -166,6 +180,38 @@ export function SectionTabs({
           </div>
         ) : null}
       </div>
+      {active === 'design' && designLibraryThemes.length > 0 ? (
+        <div className="flex items-center gap-2 overflow-x-auto py-2">
+          <p className="shrink-0 text-[11px] font-medium tracking-[0.18em] text-muted-foreground uppercase">
+            Theme Library
+          </p>
+          <div className="flex items-center gap-1">
+            {designLibraryThemes.map((themeKey) => {
+              const selected = selectedFile?.selectedTheme === themeKey;
+              return (
+                <button
+                  key={themeKey}
+                  className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                    selected
+                      ? 'border-primary/40 bg-primary/10 text-primary'
+                      : 'border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground'
+                  }`}
+                  onClick={() => {
+                    if (selectedFile) {
+                      fileStore.setTheme(selectedFile.id, themeKey);
+                    }
+                  }}
+                  type="button"
+                >
+                  {themeLabel(themeKey)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="pb-2" />
+      )}
     </div>
   );
 }

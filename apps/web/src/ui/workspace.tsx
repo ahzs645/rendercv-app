@@ -31,22 +31,6 @@ type ImportedSections = Partial<ReturnType<typeof resolveFileSections>> & {
   selectedLocale?: string;
 };
 
-function withThemeOverride(design: string, themeName: string) {
-  if (!design.trim()) {
-    return `design:\n  theme: ${themeName}\n`;
-  }
-
-  if (/^\s*theme:\s*.+$/m.test(design)) {
-    return design.replace(/(^\s*theme:\s*).+$/m, `$1${themeName}`);
-  }
-
-  if (/^\s*design:\s*$/m.test(design)) {
-    return design.replace(/(^\s*design:\s*$)/m, `$1\n  theme: ${themeName}`);
-  }
-
-  return `design:\n  theme: ${themeName}\n`;
-}
-
 function fillMissingSections(partialSections: Partial<ReturnType<typeof resolveFileSections>>) {
   return {
     cv: partialSections.cv ?? classicTheme.cv,
@@ -70,6 +54,18 @@ function normalizeCompatibilitySections(sections: ImportedSections): ImportedSec
     ...sections,
     cv: normalizedCv
   };
+}
+
+function createMinimalThemeDesign(themeName: string) {
+  return `design:\n  theme: ${themeName}\n`;
+}
+
+function registerSharedThemeDesign(themeName: string | undefined, design: string | undefined) {
+  if (!themeName || !design || BUILT_IN_THEMES.has(themeName)) {
+    return;
+  }
+
+  preferencesStore.registerThemeDesign(themeName, design);
 }
 
 export function Workspace() {
@@ -113,7 +109,7 @@ export function Workspace() {
 
     void viewer
       .validateSections(fillMissingSections(normalizeCompatibilitySections(sections)))
-      .then((normalizedImport) => {
+      .then((validationResult) => {
         if (cancelled) {
           return;
         }
@@ -123,9 +119,13 @@ export function Workspace() {
           fileStore.updateSection('cv', normalizedCv);
         }
 
+        registerSharedThemeDesign(selectedFile.selectedTheme, selectedFile.designs[selectedFile.selectedTheme]);
+
         if (needsClassicCompatibilityTheme(selectedFile.selectedTheme)) {
-          fileStore.setTheme(selectedFile.id, 'classic');
-          window.setTimeout(() => fileStore.updateSection('design', classicTheme.design), 0);
+          if (validationResult.usedFallbackTheme) {
+            fileStore.setTheme(selectedFile.id, 'classic');
+            window.setTimeout(() => fileStore.updateSection('design', classicTheme.design), 0);
+          }
           return;
         }
 
@@ -155,6 +155,7 @@ export function Workspace() {
           <Sidebar
             prepareYamlImport={async (importedSections) => {
               const normalizedSections = normalizeCompatibilitySections(importedSections);
+              registerSharedThemeDesign(importedSections.selectedTheme, importedSections.design);
 
               const nextSections = {
                 ...normalizedSections,
@@ -163,21 +164,10 @@ export function Workspace() {
               const additionalDesigns: Record<string, string> = {};
               let message: string | undefined;
 
-              if (needsClassicCompatibilityTheme(importedSections.selectedTheme)) {
-                if (importedSections.selectedTheme && importedSections.design) {
-                  additionalDesigns[importedSections.selectedTheme] = importedSections.design;
-                }
-                nextSections.design = classicTheme.design;
-                nextSections.selectedTheme = 'classic';
-                message = `YAML imported with compatibility mode. Using classic until the ${importedSections.selectedTheme} theme zip is loaded.`;
-              } else if (nextSections.selectedTheme === 'classic' && nextSections.design) {
+              if (nextSections.selectedTheme === 'classic' && nextSections.design) {
                 if (looksLikeLegacyDesignSchema(nextSections.design)) {
                   nextSections.design = classicTheme.design;
                 }
-              } else if (looksLikeLegacyDesignSchema(nextSections.design ?? '')) {
-                nextSections.design = classicTheme.design;
-                nextSections.selectedTheme = 'classic';
-                message = 'YAML imported with compatibility mode. Using classic for the preview.';
               }
 
               const validatedSections = fillMissingSections(nextSections);
@@ -193,6 +183,12 @@ export function Workspace() {
                 nextSections.design = classicTheme.design;
                 nextSections.selectedTheme = 'classic';
                 message = `YAML imported with compatibility mode. Using classic until the ${importedSections.selectedTheme} theme zip is loaded.`;
+              } else if (
+                nextSections.selectedTheme === 'classic' &&
+                nextSections.design &&
+                looksLikeLegacyDesignSchema(nextSections.design)
+              ) {
+                nextSections.design = classicTheme.design;
               }
 
               return {
@@ -260,8 +256,11 @@ export function Workspace() {
                         selectedFile
                           ? async (file) => {
                               const result = await viewer.importThemeArchive(file);
-                              const nextDesign = withThemeOverride(sections?.design ?? '', result.themeName);
-                              fileStore.addDesignVariant(selectedFile.id, result.themeName, nextDesign);
+                              const nextDesign =
+                                preferencesStore.getSnapshot().themeLibrary[result.themeName] ??
+                                createMinimalThemeDesign(result.themeName);
+                              preferencesStore.registerThemeDesign(result.themeName, nextDesign);
+                              fileStore.setTheme(selectedFile.id, result.themeName);
                               return result.themeName;
                             }
                           : undefined

@@ -232,6 +232,7 @@ export function resolveFileSections(file: CvFile): CvFileSections {
     design:
       embeddedSections?.design ??
       file.designs[file.selectedTheme] ??
+      preferencesStore.getSnapshot().themeLibrary[file.selectedTheme] ??
       designDefaults[file.selectedTheme] ??
       `design:\n  theme: ${file.selectedTheme}`,
     locale:

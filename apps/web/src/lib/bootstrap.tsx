@@ -1,5 +1,6 @@
 import { fileStore } from '@rendercv/core';
 import { createPreviewChannel } from '@rendercv/core';
+import { defaultDesigns } from '@rendercv/core';
 import { preferencesStore } from '@rendercv/core';
 import { resolveFileSections } from '@rendercv/core';
 import { useEffect, useRef } from 'react';
@@ -7,9 +8,33 @@ import { api } from './api';
 
 const FILE_STORAGE_KEY = 'rendercv_guest_files';
 const PREFERENCE_STORAGE_KEY = 'rendercv_preferences';
+const BUILT_IN_THEME_KEYS = new Set(Object.keys(defaultDesigns));
 
 function stripReadOnly(files: ReturnType<typeof fileStore.getSnapshot>['files']) {
   return files.map(({ isReadOnly: _isReadOnly, ...file }) => file);
+}
+
+function syncThemeLibraryFromFiles(files: Array<ReturnType<typeof stripReadOnly>[number]>) {
+  const currentLibrary = preferencesStore.getSnapshot().themeLibrary;
+  const nextLibrary = { ...currentLibrary };
+  let changed = false;
+
+  for (const file of files) {
+    for (const [themeKey, design] of Object.entries(file.designs ?? {})) {
+      if (BUILT_IN_THEME_KEYS.has(themeKey) || !design) {
+        continue;
+      }
+
+      if (nextLibrary[themeKey] !== design) {
+        nextLibrary[themeKey] = design;
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    preferencesStore.patch({ themeLibrary: nextLibrary });
+  }
 }
 
 export function WorkspaceBootstrap() {
@@ -34,7 +59,9 @@ export function WorkspaceBootstrap() {
     try {
       const rawFiles = localStorage.getItem(FILE_STORAGE_KEY);
       if (rawFiles) {
-        fileStore.hydrate(JSON.parse(rawFiles));
+        const files = JSON.parse(rawFiles);
+        fileStore.hydrate(files);
+        syncThemeLibraryFromFiles(files);
       } else {
         fileStore.loadDefaults();
       }
@@ -52,6 +79,7 @@ export function WorkspaceBootstrap() {
     api.getFiles().then((response) => {
       if (response.files.length > 0) {
         fileStore.hydrate(response.files);
+        syncThemeLibraryFromFiles(response.files);
       }
     }).catch(() => {});
   }, []);
@@ -108,6 +136,7 @@ export function WorkspaceBootstrap() {
     const unsubscribe = fileStore.subscribe(() => {
       const snapshot = fileStore.getSnapshot();
       localStorage.setItem(FILE_STORAGE_KEY, JSON.stringify(stripReadOnly(snapshot.files)));
+      syncThemeLibraryFromFiles(stripReadOnly(snapshot.files));
       channel.postMessage({
         type: 'filestate',
         files: snapshot.files,

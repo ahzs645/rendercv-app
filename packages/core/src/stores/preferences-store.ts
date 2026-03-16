@@ -7,6 +7,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   yamlEditor: true,
   aiEditorOpen: false,
   linksCollapsed: false,
+  themeLibrary: {},
   selectedFileId: undefined,
   colorMode: 'system',
   showArchive: false,
@@ -34,6 +35,22 @@ export class PreferencesStore {
 
   patch(patch: Partial<UserPreferences>) {
     this.#store.update((current) => ({ ...current, ...patch }));
+  }
+
+  registerThemeDesign(themeKey: string, design: string) {
+    this.#store.update((current) => {
+      if (current.themeLibrary[themeKey] === design) {
+        return current;
+      }
+
+      return {
+        ...current,
+        themeLibrary: {
+          ...current.themeLibrary,
+          [themeKey]: design
+        }
+      };
+    });
   }
 }
 
