@@ -92,7 +92,6 @@ export function Workspace() {
         <Panel defaultSize={40} minSize={25}>
           <PreviewPaneView
             fileName={selectedFile?.name ?? 'RenderCV'}
-            selectedFile={selectedFile}
             sections={sections}
             showHeader={false}
             viewer={viewer}
