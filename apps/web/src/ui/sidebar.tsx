@@ -15,6 +15,7 @@ import {
 import { Link } from 'react-router-dom';
 import type { CvFile } from '@rendercv/contracts';
 import { fileStore, localeLabel, themeLabel } from '@rendercv/core';
+import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { GitHubSyncCard } from './github-sync-card';
 import { PdfImportButton } from './pdf-import-button';
@@ -84,7 +85,7 @@ export function Sidebar() {
           <FilePlus2 className="size-4 shrink-0" />
           {isMini ? <span className="sr-only">Create new CV</span> : <span>Create new CV</span>}
         </button>
-        <PdfImportButton mode={mode} />
+        {ENABLE_PDF_IMPORT ? <PdfImportButton mode={mode} /> : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-2 py-2">

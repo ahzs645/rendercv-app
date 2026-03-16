@@ -64,9 +64,13 @@ export function Workspace() {
                 viewer={viewer}
               />
             </header>
-            <div className="flex min-h-0 flex-1 flex-col gap-4 p-5">
-              <SectionTabs active={activeSection} onSelect={(section) => preferencesStore.patch({ activeSection: section })} />
-              <div className="min-h-0 flex-1">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <SectionTabs
+                active={activeSection}
+                onSelect={(section) => preferencesStore.patch({ activeSection: section })}
+                selectedFile={selectedFile}
+              />
+              <div className="min-h-0 flex-1 p-5 pt-4">
                 {preferences.yamlEditor ? (
                   <MonacoEditor
                     ref={monacoRef}

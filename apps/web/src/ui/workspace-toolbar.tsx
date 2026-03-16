@@ -18,7 +18,7 @@ import {
   Undo2
 } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
-import { fileStore, localeLabel, preferencesStore, themeLabel } from '@rendercv/core';
+import { fileStore, preferencesStore } from '@rendercv/core';
 import { downloadBlob } from '../features/viewer/download';
 import { useStore } from '../lib/use-store';
 import type { MonacoEditorHandle } from './monaco-editor';
@@ -172,24 +172,6 @@ export function WorkspaceToolbar({
           </button>
           <span className="text-xs font-medium text-foreground">YAML</span>
         </div>
-        {selectedFile ? (
-          <>
-            <ToolbarSelect
-              label="Theme"
-              onChange={(value) => fileStore.setTheme(selectedFile.id, value)}
-              options={Object.keys(selectedFile.designs)}
-              renderLabel={themeLabel}
-              value={selectedFile.selectedTheme}
-            />
-            <ToolbarSelect
-              label="Locale"
-              onChange={(value) => fileStore.setLocale(selectedFile.id, value)}
-              options={Object.keys(selectedFile.locales)}
-              renderLabel={localeLabel}
-              value={selectedFile.selectedLocale}
-            />
-          </>
-        ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} />
@@ -278,37 +260,6 @@ export function WorkspaceToolbar({
         </ToolbarIconButton>
       </div>
     </div>
-  );
-}
-
-function ToolbarSelect({
-  label,
-  onChange,
-  options,
-  renderLabel,
-  value
-}: {
-  label: string;
-  onChange: (value: string) => void;
-  options: string[];
-  renderLabel: (value: string) => string;
-  value: string;
-}) {
-  return (
-    <label className="hidden items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground sm:flex">
-      <span>{label}</span>
-      <select
-        className="bg-transparent text-foreground outline-none"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {renderLabel(option)}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 

@@ -3,6 +3,7 @@ import type { UIMessage } from '@ai-sdk/react';
 import { fileStore, preferencesStore } from '@rendercv/core';
 import type { CvFileSections } from '@rendercv/contracts';
 import { useEffect } from 'react';
+import { ENABLE_AI_EDITOR } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { AiChatPanel } from './ai-chat-panel';
 
@@ -13,6 +14,10 @@ export function WorkspaceAiEditor({
   fileId?: string;
   sections?: CvFileSections;
 }) {
+  if (!ENABLE_AI_EDITOR) {
+    return null;
+  }
+
   const preferences = useStore(preferencesStore);
   const fileSnapshot = useStore(fileStore);
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileId);
