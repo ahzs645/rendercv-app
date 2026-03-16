@@ -1,0 +1,123 @@
+import type {
+  AiUsageResponse,
+  ApiErrorResponse,
+  BillingSubscriptionResponse,
+  CheckoutResponse,
+  FeedbackResponse,
+  FileContentPatch,
+  FileMetaPatch,
+  FilesListResponse,
+  GitHubConnectionResponse,
+  GitHubSyncResponse,
+  PortalResponse,
+  PreferencesResponse,
+  PublicCvResponse
+} from '@rendercv/contracts';
+import type { CvFile, FeedbackSubmission } from '@rendercv/contracts';
+
+async function request<T>(input: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {})
+    },
+    ...init
+  });
+
+  return parseResponse<T>(response);
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+    throw new Error(error?.error.message ?? `${response.status} ${response.statusText}`);
+  }
+
+  return (await response.json()) as T;
+}
+
+export const api = {
+  getFiles() {
+    return request<FilesListResponse>('/api/files');
+  },
+  createFile(file: Omit<CvFile, 'isReadOnly'>) {
+    return request<FilesListResponse>('/api/files', { method: 'POST', body: JSON.stringify(file) });
+  },
+  patchFileContent(payload: FileContentPatch) {
+    return request<FilesListResponse>(`/api/files/${payload.id}/content`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+  patchFileMeta(payload: FileMetaPatch) {
+    return request<FilesListResponse>(`/api/files/${payload.id}/meta`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+  deleteFile(id: string) {
+    return request<FilesListResponse>(`/api/files/${id}`, { method: 'DELETE' });
+  },
+  getPreferences() {
+    return request<PreferencesResponse>('/api/preferences');
+  },
+  patchPreferences(preferences: PreferencesResponse['preferences']) {
+    return request<PreferencesResponse>('/api/preferences', {
+      method: 'PATCH',
+      body: JSON.stringify({ preferences })
+    });
+  },
+  getBillingSubscription() {
+    return request<BillingSubscriptionResponse>('/api/billing/subscription');
+  },
+  checkout(slug: string) {
+    return request<CheckoutResponse>('/api/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ slug })
+    });
+  },
+  getPortal() {
+    return request<PortalResponse>('/api/billing/portal');
+  },
+  getAiUsage() {
+    return request<AiUsageResponse>('/api/ai/usage');
+  },
+  getGitHubConnection() {
+    return request<GitHubConnectionResponse>('/api/github/connection');
+  },
+  syncGitHub(options?: { repoName?: string; isPrivate?: boolean }) {
+    return request<GitHubSyncResponse>('/api/github/sync', {
+      method: 'POST',
+      body: JSON.stringify(options ?? {})
+    });
+  },
+  disconnectGitHub() {
+    return request<GitHubSyncResponse>('/api/github/connection', { method: 'DELETE' });
+  },
+  submitFeedback(submission: FeedbackSubmission) {
+    return request<FeedbackResponse>('/api/feedback', {
+      method: 'POST',
+      body: JSON.stringify(submission)
+    });
+  },
+  getPublicCv(id: string) {
+    return request<PublicCvResponse>(`/api/public-cv/${id}`);
+  },
+  migrate(firebaseUid: string) {
+    return request<{ ok: boolean }>('/api/migrate', {
+      method: 'POST',
+      body: JSON.stringify({ firebase_uid: firebaseUid })
+    });
+  },
+  async importPdf(file: File) {
+    const formData = new FormData();
+    formData.set('pdf', file);
+
+    const response = await fetch('/api/import-pdf', {
+      method: 'POST',
+      body: formData
+    });
+
+    return parseResponse<{ cv: string }>(response);
+  }
+};

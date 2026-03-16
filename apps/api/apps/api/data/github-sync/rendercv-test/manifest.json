@@ -1,0 +1,40 @@
+{
+  "exportedAt": "2026-03-16T06:03:29.985Z",
+  "files": [
+    {
+      "id": "9095852a-6651-4bb9-82b3-176e562c3005",
+      "name": "CV (Classic)",
+      "public": true,
+      "archived": false,
+      "trashed": false
+    },
+    {
+      "id": "9231fcf9-ee87-497e-bd2a-b08fe89309be",
+      "name": "CV (Engineering Classic)",
+      "public": false,
+      "archived": false,
+      "trashed": false
+    },
+    {
+      "id": "bf1ba2a6-9f40-4105-aa5a-111b328db438",
+      "name": "CV (Engineering Resumes)",
+      "public": false,
+      "archived": false,
+      "trashed": false
+    },
+    {
+      "id": "8ef5623a-a8c8-402b-96b2-c993c8c73d41",
+      "name": "CV (Moderncv)",
+      "public": false,
+      "archived": false,
+      "trashed": false
+    },
+    {
+      "id": "dcd587f9-eff0-43c9-a131-2755822d950c",
+      "name": "CV (Sb2nov)",
+      "public": false,
+      "archived": false,
+      "trashed": false
+    }
+  ]
+}

@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans Variable", sans-serif;
+  --radius: 0.625rem;
+  --radius-xs: 0.125rem;
+  --radius-2xl: 1rem;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: oklch(100% 0 0);
+    --foreground: oklch(15% .05 295);
+    --card: oklch(100% 0 0);
+    --card-foreground: oklch(15% .05 295);
+    --popover: oklch(100% 0 0);
+    --popover-foreground: oklch(15% .05 295);
+    --primary: oklch(45% .2 295);
+    --primary-foreground: oklch(99% .005 295);
+    --secondary: oklch(96.5% .015 295);
+    --secondary-foreground: oklch(20% .05 295);
+    --muted: oklch(96.5% .015 295);
+    --muted-foreground: oklch(50% .05 295);
+    --accent: oklch(96.5% .015 295);
+    --accent-foreground: oklch(20% .05 295);
+    --destructive: oklch(57.7% .245 27.325);
+    --border: oklch(92.5% .02 295);
+    --input: oklch(92.5% .02 295);
+    --ring: oklch(55% .15 295);
+    --chart-1: oklch(64.6% .222 41.116);
+    --chart-2: oklch(60% .118 184.704);
+    --chart-3: oklch(39.8% .07 227.392);
+    --chart-4: oklch(82.8% .189 84.429);
+    --chart-5: oklch(76.9% .188 70.08);
+    --sidebar: oklch(98.5% .008 295);
+    --sidebar-foreground: oklch(15% .05 295);
+    --sidebar-primary: oklch(45% .2 295);
+    --sidebar-primary-foreground: oklch(99% .005 295);
+    --sidebar-accent: oklch(96.5% .015 295);
+    --sidebar-accent-foreground: oklch(20% .05 295);
+    --sidebar-border: oklch(92.5% .02 295);
+    --sidebar-ring: oklch(55% .15 295);
+    --scrollbar-track: color-mix(in oklch, var(--background) 82%, var(--muted) 18%);
+    --scrollbar-thumb: color-mix(in oklch, var(--border) 55%, var(--muted-foreground) 45%);
+    --scrollbar-thumb-hover: color-mix(in oklch, var(--border) 35%, var(--muted-foreground) 65%);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: oklch(12.9% .042 264.695);
+    --foreground: oklch(98.4% .003 247.858);
+    --card: oklch(20.8% .042 265.755);
+    --card-foreground: oklch(98.4% .003 247.858);
+    --popover: oklch(20.8% .042 265.755);
+    --popover-foreground: oklch(98.4% .003 247.858);
+    --primary: oklch(92.9% .013 255.508);
+    --primary-foreground: oklch(20.8% .042 265.755);
+    --secondary: oklch(27.9% .041 260.031);
+    --secondary-foreground: oklch(98.4% .003 247.858);
+    --muted: oklch(27.9% .041 260.031);
+    --muted-foreground: oklch(70.4% .04 256.788);
+    --accent: oklch(27.9% .041 260.031);
+    --accent-foreground: oklch(98.4% .003 247.858);
+    --destructive: oklch(70.4% .191 22.216);
+    --border: oklch(100% 0 0 / 0.1);
+    --input: oklch(100% 0 0 / 0.15);
+    --ring: oklch(55.1% .027 264.364);
+    --chart-1: oklch(48.8% .243 264.376);
+    --chart-2: oklch(69.6% .17 162.48);
+    --chart-3: oklch(76.9% .188 70.08);
+    --chart-4: oklch(62.7% .265 303.9);
+    --chart-5: oklch(64.5% .246 16.439);
+    --sidebar: oklch(20.8% .042 265.755);
+    --sidebar-foreground: oklch(98.4% .003 247.858);
+    --sidebar-primary: oklch(48.8% .243 264.376);
+    --sidebar-primary-foreground: oklch(98.4% .003 247.858);
+    --sidebar-accent: oklch(27.9% .041 260.031);
+    --sidebar-accent-foreground: oklch(98.4% .003 247.858);
+    --sidebar-border: oklch(100% 0 0 / 0.1);
+    --sidebar-ring: oklch(55.1% .027 264.364);
+    --scrollbar-track: color-mix(in oklch, var(--background) 84%, var(--card) 16%);
+    --scrollbar-thumb: color-mix(in oklch, var(--muted-foreground) 42%, var(--background) 58%);
+    --scrollbar-thumb-hover: color-mix(in oklch, var(--muted-foreground) 58%, var(--background) 42%);
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), sans-serif;
+  }
+
+  *::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border: 3px solid var(--scrollbar-track);
+    border-radius: 999px;
+    background: var(--scrollbar-thumb);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: var(--scrollbar-track);
+  }
+}
+
+/* Review zone buttons for Monaco diff editor */
+.review-zone-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 2px 0 2px 52px;
+  align-items: center;
+}
+
+.review-zone-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.15s;
+}
+
+.review-zone-btn:hover {
+  background: var(--accent);
+}
+
+.review-zone-btn-undo {
+  color: var(--destructive);
+}
+
+.review-zone-btn-keep {
+  color: oklch(62.7% .194 149.214);
+}

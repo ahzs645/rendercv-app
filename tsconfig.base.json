@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "Bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmitOnError": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@rendercv/contracts": ["packages/contracts/src/index.ts"],
+      "@rendercv/contracts/*": ["packages/contracts/src/*"],
+      "@rendercv/core": ["packages/core/src/index.ts"],
+      "@rendercv/core/*": ["packages/core/src/*"]
+    }
+  }
+}
