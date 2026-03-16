@@ -1,1 +1,0 @@
-import"./Bzak7iHL.js";import{p as s,b as a,w as o,B as i}from"./BY7uxHBw.js";import{c as n}from"./DodYuKrt.js";import{L as m}from"./CIjMHouB.js";function f(r,e){s(e,!0);{let t=i(()=>n("size-4 animate-spin text-muted-foreground",e.class));m(r,{get class(){return o(t)}})}a()}export{f as L};
