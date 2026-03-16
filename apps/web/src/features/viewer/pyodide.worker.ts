@@ -42,7 +42,15 @@ const IDB_DB_NAME = 'pyodide-pkg-cache';
 const IDB_STORE = 'packages';
 const BASE_URL = import.meta.env.BASE_URL;
 const CUSTOM_THEMES_KEY = 'custom-themes';
-
+const CUSTOM_THEME_MISSING_PATTERN = /The custom theme folder .* does not exist\./;
+const YAML_TO_TYPST_RENDER_RESULT = `${yamlToTypstPy}
+import json
+json.dumps({
+  "content": result.get("content") if isinstance(result, dict) else None,
+  "errors": result.get("errors") if isinstance(result, dict) else None,
+  "normalized_cv": result.get("normalized_cv") if isinstance(result, dict) else globals().get("normalized_yaml_input_cv", None),
+})
+`;
 function assetUrl(path: string) {
   return new URL(`${BASE_URL}${path}`, self.location.origin).toString();
 }
@@ -144,7 +152,7 @@ async function registerCustomThemeArchive(
   archiveName: string,
   archiveBytes: Uint8Array
 ): Promise<{ themeName: string }> {
-  instance.globals.set('_custom_theme_bytes', archiveBytes);
+  instance.globals.set('_custom_theme_bytes', ensureUint8Array(archiveBytes));
   instance.globals.set('_custom_theme_archive_name', archiveName);
 
   const result = (await instance.runPythonAsync(`
@@ -316,7 +324,7 @@ async function restoreCustomThemes(instance: PyodideLike) {
     db.close();
 
     for (const theme of themes) {
-      await registerCustomThemeArchive(instance, theme.archiveName, theme.bytes);
+      await registerCustomThemeArchive(instance, theme.archiveName, ensureUint8Array(theme.bytes));
     }
   } catch {
     // Ignore theme restore failures and let render-time validation surface issues.
@@ -327,9 +335,124 @@ async function persistCustomTheme(theme: StoredCustomTheme) {
   const db = await openIDB();
   const existing = (await idbGet<StoredCustomTheme[]>(db, CUSTOM_THEMES_KEY)) ?? [];
   const next = existing.filter((entry) => entry.themeName !== theme.themeName);
-  next.push(theme);
+  next.push({ ...theme, bytes: ensureUint8Array(theme.bytes) });
   await idbPut(db, CUSTOM_THEMES_KEY, next);
   db.close();
+}
+
+function ensureUint8Array(value: Uint8Array | ArrayBuffer | { buffer?: ArrayBufferLike } | number[]) {
+  if (value instanceof Uint8Array) {
+    return value;
+  }
+
+  if (value instanceof ArrayBuffer) {
+    return new Uint8Array(value);
+  }
+
+  if (Array.isArray(value)) {
+    return new Uint8Array(value);
+  }
+
+  if (value && typeof value === 'object' && 'buffer' in value && value.buffer instanceof ArrayBuffer) {
+    return new Uint8Array(value.buffer);
+  }
+
+  return new Uint8Array();
+}
+
+function toJsValue<T>(value: T | { toJs: () => T }) {
+  if (value && typeof value === 'object' && 'toJs' in value && typeof value.toJs === 'function') {
+    return value.toJs();
+  }
+
+  return value as T;
+}
+
+function setYamlInputGlobals(sections: {
+  cv: string;
+  design: string;
+  locale: string;
+  settings: string;
+}) {
+  for (const key of ['cv', 'design', 'locale', 'settings'] as const) {
+    pyodide.globals.set(`yaml_input_${key}`, sections[key]);
+  }
+}
+
+async function renderSectionsWithFallback(sections: {
+  cv: string;
+  design: string;
+  locale: string;
+  settings: string;
+}) {
+  setYamlInputGlobals(sections);
+
+  const firstResult = JSON.parse(toJsValue(await pyodide.runPythonAsync(YAML_TO_TYPST_RENDER_RESULT)) as string) as {
+    content: string | null;
+    errors: Array<{ message?: string; yaml_source?: string }> | null;
+    normalized_cv?: string | null;
+  };
+  if (import.meta.env.DEV) {
+    console.log('[RenderCV worker] first render result', {
+      keys: Object.keys(firstResult ?? {}),
+      hasNormalizedCvInResult: typeof firstResult.normalized_cv === 'string',
+      normalizedCvFromResultLength: firstResult.normalized_cv?.length ?? null,
+      normalizedCvFromGlobalsLength: null,
+      errorCount: firstResult.errors?.length ?? 0
+    });
+  }
+
+  const hasMissingCustomThemeError = firstResult.errors?.some(
+    (error) =>
+      error?.yaml_source === 'design_yaml_file' &&
+      typeof error.message === 'string' &&
+      CUSTOM_THEME_MISSING_PATTERN.test(error.message)
+  );
+
+  if (!hasMissingCustomThemeError) {
+    return {
+      ...firstResult,
+      normalizedCv: firstResult.normalized_cv ?? null,
+      effectiveDesign: sections.design,
+      usedFallbackTheme: false
+    };
+  }
+
+  const fallbackDesign = sections.design.replace(
+    /^(\s*theme\s*:\s*).+$/m,
+    '$1classic'
+  );
+
+  if (fallbackDesign === sections.design) {
+    return {
+      ...firstResult,
+      normalizedCv: firstResult.normalized_cv ?? null,
+      effectiveDesign: sections.design,
+      usedFallbackTheme: false
+    };
+  }
+
+  pyodide.globals.set('yaml_input_design', fallbackDesign);
+  const fallbackResult = JSON.parse(toJsValue(await pyodide.runPythonAsync(YAML_TO_TYPST_RENDER_RESULT)) as string) as {
+    content: string | null;
+    errors: Array<{ message?: string; yaml_source?: string }> | null;
+    normalized_cv?: string | null;
+  };
+  if (import.meta.env.DEV) {
+    console.log('[RenderCV worker] fallback render result', {
+      keys: Object.keys(fallbackResult ?? {}),
+      hasNormalizedCvInResult: typeof fallbackResult.normalized_cv === 'string',
+      normalizedCvFromResultLength: fallbackResult.normalized_cv?.length ?? null,
+      normalizedCvFromGlobalsLength: null,
+      errorCount: fallbackResult.errors?.length ?? 0
+    });
+  }
+  return {
+    ...fallbackResult,
+    normalizedCv: fallbackResult.normalized_cv ?? firstResult.normalized_cv ?? null,
+    effectiveDesign: fallbackDesign,
+    usedFallbackTheme: true
+  };
 }
 
 async function initialize() {
@@ -389,28 +512,23 @@ self.onmessage = async (event: MessageEvent<{ id: number; type: string; payload?
           locale: string;
           settings: string;
         };
-
-        for (const key of ['cv', 'design', 'locale', 'settings'] as const) {
-          pyodide.globals.set(`yaml_input_${key}`, sections[key]);
-        }
-
         self.postMessage({
           id,
           type: 'RENDER_SUCCESS',
-          payload: (await pyodide.runPythonAsync(yamlToTypstPy)).toJs()
+          payload: await renderSectionsWithFallback(sections)
         });
         break;
       }
       case 'IMPORT_THEME_ARCHIVE': {
-        const themePayload = payload as { archiveName: string; bytes: Uint8Array };
+        const themePayload = payload as { archiveName: string; bytes: Uint8Array | ArrayBuffer };
         const result = await registerCustomThemeArchive(
           pyodide,
           themePayload.archiveName,
-          themePayload.bytes
+          ensureUint8Array(themePayload.bytes)
         );
         await persistCustomTheme({
           archiveName: themePayload.archiveName,
-          bytes: themePayload.bytes,
+          bytes: ensureUint8Array(themePayload.bytes),
           themeName: result.themeName
         });
         self.postMessage({

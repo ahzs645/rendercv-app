@@ -19,6 +19,7 @@ import { useStore } from '../lib/use-store';
 import { GitHubSyncCard } from './github-sync-card';
 import { PdfImportButton } from './pdf-import-button';
 import { YamlImportButton } from './yaml-import-button';
+import type { PreparedYamlImport } from './yaml-import-button';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
 
 type SidebarMode = 'full' | 'compact' | 'mini';
@@ -27,8 +28,17 @@ const COMPACT_WIDTH = 300;
 const MINI_WIDTH = 220;
 
 export function Sidebar({
+  prepareYamlImport,
   validateYamlImport
 }: {
+  prepareYamlImport?: (sections: {
+    cv?: string;
+    design?: string;
+    locale?: string;
+    settings?: string;
+    selectedTheme?: string;
+    selectedLocale?: string;
+  }) => Promise<PreparedYamlImport>;
   validateYamlImport?: (sections: {
     cv?: string;
     design?: string;
@@ -97,7 +107,11 @@ export function Sidebar({
           <FilePlus2 className="size-4 shrink-0" />
           {isMini ? <span className="sr-only">Create new CV</span> : <span>Create new CV</span>}
         </button>
-        <YamlImportButton mode={mode} validateYamlImport={validateYamlImport} />
+        <YamlImportButton
+          mode={mode}
+          prepareYamlImport={prepareYamlImport}
+          validateYamlImport={validateYamlImport}
+        />
         {ENABLE_PDF_IMPORT ? <PdfImportButton mode={mode} /> : null}
       </div>
 

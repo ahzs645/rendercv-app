@@ -20,6 +20,9 @@ export interface ViewerValidationResult {
     yaml_source: string;
     yaml_location: [[number, number], [number, number]] | null;
   }> | null;
+  normalizedCv?: string | null;
+  effectiveDesign?: string | null;
+  usedFallbackTheme?: boolean;
 }
 
 interface WorkerErrorPayload {
@@ -43,6 +46,27 @@ const YAML_SOURCE_TO_SECTION: Record<string, SectionKey> = {
   locale_yaml_file: 'locale',
   settings_yaml_file: 'settings'
 };
+
+function logViewerDebug(label: string, details: Record<string, unknown>) {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+
+  console.groupCollapsed(`[RenderCV] ${label}`);
+  for (const [key, value] of Object.entries(details)) {
+    if (typeof value === 'string') {
+      console.log(key, value);
+      continue;
+    }
+
+    try {
+      console.log(key, JSON.stringify(value, null, 2));
+    } catch {
+      console.log(key, value);
+    }
+  }
+  console.groupEnd();
+}
 
 function errorFromWorker(payload: WorkerErrorPayload | string) {
   if (typeof payload === 'string') return new Error(payload);
@@ -262,6 +286,14 @@ export function useViewerRenderer(sections?: CvFileSections) {
         }
 
         if (result.errors) {
+          logViewerDebug('render validation errors', {
+            errors: result.errors,
+            usedFallbackTheme: result.usedFallbackTheme,
+            effectiveDesign: result.effectiveDesign,
+            normalizedCvPreview: result.normalizedCv?.slice(0, 2000),
+            cvPreview: renderSections.cv.slice(0, 1200),
+            designPreview: renderSections.design.slice(0, 600)
+          });
           setRenderErrors(
             result.errors.map((error) => ({
               message: error.message || '',
@@ -281,6 +313,12 @@ export function useViewerRenderer(sections?: CvFileSections) {
         }
 
         const fontsChanged = checkAndLoadFonts(result.content);
+        if (result.usedFallbackTheme) {
+          logViewerDebug('render used fallback theme', {
+            effectiveDesign: result.effectiveDesign,
+            normalizedCvPreview: result.normalizedCv?.slice(0, 2000)
+          });
+        }
         if (fontsChanged) {
           await postMessageToTypst('REINIT', { fontUrls: loadedFonts.current });
         }
@@ -304,6 +342,10 @@ export function useViewerRenderer(sections?: CvFileSections) {
         if (requestId !== currentRenderRequest.current) {
           return;
         }
+
+        logViewerDebug('render worker exception', {
+          error
+        });
 
         setRenderErrors([
           {

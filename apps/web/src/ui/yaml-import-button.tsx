@@ -13,6 +13,12 @@ type ImportedYamlSections = Partial<CvFileSections> & {
   selectedLocale?: string;
 };
 
+export type PreparedYamlImport = {
+  sections: ImportedYamlSections;
+  additionalDesigns?: Record<string, string>;
+  message?: string;
+};
+
 const BUILT_IN_THEMES = new Set([
   'classic',
   'engineeringclassic',
@@ -77,9 +83,11 @@ function looksLikeCompatibilityYaml(content: string, importedSections: ImportedY
 
 export function YamlImportButton({
   mode = 'full',
+  prepareYamlImport,
   validateYamlImport
 }: {
   mode?: 'full' | 'compact' | 'mini';
+  prepareYamlImport?: (sections: ImportedYamlSections) => Promise<PreparedYamlImport>;
   validateYamlImport?: (sections: ImportedYamlSections) => Promise<RenderError[]>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -125,29 +133,39 @@ export function YamlImportButton({
         }
       }
 
+      const preparedImport = prepareYamlImport
+        ? await prepareYamlImport(importedSections)
+        : { sections: importedSections };
+      const nextSections = preparedImport.sections;
+      const nextDesigns = {
+        ...(preparedImport.additionalDesigns ?? {}),
+        ...(nextSections.design && nextSections.selectedTheme
+          ? { [nextSections.selectedTheme]: nextSections.design }
+          : {})
+      };
+
       const name = file.name.replace(/\.ya?ml$/i, '') || 'Imported CV';
       fileStore.createFile(name, {
-        cv: importedSections.cv,
-        settings: importedSections.settings,
-        designs:
-          importedSections.design && importedSections.selectedTheme
-            ? { [importedSections.selectedTheme]: importedSections.design }
-            : undefined,
+        cv: nextSections.cv,
+        settings: nextSections.settings,
+        designs: Object.keys(nextDesigns).length > 0 ? nextDesigns : undefined,
         locales:
-          importedSections.locale && importedSections.selectedLocale
-            ? { [importedSections.selectedLocale]: importedSections.locale }
+          nextSections.locale && nextSections.selectedLocale
+            ? { [nextSections.selectedLocale]: nextSections.locale }
             : undefined,
-        selectedTheme: importedSections.selectedTheme,
-        selectedLocale: importedSections.selectedLocale
+        selectedTheme: nextSections.selectedTheme,
+        selectedLocale: nextSections.selectedLocale
       });
       if (isCompatibilityYaml) {
         const themeNote =
-          importedSections.selectedTheme && !BUILT_IN_THEMES.has(importedSections.selectedTheme)
-            ? ` Import the ${importedSections.selectedTheme} theme zip if the preview reports a missing custom theme.`
+          nextSections.selectedTheme && !BUILT_IN_THEMES.has(nextSections.selectedTheme)
+            ? ` Import the ${nextSections.selectedTheme} theme zip if the preview reports a missing custom theme.`
             : '';
-        toast.success(`YAML imported with compatibility mode.${themeNote}`);
+        toast.success(
+          preparedImport.message ?? `YAML imported with compatibility mode.${themeNote}`
+        );
       } else {
-        toast.success('YAML imported into a new CV.');
+        toast.success(preparedImport.message ?? 'YAML imported into a new CV.');
       }
 
       if (inputRef.current) {

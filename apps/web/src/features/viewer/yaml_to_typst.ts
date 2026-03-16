@@ -412,7 +412,11 @@ except RenderCVUserValidationError as e:
     formatted_errors = []
     for error in e.validation_errors:
         formatted_errors.append(asdict(error))
-    result = {"content": None, "errors": formatted_errors}
+    result = {
+        "content": None,
+        "errors": formatted_errors,
+        "normalized_cv": normalized_yaml_input_cv,
+    }
 except Exception as e:
     result = {
         "content": None,
@@ -425,9 +429,14 @@ except Exception as e:
                 "yaml_location": None,
             }
         ],
+        "normalized_cv": normalized_yaml_input_cv,
     }
 else:
-    result = {"content": render_full_template(model, "typst"), "errors": None}
+    result = {
+        "content": render_full_template(model, "typst"),
+        "errors": None,
+        "normalized_cv": normalized_yaml_input_cv,
+    }
 
 result
 `;

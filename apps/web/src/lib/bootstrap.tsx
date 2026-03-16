@@ -44,6 +44,9 @@ export function WorkspaceBootstrap() {
 
     api.getPreferences().then((response) => {
       preferencesStore.patch(response.preferences);
+      if (response.preferences.selectedFileId) {
+        fileStore.selectFile(response.preferences.selectedFileId);
+      }
     }).catch(() => {});
 
     api.getFiles().then((response) => {

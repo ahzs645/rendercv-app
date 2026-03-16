@@ -107,6 +107,88 @@ function resolveEmbeddedSections(cvContent: string) {
   }
 }
 
+function readThemeName(designContent: string | undefined) {
+  if (!designContent?.trim()) {
+    return undefined;
+  }
+
+  try {
+    const parsed = YAML.parse(designContent);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'design' in parsed &&
+      parsed.design &&
+      typeof parsed.design === 'object' &&
+      'theme' in parsed.design &&
+      typeof parsed.design.theme === 'string'
+    ) {
+      return parsed.design.theme;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function readLocaleName(localeContent: string | undefined) {
+  if (!localeContent?.trim()) {
+    return undefined;
+  }
+
+  try {
+    const parsed = YAML.parse(localeContent);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'locale' in parsed &&
+      parsed.locale &&
+      typeof parsed.locale === 'object' &&
+      'language' in parsed.locale &&
+      typeof parsed.locale.language === 'string'
+    ) {
+      return parsed.locale.language;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function normalizeHydratedFile(file: Omit<CvFile, 'isReadOnly'>): Omit<CvFile, 'isReadOnly'> {
+  const embeddedSections = resolveEmbeddedSections(file.cv ?? '');
+  if (!embeddedSections) {
+    return file;
+  }
+
+  const embeddedTheme = readThemeName(embeddedSections.design);
+  const embeddedLocale = readLocaleName(embeddedSections.locale);
+
+  return {
+    ...file,
+    cv: embeddedSections.cv ?? file.cv,
+    settings: embeddedSections.settings ?? file.settings,
+    designs:
+      embeddedTheme && embeddedSections.design
+        ? { ...file.designs, [embeddedTheme]: embeddedSections.design }
+        : file.designs,
+    locales:
+      embeddedLocale && embeddedSections.locale
+        ? { ...file.locales, [embeddedLocale]: embeddedSections.locale }
+        : file.locales,
+    selectedTheme:
+      file.selectedTheme in file.designs
+        ? file.selectedTheme
+        : embeddedTheme ?? file.selectedTheme,
+    selectedLocale:
+      file.selectedLocale in file.locales
+        ? file.selectedLocale
+        : embeddedLocale ?? file.selectedLocale
+  };
+}
+
 function withReadOnly(file: Omit<CvFile, 'isReadOnly'>): CvFile {
   Object.defineProperty(file, 'isReadOnly', {
     get() {
@@ -227,12 +309,18 @@ export class FileStore {
     this.#redoStack = [];
     const nextFiles = files.map((file) =>
       withReadOnly({
-        ...file,
+        ...normalizeHydratedFile(file),
         chatMessages: file.chatMessages ?? [],
         editCount: file.editCount ?? 0
       })
     );
-    const selectedFileId = nextFiles[0]?.id;
+    const preferredSelectedFileId = preferencesStore.getSnapshot().selectedFileId;
+    const currentSelectedFileId = this.#store.getSnapshot().selectedFileId;
+    const selectedFileId =
+      nextFiles.find((file) => file.id === preferredSelectedFileId)?.id ??
+      nextFiles.find((file) => file.id === currentSelectedFileId)?.id ??
+      nextFiles.find((file) => !file.isArchived && !file.isTrashed)?.id ??
+      nextFiles[0]?.id;
     this.#store.setSnapshot({
       files: nextFiles,
       selectedFileId,

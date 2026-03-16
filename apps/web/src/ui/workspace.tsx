@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { classicTheme, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { useStore } from '../lib/use-store';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+import { normalizeCompatibilityCvYaml } from '../features/viewer/normalize-compat-cv';
 import { MonacoEditor } from './monaco-editor';
 import type { MonacoEditorHandle } from './monaco-editor';
 import { PreviewPaneView } from './preview-pane';
@@ -14,6 +15,21 @@ import { WorkspaceToolbar } from './workspace-toolbar';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
+const BUILT_IN_THEMES = new Set([
+  'classic',
+  'engineeringclassic',
+  'engineeringresumes',
+  'moderncv',
+  'sb2nov'
+]);
+
+const LEGACY_DESIGN_KEY_PATTERN =
+  /^\s*(font_size|page_size|keep_sections_together|keep_entries_together|prevent_orphaned_headers|section_heading_size)\s*:/m;
+
+type ImportedSections = Partial<ReturnType<typeof resolveFileSections>> & {
+  selectedTheme?: string;
+  selectedLocale?: string;
+};
 
 function withThemeOverride(design: string, themeName: string) {
   if (!design.trim()) {
@@ -31,17 +47,98 @@ function withThemeOverride(design: string, themeName: string) {
   return `design:\n  theme: ${themeName}\n`;
 }
 
+function fillMissingSections(partialSections: Partial<ReturnType<typeof resolveFileSections>>) {
+  return {
+    cv: partialSections.cv ?? classicTheme.cv,
+    design: partialSections.design ?? classicTheme.design,
+    locale: partialSections.locale ?? classicTheme.locale,
+    settings: partialSections.settings ?? classicTheme.settings
+  };
+}
+
+function needsClassicCompatibilityTheme(selectedTheme: string | undefined) {
+  return Boolean(selectedTheme && !BUILT_IN_THEMES.has(selectedTheme));
+}
+
+function looksLikeLegacyDesignSchema(design: string) {
+  return LEGACY_DESIGN_KEY_PATTERN.test(design);
+}
+
+function normalizeCompatibilitySections(sections: ImportedSections): ImportedSections {
+  const normalizedCv = sections.cv ? normalizeCompatibilityCvYaml(sections.cv) : sections.cv;
+  return {
+    ...sections,
+    cv: normalizedCv
+  };
+}
+
 export function Workspace() {
   const fileSnapshot = useStore(fileStore);
   const preferences = useStore(preferencesStore);
   const sidebarRef = useRef<ImperativePanelHandle>(null);
   const monacoRef = useRef<MonacoEditorHandle>(null);
+  const compatibilityRepairRef = useRef<string | undefined>(undefined);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileSnapshot.selectedFileId);
   const sections = selectedFile ? resolveFileSections(selectedFile) : undefined;
   const activeSection = preferences.activeSection;
   const currentValue = sections?.[activeSection] ?? '';
   const viewer = useViewerRenderer(sections);
+
+  useEffect(() => {
+    if (!selectedFile || !sections || viewer.isInitializing || viewer.initError) {
+      return;
+    }
+
+    const isCompatibilityFile =
+      /^\s*social\s*:/m.test(sections.cv) ||
+      /^\s*positions\s*:/m.test(sections.cv) ||
+      /^\s*flavors\s*:/m.test(sections.cv) ||
+      /^\s*itags\s*:/m.test(sections.cv) ||
+      /^\s*tags\s*:/m.test(sections.cv) ||
+      needsClassicCompatibilityTheme(selectedFile.selectedTheme) ||
+      looksLikeLegacyDesignSchema(sections.design);
+
+    if (!isCompatibilityFile) {
+      return;
+    }
+
+    const repairKey = `${selectedFile.id}:${selectedFile.selectedTheme}:${sections.cv.length}:${sections.design.length}`;
+    if (compatibilityRepairRef.current === repairKey) {
+      return;
+    }
+    compatibilityRepairRef.current = repairKey;
+
+    let cancelled = false;
+
+    void viewer
+      .validateSections(fillMissingSections(normalizeCompatibilitySections(sections)))
+      .then((normalizedImport) => {
+        if (cancelled) {
+          return;
+        }
+
+        const normalizedCv = normalizeCompatibilityCvYaml(sections.cv);
+        if (normalizedCv !== sections.cv) {
+          fileStore.updateSection('cv', normalizedCv);
+        }
+
+        if (needsClassicCompatibilityTheme(selectedFile.selectedTheme)) {
+          fileStore.setTheme(selectedFile.id, 'classic');
+          window.setTimeout(() => fileStore.updateSection('design', classicTheme.design), 0);
+          return;
+        }
+
+        if (selectedFile.selectedTheme === 'classic' && looksLikeLegacyDesignSchema(sections.design)) {
+          fileStore.updateSection('design', classicTheme.design);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sections, selectedFile, viewer]);
 
   return (
     <div className="h-screen overflow-hidden bg-background">
@@ -56,6 +153,54 @@ export function Workspace() {
           onExpand={() => setSidebarCollapsed(false)}
         >
           <Sidebar
+            prepareYamlImport={async (importedSections) => {
+              const normalizedSections = normalizeCompatibilitySections(importedSections);
+
+              const nextSections = {
+                ...normalizedSections,
+                cv: normalizedSections.cv ?? importedSections.cv ?? classicTheme.cv
+              };
+              const additionalDesigns: Record<string, string> = {};
+              let message: string | undefined;
+
+              if (needsClassicCompatibilityTheme(importedSections.selectedTheme)) {
+                if (importedSections.selectedTheme && importedSections.design) {
+                  additionalDesigns[importedSections.selectedTheme] = importedSections.design;
+                }
+                nextSections.design = classicTheme.design;
+                nextSections.selectedTheme = 'classic';
+                message = `YAML imported with compatibility mode. Using classic until the ${importedSections.selectedTheme} theme zip is loaded.`;
+              } else if (nextSections.selectedTheme === 'classic' && nextSections.design) {
+                if (looksLikeLegacyDesignSchema(nextSections.design)) {
+                  nextSections.design = classicTheme.design;
+                }
+              } else if (looksLikeLegacyDesignSchema(nextSections.design ?? '')) {
+                nextSections.design = classicTheme.design;
+                nextSections.selectedTheme = 'classic';
+                message = 'YAML imported with compatibility mode. Using classic for the preview.';
+              }
+
+              const validatedSections = fillMissingSections(nextSections);
+              const validationResult = await viewer.validateSections(validatedSections);
+
+              if (
+                validationResult.usedFallbackTheme &&
+                importedSections.selectedTheme &&
+                importedSections.design &&
+                importedSections.selectedTheme !== 'classic'
+              ) {
+                additionalDesigns[importedSections.selectedTheme] = importedSections.design;
+                nextSections.design = classicTheme.design;
+                nextSections.selectedTheme = 'classic';
+                message = `YAML imported with compatibility mode. Using classic until the ${importedSections.selectedTheme} theme zip is loaded.`;
+              }
+
+              return {
+                sections: nextSections,
+                additionalDesigns,
+                message
+              };
+            }}
             validateYamlImport={async (importedSections) => {
               const result = await viewer.validateSections({
                 cv: importedSections.cv ?? classicTheme.cv,
