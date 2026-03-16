@@ -15,6 +15,12 @@ import type {
 } from '@rendercv/contracts';
 import type { CvFile, FeedbackSubmission } from '@rendercv/contracts';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+
+function apiUrl(path: string) {
+  return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+}
+
 async function request<T>(input: string, init?: RequestInit): Promise<T> {
   const response = await fetch(input, {
     headers: {
@@ -38,73 +44,73 @@ async function parseResponse<T>(response: Response): Promise<T> {
 
 export const api = {
   getFiles() {
-    return request<FilesListResponse>('/api/files');
+    return request<FilesListResponse>(apiUrl('/api/files'));
   },
   createFile(file: Omit<CvFile, 'isReadOnly'>) {
-    return request<FilesListResponse>('/api/files', { method: 'POST', body: JSON.stringify(file) });
+    return request<FilesListResponse>(apiUrl('/api/files'), { method: 'POST', body: JSON.stringify(file) });
   },
   patchFileContent(payload: FileContentPatch) {
-    return request<FilesListResponse>(`/api/files/${payload.id}/content`, {
+    return request<FilesListResponse>(apiUrl(`/api/files/${payload.id}/content`), {
       method: 'PATCH',
       body: JSON.stringify(payload)
     });
   },
   patchFileMeta(payload: FileMetaPatch) {
-    return request<FilesListResponse>(`/api/files/${payload.id}/meta`, {
+    return request<FilesListResponse>(apiUrl(`/api/files/${payload.id}/meta`), {
       method: 'PATCH',
       body: JSON.stringify(payload)
     });
   },
   deleteFile(id: string) {
-    return request<FilesListResponse>(`/api/files/${id}`, { method: 'DELETE' });
+    return request<FilesListResponse>(apiUrl(`/api/files/${id}`), { method: 'DELETE' });
   },
   getPreferences() {
-    return request<PreferencesResponse>('/api/preferences');
+    return request<PreferencesResponse>(apiUrl('/api/preferences'));
   },
   patchPreferences(preferences: PreferencesResponse['preferences']) {
-    return request<PreferencesResponse>('/api/preferences', {
+    return request<PreferencesResponse>(apiUrl('/api/preferences'), {
       method: 'PATCH',
       body: JSON.stringify({ preferences })
     });
   },
   getBillingSubscription() {
-    return request<BillingSubscriptionResponse>('/api/billing/subscription');
+    return request<BillingSubscriptionResponse>(apiUrl('/api/billing/subscription'));
   },
   checkout(slug: string) {
-    return request<CheckoutResponse>('/api/billing/checkout', {
+    return request<CheckoutResponse>(apiUrl('/api/billing/checkout'), {
       method: 'POST',
       body: JSON.stringify({ slug })
     });
   },
   getPortal() {
-    return request<PortalResponse>('/api/billing/portal');
+    return request<PortalResponse>(apiUrl('/api/billing/portal'));
   },
   getAiUsage() {
-    return request<AiUsageResponse>('/api/ai/usage');
+    return request<AiUsageResponse>(apiUrl('/api/ai/usage'));
   },
   getGitHubConnection() {
-    return request<GitHubConnectionResponse>('/api/github/connection');
+    return request<GitHubConnectionResponse>(apiUrl('/api/github/connection'));
   },
   syncGitHub(options?: { repoName?: string; isPrivate?: boolean }) {
-    return request<GitHubSyncResponse>('/api/github/sync', {
+    return request<GitHubSyncResponse>(apiUrl('/api/github/sync'), {
       method: 'POST',
       body: JSON.stringify(options ?? {})
     });
   },
   disconnectGitHub() {
-    return request<GitHubSyncResponse>('/api/github/connection', { method: 'DELETE' });
+    return request<GitHubSyncResponse>(apiUrl('/api/github/connection'), { method: 'DELETE' });
   },
   submitFeedback(submission: FeedbackSubmission) {
-    return request<FeedbackResponse>('/api/feedback', {
+    return request<FeedbackResponse>(apiUrl('/api/feedback'), {
       method: 'POST',
       body: JSON.stringify(submission)
     });
   },
   getPublicCv(id: string) {
-    return request<PublicCvResponse>(`/api/public-cv/${id}`);
+    return request<PublicCvResponse>(apiUrl(`/api/public-cv/${id}`));
   },
   migrate(firebaseUid: string) {
-    return request<{ ok: boolean }>('/api/migrate', {
+    return request<{ ok: boolean }>(apiUrl('/api/migrate'), {
       method: 'POST',
       body: JSON.stringify({ firebase_uid: firebaseUid })
     });
@@ -113,7 +119,7 @@ export const api = {
     const formData = new FormData();
     formData.set('pdf', file);
 
-    const response = await fetch('/api/import-pdf', {
+    const response = await fetch(apiUrl('/api/import-pdf'), {
       method: 'POST',
       body: formData
     });
