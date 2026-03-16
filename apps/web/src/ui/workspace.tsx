@@ -56,12 +56,12 @@ export function Workspace() {
           onExpand={() => setSidebarCollapsed(false)}
         >
           <Sidebar
-            validateYamlImport={async (content) => {
+            validateYamlImport={async (importedSections) => {
               const result = await viewer.validateSections({
-                cv: content,
-                design: classicTheme.design,
-                locale: classicTheme.locale,
-                settings: classicTheme.settings
+                cv: importedSections.cv ?? classicTheme.cv,
+                design: importedSections.design ?? classicTheme.design,
+                locale: importedSections.locale ?? classicTheme.locale,
+                settings: importedSections.settings ?? classicTheme.settings
               });
 
               return (result.errors ?? []).map((error) => ({

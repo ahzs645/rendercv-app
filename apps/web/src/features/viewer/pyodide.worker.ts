@@ -104,7 +104,7 @@ async function tryRestorePackages(instance: PyodideLike): Promise<boolean> {
 import tarfile, io, sysconfig
 sp = sysconfig.get_path('purelib')
 with tarfile.open(fileobj=io.BytesIO(bytes(_cache_bytes.to_py())), mode='r') as tar:
-    tar.extractall(sp)
+    tar.extractall(sp, filter='data')
 del _cache_bytes
 `);
     return true;

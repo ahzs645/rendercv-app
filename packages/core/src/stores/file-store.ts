@@ -1,4 +1,5 @@
 import type { CvFile, CvFileSections, SectionKey } from '@rendercv/contracts';
+import YAML from 'yaml';
 import { preferencesStore } from './preferences-store';
 import { createStore } from './store';
 import { generateId } from '../utils/uuid';
@@ -65,6 +66,47 @@ const DEFAULT_EXAMPLES = [
 
 export const DEFAULT_FILE_IDS = new Set(DEFAULT_EXAMPLES.map((example) => example.id));
 
+function stringifySection<T>(key: keyof CvFileSections, value: T | undefined) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return YAML.stringify({ [key]: value });
+}
+
+function resolveEmbeddedSections(cvContent: string) {
+  if (!cvContent.trim()) {
+    return undefined;
+  }
+
+  try {
+    const parsed = YAML.parse(cvContent);
+    if (!parsed || typeof parsed !== 'object' || !('cv' in parsed)) {
+      return undefined;
+    }
+
+    const document = parsed as {
+      cv: unknown;
+      design?: unknown;
+      locale?: unknown;
+      settings?: unknown;
+    };
+
+    if (document.design === undefined && document.locale === undefined && document.settings === undefined) {
+      return undefined;
+    }
+
+    return {
+      cv: stringifySection('cv', document.cv),
+      design: stringifySection('design', document.design),
+      locale: stringifySection('locale', document.locale),
+      settings: stringifySection('settings', document.settings)
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function withReadOnly(file: Omit<CvFile, 'isReadOnly'>): CvFile {
   Object.defineProperty(file, 'isReadOnly', {
     get() {
@@ -101,17 +143,21 @@ function createDefaultFiles(): CvFile[] {
 }
 
 export function resolveFileSections(file: CvFile): CvFileSections {
+  const embeddedSections = resolveEmbeddedSections(file.cv ?? '');
+
   return {
-    cv: file.cv ?? '',
+    cv: embeddedSections?.cv ?? file.cv ?? '',
     design:
+      embeddedSections?.design ??
       file.designs[file.selectedTheme] ??
       designDefaults[file.selectedTheme] ??
       `design:\n  theme: ${file.selectedTheme}`,
     locale:
+      embeddedSections?.locale ??
       file.locales[file.selectedLocale] ??
       localeDefaults[file.selectedLocale] ??
       `locale:\n  language: ${file.selectedLocale}`,
-    settings: file.settings ?? ''
+    settings: embeddedSections?.settings ?? file.settings ?? ''
   };
 }
 

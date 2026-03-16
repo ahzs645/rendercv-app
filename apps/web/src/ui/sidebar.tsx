@@ -29,7 +29,14 @@ const MINI_WIDTH = 220;
 export function Sidebar({
   validateYamlImport
 }: {
-  validateYamlImport?: (content: string) => Promise<RenderError[]>;
+  validateYamlImport?: (sections: {
+    cv?: string;
+    design?: string;
+    locale?: string;
+    settings?: string;
+    selectedTheme?: string;
+    selectedLocale?: string;
+  }) => Promise<RenderError[]>;
 }) {
   const asideRef = useRef<HTMLElement>(null);
   const snapshot = useStore(fileStore);
