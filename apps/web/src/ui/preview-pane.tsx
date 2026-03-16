@@ -10,17 +10,20 @@ export function PreviewPane({
   fileName,
   sections,
   onOpenPopup,
-  showHeader = true
+  showHeader = true,
+  controls
 }: {
   fileName: string;
   sections?: CvFileSections;
   onOpenPopup?: () => void;
   showHeader?: boolean;
+  controls?: PreviewPaneControls;
 }) {
   const viewer = useViewerRenderer(sections);
 
   return (
     <PreviewPaneView
+      controls={controls}
       fileName={fileName}
       sections={sections}
       viewer={viewer}
@@ -31,12 +34,14 @@ export function PreviewPane({
 }
 
 export function PreviewPaneView({
+  controls,
   fileName,
   sections,
   viewer,
   onOpenPopup,
   showHeader = true
 }: {
+  controls?: PreviewPaneControls;
   fileName: string;
   sections?: CvFileSections;
   viewer: ViewerRenderer;
@@ -46,11 +51,23 @@ export function PreviewPaneView({
   return (
     <div className={`flex h-full flex-col ${showHeader ? 'gap-4 p-6' : ''}`}>
       {showHeader ? (
-        <PreviewPaneHeader fileName={fileName} onOpenPopup={onOpenPopup} sections={sections} viewer={viewer} />
+        <PreviewPaneHeader
+          controls={controls}
+          fileName={fileName}
+          onOpenPopup={onOpenPopup}
+          sections={sections}
+          viewer={viewer}
+        />
       ) : null}
       <PreviewCanvas fileName={fileName} viewer={viewer} workspaceInset={!showHeader} />
     </div>
   );
+}
+
+export interface PreviewPaneControls {
+  downloadPdf?: boolean;
+  downloadTypst?: boolean;
+  popup?: boolean;
 }
 
 function PreviewCanvas({
@@ -103,16 +120,24 @@ function PreviewCanvas({
 }
 
 function PreviewPaneHeader({
+  controls,
   fileName,
   sections,
   viewer,
   onOpenPopup
 }: {
+  controls?: PreviewPaneControls;
   fileName: string;
   sections?: CvFileSections;
   viewer: ViewerRenderer;
   onOpenPopup?: () => void;
 }) {
+  const resolvedControls = {
+    downloadPdf: controls?.downloadPdf ?? true,
+    downloadTypst: controls?.downloadTypst ?? true,
+    popup: controls?.popup ?? Boolean(onOpenPopup)
+  };
+
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5">
       <div>
@@ -136,29 +161,39 @@ function PreviewPaneHeader({
         <PreviewButton label="Zoom in" onClick={viewer.zoomIn}>
           <Plus className="size-4" />
         </PreviewButton>
-        <PreviewButton
-          label="Download PDF"
-          onClick={async () => {
-            if (!sections) return;
-            const bytes = await viewer.renderToPdf(sections);
-            if (!bytes) return;
-            await downloadBlob(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${fileName}.pdf`);
-          }}
-        >
-          <Download className="size-4" />
-        </PreviewButton>
-        <PreviewButton
-          label="Download Typst"
-          onClick={async () => {
-            if (!sections) return;
-            const typst = await viewer.renderToTypst(sections);
-            if (!typst) return;
-            await downloadBlob(new Blob([typst], { type: 'application/octet-stream' }), `${fileName}.typ`);
-          }}
-        >
-          <FileCode2 className="size-4" />
-        </PreviewButton>
-        {onOpenPopup ? (
+        {resolvedControls.downloadPdf ? (
+          <PreviewButton
+            label="Download PDF"
+            onClick={async () => {
+              if (!sections) return;
+              const bytes = await viewer.renderToPdf(sections);
+              if (!bytes) return;
+              await downloadBlob(
+                new Blob([bytes as BlobPart], { type: 'application/pdf' }),
+                `${fileName}.pdf`
+              );
+            }}
+          >
+            <Download className="size-4" />
+          </PreviewButton>
+        ) : null}
+        {resolvedControls.downloadTypst ? (
+          <PreviewButton
+            label="Download Typst"
+            onClick={async () => {
+              if (!sections) return;
+              const typst = await viewer.renderToTypst(sections);
+              if (!typst) return;
+              await downloadBlob(
+                new Blob([typst], { type: 'application/octet-stream' }),
+                `${fileName}.typ`
+              );
+            }}
+          >
+            <FileCode2 className="size-4" />
+          </PreviewButton>
+        ) : null}
+        {resolvedControls.popup && onOpenPopup ? (
           <PreviewButton label="Popup preview" onClick={onOpenPopup}>
             <AppWindow className="size-4" />
           </PreviewButton>

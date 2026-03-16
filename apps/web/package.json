@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.74",
+    "@firstform/json-url": "^4.1.0",
     "@fontsource-variable/dm-sans": "^5.2.8",
     "@radix-ui/react-dialog": "^1.1.14",
     "@rendercv/contracts": "workspace:*",

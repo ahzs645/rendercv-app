@@ -10,6 +10,7 @@ import { PortalPage } from './routes/portal-page';
 import { PreviewPage } from './routes/preview-page';
 import { PrototypeRenderersPage } from './routes/prototype-renderers-page';
 import { SentryTestPage } from './routes/sentry-test-page';
+import { EncodedSharePage } from './routes/encoded-share-page';
 import { SharedCvPage } from './routes/shared-cv-page';
 
 export const router = createBrowserRouter(
@@ -30,6 +31,7 @@ export const router = createBrowserRouter(
           ]
         },
         { path: 'preview', element: <PreviewPage /> },
+        { path: 'share', element: <EncodedSharePage /> },
         { path: 'prototype-renderers', element: <PrototypeRenderersPage /> },
         { path: 'sentry-test', element: <SentryTestPage /> },
         { path: ':sharedCvId', element: <SharedCvPage /> }

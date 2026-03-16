@@ -19,7 +19,9 @@ import {
 } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { fileStore, preferencesStore } from '@rendercv/core';
+import { toast } from 'sonner';
 import { downloadBlob } from '../features/viewer/download';
+import { buildEncodedShareUrl } from '../features/share/encoded-share';
 import { useStore } from '../lib/use-store';
 import type { MonacoEditorHandle } from './monaco-editor';
 import type { ViewerRenderer } from './preview-pane';
@@ -52,17 +54,22 @@ export function WorkspaceToolbar({
   const canFormat = preferences.yamlEditor;
   const canPreviewActions = Boolean(sections);
 
-  async function copyPublicLink() {
-    if (!selectedFile) {
+  async function copyShareLink() {
+    if (!selectedFile || !sections) {
       return;
     }
 
-    if (!selectedFile.isPublic) {
-      fileStore.makePublic(selectedFile.id);
+    try {
+      const url = await buildEncodedShareUrl({
+        version: 1,
+        fileName: selectedFile.name,
+        sections
+      });
+      await navigator.clipboard.writeText(url);
+      toast.success('Share link copied.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create share link.');
     }
-
-    const url = new URL(`${import.meta.env.BASE_URL}${selectedFile.id}`, window.location.origin).toString();
-    await navigator.clipboard.writeText(url);
   }
 
   async function sharePdf() {
@@ -246,9 +253,9 @@ export function WorkspaceToolbar({
           <Share2 className="size-4" />
         </ToolbarIconButton>
         <ToolbarIconButton
-          ariaLabel="Copy public link"
-          disabled={!selectedFile}
-          onClick={() => void copyPublicLink()}
+          ariaLabel="Copy share link"
+          disabled={!selectedFile || !sections}
+          onClick={() => void copyShareLink()}
         >
           <Copy className="size-4" />
         </ToolbarIconButton>
