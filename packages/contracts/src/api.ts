@@ -1,6 +1,6 @@
 import type { BillingInterval, SubscriptionTier } from './auth';
 import type { AiUsage } from './ai';
-import type { CvFile, CvFileSections } from './cv';
+import type { CvFile, CvFileSections, CvVariants } from './cv';
 import type { FeedbackSubmission } from './feedback';
 import type { GitHubConnection } from './github';
 import type { UserPreferences } from './preferences';
@@ -30,6 +30,8 @@ export interface FileMetaPatch {
   designs?: Record<string, string>;
   selectedTheme?: string;
   selectedLocale?: string;
+  variants?: CvVariants;
+  selectedVariant?: string;
   isLocked?: boolean;
   isArchived?: boolean;
   isTrashed?: boolean;

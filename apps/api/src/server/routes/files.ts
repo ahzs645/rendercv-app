@@ -50,12 +50,21 @@ export const filesRouter = new Hono()
     return context.json<FilesListResponse>({ files: serverState.files });
   })
   .patch('/:id/meta', async (context) => {
+    const variantDefinitionSchema = z.object({
+      description: z.string().optional(),
+      exclude_sections: z.array(z.string()).optional(),
+      tags: z.array(z.string()).optional(),
+      flavors: z.array(z.string()).optional()
+    });
+
     const body = z.object({
       id: z.string(),
       name: z.string().optional(),
       designs: z.record(z.string(), z.string()).optional(),
       selectedTheme: z.string().optional(),
       selectedLocale: z.string().optional(),
+      variants: z.record(z.string(), variantDefinitionSchema).optional(),
+      selectedVariant: z.string().optional(),
       isLocked: z.boolean().optional(),
       isArchived: z.boolean().optional(),
       isTrashed: z.boolean().optional(),

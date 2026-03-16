@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CvFile } from '@rendercv/contracts';
-import { createPreviewChannel, resolveFileSections } from '@rendercv/core';
+import { createPreviewChannel } from '@rendercv/core';
+import { resolveViewerSections } from '../features/viewer/viewer-sections';
 import { PreviewPane } from '../ui/preview-pane';
 
 export function PreviewPage() {
@@ -34,7 +35,7 @@ export function PreviewPage() {
       <div className="flex-1">
         <PreviewPane
           fileName={selectedFile?.name ?? 'RenderCV'}
-          sections={selectedFile ? resolveFileSections(selectedFile) : undefined}
+          sections={selectedFile ? resolveViewerSections(selectedFile) : undefined}
         />
       </div>
     </div>

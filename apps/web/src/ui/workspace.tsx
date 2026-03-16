@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { classicTheme, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
-import YAML from 'yaml';
 import { useStore } from '../lib/use-store';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
 import { normalizeCompatibilityCvYaml } from '../features/viewer/normalize-compat-cv';
+import { normalizeLegacyDesignYaml, resolveViewerSections } from '../features/viewer/viewer-sections';
 import { MonacoEditor } from './monaco-editor';
 import type { MonacoEditorHandle } from './monaco-editor';
 import { PreviewPaneView } from './preview-pane';
@@ -49,73 +50,6 @@ function looksLikeLegacyDesignSchema(design: string) {
   return LEGACY_DESIGN_KEY_PATTERN.test(design);
 }
 
-function normalizeLegacyDesignYaml(designContent: string | undefined) {
-  if (!designContent?.trim() || !looksLikeLegacyDesignSchema(designContent)) {
-    return designContent;
-  }
-
-  try {
-    const parsed = YAML.parse(designContent);
-    if (!parsed || typeof parsed !== 'object' || !('design' in parsed)) {
-      return designContent;
-    }
-
-    const root = parsed as Record<string, unknown> & { design?: Record<string, unknown> };
-    if (!root.design || typeof root.design !== 'object') {
-      return designContent;
-    }
-
-    const design = { ...root.design };
-    let changed = false;
-
-    if (typeof design.font_size === 'string') {
-      const typography =
-        design.typography && typeof design.typography === 'object'
-          ? { ...(design.typography as Record<string, unknown>) }
-          : {};
-      const fontSize =
-        typography.font_size && typeof typography.font_size === 'object'
-          ? { ...(typography.font_size as Record<string, unknown>) }
-          : {};
-
-      if (fontSize.body !== design.font_size) {
-        fontSize.body = design.font_size;
-      }
-
-      typography.font_size = fontSize;
-      design.typography = typography;
-      delete design.font_size;
-      changed = true;
-    }
-
-    if (typeof design.page_size === 'string') {
-      const page =
-        design.page && typeof design.page === 'object'
-          ? { ...(design.page as Record<string, unknown>) }
-          : {};
-
-      if (page.size !== design.page_size) {
-        page.size = design.page_size;
-      }
-
-      design.page = page;
-      delete design.page_size;
-      changed = true;
-    }
-
-    if (!changed) {
-      return designContent;
-    }
-
-    return YAML.stringify({
-      ...root,
-      design
-    });
-  } catch {
-    return designContent;
-  }
-}
-
 function normalizeCompatibilitySections(sections: ImportedSections): ImportedSections {
   const normalizedCv = sections.cv ? normalizeCompatibilityCvYaml(sections.cv) : sections.cv;
   const normalizedDesign = sections.design
@@ -148,30 +82,31 @@ export function Workspace() {
   const compatibilityRepairRef = useRef<string | undefined>(undefined);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileSnapshot.selectedFileId);
-  const sections = selectedFile ? resolveFileSections(selectedFile) : undefined;
+  const rawSections = selectedFile ? resolveFileSections(selectedFile) : undefined;
+  const viewerSections = selectedFile ? resolveViewerSections(selectedFile) : undefined;
   const activeSection = preferences.activeSection;
-  const currentValue = sections?.[activeSection] ?? '';
-  const viewer = useViewerRenderer(sections);
+  const currentValue = rawSections?.[activeSection] ?? '';
+  const viewer = useViewerRenderer(viewerSections);
 
   useEffect(() => {
-    if (!selectedFile || !sections || viewer.isInitializing || viewer.initError) {
+    if (!selectedFile || !rawSections || viewer.isInitializing || viewer.initError) {
       return;
     }
 
     const isCompatibilityFile =
-      /^\s*social\s*:/m.test(sections.cv) ||
-      /^\s*positions\s*:/m.test(sections.cv) ||
-      /^\s*flavors\s*:/m.test(sections.cv) ||
-      /^\s*itags\s*:/m.test(sections.cv) ||
-      /^\s*tags\s*:/m.test(sections.cv) ||
+      /^\s*social\s*:/m.test(rawSections.cv) ||
+      /^\s*positions\s*:/m.test(rawSections.cv) ||
+      /^\s*flavors\s*:/m.test(rawSections.cv) ||
+      /^\s*itags\s*:/m.test(rawSections.cv) ||
+      /^\s*tags\s*:/m.test(rawSections.cv) ||
       needsClassicCompatibilityTheme(selectedFile.selectedTheme) ||
-      looksLikeLegacyDesignSchema(sections.design);
+      looksLikeLegacyDesignSchema(rawSections.design);
 
     if (!isCompatibilityFile) {
       return;
     }
 
-    const repairKey = `${selectedFile.id}:${selectedFile.selectedTheme}:${sections.cv.length}:${sections.design.length}`;
+    const repairKey = `${selectedFile.id}:${selectedFile.selectedTheme}:${rawSections.cv.length}:${rawSections.design.length}`;
     if (compatibilityRepairRef.current === repairKey) {
       return;
     }
@@ -180,19 +115,19 @@ export function Workspace() {
     let cancelled = false;
 
     void viewer
-      .validateSections(fillMissingSections(normalizeCompatibilitySections(sections)))
+      .validateSections(fillMissingSections(normalizeCompatibilitySections(rawSections)))
       .then((validationResult) => {
         if (cancelled) {
           return;
         }
 
-        const normalizedCv = normalizeCompatibilityCvYaml(sections.cv);
-        if (normalizedCv !== sections.cv) {
+        const normalizedCv = normalizeCompatibilityCvYaml(rawSections.cv);
+        if (normalizedCv !== rawSections.cv) {
           fileStore.updateSection('cv', normalizedCv);
         }
 
-        const normalizedDesign = normalizeLegacyDesignYaml(sections.design);
-        if (normalizedDesign && normalizedDesign !== sections.design) {
+        const normalizedDesign = normalizeLegacyDesignYaml(rawSections.design);
+        if (normalizedDesign && normalizedDesign !== rawSections.design) {
           fileStore.updateSection('design', normalizedDesign);
         }
 
@@ -202,7 +137,7 @@ export function Workspace() {
           return;
         }
 
-        if (selectedFile.selectedTheme === 'classic' && looksLikeLegacyDesignSchema(sections.design)) {
+        if (selectedFile.selectedTheme === 'classic' && looksLikeLegacyDesignSchema(rawSections.design)) {
           fileStore.updateSection('design', classicTheme.design);
         }
       })
@@ -211,7 +146,7 @@ export function Workspace() {
     return () => {
       cancelled = true;
     };
-  }, [sections, selectedFile, viewer]);
+  }, [rawSections, selectedFile, viewer]);
 
   return (
     <div className="h-screen overflow-hidden bg-background">
@@ -310,7 +245,7 @@ export function Workspace() {
 
                   sidebarRef.current?.collapse();
                 }}
-                sections={sections}
+                sections={viewerSections}
                 selectedFile={selectedFile}
                 sidebarCollapsed={sidebarCollapsed}
                 viewer={viewer}
@@ -333,6 +268,15 @@ export function Workspace() {
                               preferencesStore.registerThemeDesign(result.themeName, nextDesign);
                               fileStore.setTheme(selectedFile.id, result.themeName);
                               return result.themeName;
+                            }
+                          : undefined
+                      }
+                      onImportVariants={
+                        selectedFile
+                          ? async (file) => {
+                              const variants = parseCvVariantsYaml(await file.text());
+                              fileStore.setVariants(selectedFile.id, variants);
+                              return variants.full ? 'full' : Object.keys(variants)[0] ?? null;
                             }
                           : undefined
                       }
@@ -361,7 +305,7 @@ export function Workspace() {
               <Panel defaultSize={49} minSize={25}>
                 <PreviewPaneView
                   fileName={selectedFile?.name ?? 'RenderCV'}
-                  sections={sections}
+                  sections={viewerSections}
                   showHeader={false}
                   viewer={viewer}
                 />

@@ -1,4 +1,4 @@
-import type { CvFile, CvFileSections, SectionKey } from '@rendercv/contracts';
+import type { CvFile, CvFileSections, CvVariants, SectionKey } from '@rendercv/contracts';
 import YAML from 'yaml';
 import { preferencesStore } from './preferences-store';
 import { createStore } from './store';
@@ -24,7 +24,10 @@ type FileStateSnapshot = {
 };
 
 type CreateFileOptions = Partial<
-  Pick<CvFile, 'cv' | 'settings' | 'designs' | 'locales' | 'selectedTheme' | 'selectedLocale'>
+  Pick<
+    CvFile,
+    'cv' | 'settings' | 'designs' | 'locales' | 'selectedTheme' | 'selectedLocale' | 'variants' | 'selectedVariant'
+  >
 >;
 
 type UndoEntry = {
@@ -157,10 +160,30 @@ function readLocaleName(localeContent: string | undefined) {
   return undefined;
 }
 
+function resolveSelectedVariant(variants: CvVariants | undefined, selectedVariant: string | undefined) {
+  const variantKeys = Object.keys(variants ?? {});
+  if (variantKeys.length === 0) {
+    return undefined;
+  }
+
+  if (selectedVariant && variants?.[selectedVariant]) {
+    return selectedVariant;
+  }
+
+  if (variants?.full) {
+    return 'full';
+  }
+
+  return variantKeys[0];
+}
+
 function normalizeHydratedFile(file: Omit<CvFile, 'isReadOnly'>): Omit<CvFile, 'isReadOnly'> {
   const embeddedSections = resolveEmbeddedSections(file.cv ?? '');
   if (!embeddedSections) {
-    return file;
+    return {
+      ...file,
+      selectedVariant: resolveSelectedVariant(file.variants, file.selectedVariant)
+    };
   }
 
   const embeddedTheme = readThemeName(embeddedSections.design);
@@ -185,7 +208,8 @@ function normalizeHydratedFile(file: Omit<CvFile, 'isReadOnly'>): Omit<CvFile, '
     selectedLocale:
       file.selectedLocale in file.locales
         ? file.selectedLocale
-        : embeddedLocale ?? file.selectedLocale
+        : embeddedLocale ?? file.selectedLocale,
+    selectedVariant: resolveSelectedVariant(file.variants, file.selectedVariant)
   };
 }
 
@@ -361,6 +385,8 @@ export class FileStore {
           : { english: classicTheme.locale },
       selectedTheme: options?.selectedTheme ?? 'classic',
       selectedLocale: options?.selectedLocale ?? 'english',
+      variants: options?.variants,
+      selectedVariant: resolveSelectedVariant(options?.variants, options?.selectedVariant),
       isLocked: false,
       isArchived: false,
       isTrashed: false,
@@ -465,6 +491,24 @@ export class FileStore {
     this.#updateMeta(id, { selectedLocale });
   }
 
+  setVariants(id: string, variants: CvVariants) {
+    this.#updateMeta(id, {
+      variants,
+      selectedVariant: resolveSelectedVariant(variants, undefined)
+    });
+  }
+
+  setSelectedVariant(id: string, selectedVariant: string) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file) {
+      return;
+    }
+
+    this.#updateMeta(id, {
+      selectedVariant: resolveSelectedVariant(file.variants, selectedVariant)
+    });
+  }
+
   archiveFile(id: string) {
     this.#updateMeta(id, { isArchived: true });
   }
@@ -527,7 +571,9 @@ export class FileStore {
       designs: { ...file.designs },
       locales: { ...file.locales },
       selectedTheme: file.selectedTheme,
-      selectedLocale: file.selectedLocale
+      selectedLocale: file.selectedLocale,
+      variants: file.variants ? { ...file.variants } : undefined,
+      selectedVariant: file.selectedVariant
     });
   }
 

@@ -13,7 +13,9 @@ export const publicCvRouter = new Hono().get('/:id', (context) => {
     cv: {
       fileId: file.id,
       cvName: file.name,
-      sections: resolveFileSections(file as Parameters<typeof resolveFileSections>[0])
+      sections: resolveFileSections(file as Parameters<typeof resolveFileSections>[0]),
+      variants: file.variants,
+      selectedVariant: file.selectedVariant
     }
   });
 });

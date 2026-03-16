@@ -16,6 +16,15 @@ export interface CvFileSections {
   settings: string;
 }
 
+export interface CvVariantDefinition {
+  description?: string;
+  exclude_sections?: string[];
+  tags?: string[];
+  flavors?: string[];
+}
+
+export type CvVariants = Record<string, CvVariantDefinition>;
+
 export interface CvFile {
   id: string;
   templateId?: string;
@@ -26,6 +35,8 @@ export interface CvFile {
   locales: Record<string, string>;
   selectedTheme: string;
   selectedLocale: string;
+  variants?: CvVariants;
+  selectedVariant?: string;
   isLocked: boolean;
   isArchived: boolean;
   isTrashed: boolean;

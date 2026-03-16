@@ -1,6 +1,5 @@
+import type { CvVariantDefinition } from '@rendercv/contracts';
 import YAML from 'yaml';
-
-const PREFERRED_FLAVORS = ['consulting_onepage', 'default'];
 const SUPPORTED_SOCIAL_NETWORKS = new Set([
   'LinkedIn',
   'GitHub',
@@ -40,6 +39,9 @@ const MONTH_NAMES: Record<string, string> = {
 };
 
 type UnknownRecord = Record<string, unknown>;
+type NormalizeCompatibilityOptions = {
+  variant?: CvVariantDefinition | null;
+};
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -100,24 +102,45 @@ function stringifyNumbers(value: unknown): unknown {
   return value;
 }
 
-function pickFlavorValue(value: unknown): unknown {
+function normalizeStringList(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function pickFlavorValue(value: unknown, preferredFlavors: string[]): unknown {
   if (!isRecord(value) || !('flavors' in value) || !isRecord(value.flavors)) {
     return value;
   }
 
-  for (const flavorName of PREFERRED_FLAVORS) {
+  const matchedValues: unknown[] = [];
+  for (const flavorName of preferredFlavors) {
     const selected = value.flavors[flavorName];
     if (selected !== undefined && selected !== null && selected !== '') {
-      if (!Array.isArray(selected) || selected.length > 0) {
-        return selected;
+      if (Array.isArray(selected)) {
+        if (selected.length > 0) {
+          matchedValues.push(...selected);
+        }
+        continue;
       }
+
+      return selected;
     }
+  }
+
+  if (matchedValues.length > 0) {
+    return matchedValues;
   }
 
   return Object.values(value.flavors)[0] ?? value;
 }
 
-function normalizeFlavoredFields(entry: unknown): unknown {
+function normalizeFlavoredFields(entry: unknown, preferredFlavors: string[]): unknown {
   if (!isRecord(entry)) {
     return entry;
   }
@@ -125,11 +148,29 @@ function normalizeFlavoredFields(entry: unknown): unknown {
   const normalized: UnknownRecord = { ...entry };
   for (const [fieldName, fieldValue] of Object.entries(normalized)) {
     if (isRecord(fieldValue) && 'flavors' in fieldValue) {
-      normalized[fieldName] = pickFlavorValue(fieldValue);
+      normalized[fieldName] = pickFlavorValue(fieldValue, preferredFlavors);
     }
   }
 
   return normalized;
+}
+
+function matchesEntryVariant(entry: UnknownRecord, selectedTags: string[], variantActive: boolean) {
+  if (!variantActive) {
+    return true;
+  }
+
+  const inverseTags = normalizeStringList(entry.itags);
+  if (inverseTags.length > 0 && inverseTags.some((tag) => selectedTags.includes(tag))) {
+    return false;
+  }
+
+  const requiredTags = normalizeStringList(entry.tags);
+  if (requiredTags.length > 0 && !requiredTags.some((tag) => selectedTags.includes(tag))) {
+    return false;
+  }
+
+  return true;
 }
 
 function stripCompatFields(entry: unknown): unknown {
@@ -230,7 +271,7 @@ function appendSummary(entry: UnknownRecord, parts: unknown[]) {
 }
 
 function normalizeExperienceEntry(entry: UnknownRecord) {
-  let normalized = stripCompatFields(normalizeFlavoredFields(entry));
+  const normalized = stripCompatFields(entry);
   if (!isRecord(normalized)) {
     return entry;
   }
@@ -249,7 +290,7 @@ function normalizeExperienceEntry(entry: UnknownRecord) {
 }
 
 function normalizeEducationEntry(entry: UnknownRecord) {
-  let normalized = stripCompatFields(normalizeFlavoredFields(entry));
+  const normalized = stripCompatFields(entry);
   if (!isRecord(normalized)) {
     return entry;
   }
@@ -263,7 +304,7 @@ function normalizeEducationEntry(entry: UnknownRecord) {
 }
 
 function normalizeAwardEntry(entry: UnknownRecord) {
-  let normalized = stripCompatFields(normalizeFlavoredFields(entry));
+  const normalized = stripCompatFields(entry);
   if (!isRecord(normalized)) {
     return entry;
   }
@@ -276,19 +317,32 @@ function normalizeAwardEntry(entry: UnknownRecord) {
   return cleanMapping(normalizedRecord);
 }
 
-function expandNestedPositions(entry: unknown): UnknownRecord[] {
+function expandNestedPositions(
+  entry: unknown,
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+): UnknownRecord[] {
   if (!isRecord(entry)) {
     return [];
   }
 
-  const normalizedEntry = normalizeExperienceEntry(entry);
+  const preparedEntry = normalizeFlavoredFields(entry, preferredFlavors);
+  if (!isRecord(preparedEntry) || !matchesEntryVariant(preparedEntry, selectedTags, variantActive)) {
+    return [];
+  }
+
+  const normalizedEntry = normalizeExperienceEntry(preparedEntry);
   const positions = normalizedEntry.positions;
   if (!Array.isArray(positions)) {
     return [normalizedEntry];
   }
 
   const visiblePositions = positions
-    .map((position) => normalizeExperienceEntry(isRecord(position) ? position : {}))
+    .map((position) => normalizeFlavoredFields(position, preferredFlavors))
+    .filter(isRecord)
+    .filter((position) => matchesEntryVariant(position, selectedTags, variantActive))
+    .map((position) => normalizeExperienceEntry(position))
     .filter((position) => isRecord(position));
 
   if (visiblePositions.length === 0) {
@@ -358,20 +412,40 @@ function expandNestedPositions(entry: unknown): UnknownRecord[] {
   });
 }
 
-function normalizePublications(entries: unknown[]) {
+function prepareVariantRecord(
+  entry: unknown,
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+) {
+  const normalized = normalizeFlavoredFields(entry, preferredFlavors);
+  if (!isRecord(normalized) || !matchesEntryVariant(normalized, selectedTags, variantActive)) {
+    return undefined;
+  }
+
+  return normalized;
+}
+
+function normalizePublications(
+  entries: unknown[],
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+) {
   return entries.flatMap((entry) => {
-    if (!isRecord(entry)) {
+    const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+    if (!prepared) {
       return [];
     }
 
-    const item = stripCompatFields(normalizeFlavoredFields(entry));
+    const item = stripCompatFields(prepared);
     if (!isRecord(item)) {
       return [];
     }
 
     let authors = item.authors;
     if (isRecord(authors) && 'flavors' in authors) {
-      authors = pickFlavorValue(authors);
+      authors = pickFlavorValue(authors, preferredFlavors);
     }
     if (authors && !Array.isArray(authors)) {
       authors = [authors];
@@ -407,17 +481,23 @@ function normalizePublications(entries: unknown[]) {
   });
 }
 
-function normalizeSupervisoryActivities(entries: unknown[]) {
+function normalizeSupervisoryActivities(
+  entries: unknown[],
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+) {
   return entries.flatMap((entry) => {
-    if (!isRecord(entry)) {
+    const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+    if (!prepared) {
       return [];
     }
 
-    if ('label' in entry && 'details' in entry) {
-      return [cleanMapping(entry)];
+    if ('label' in prepared && 'details' in prepared) {
+      return [cleanMapping(prepared)];
     }
 
-    return Object.entries(entry)
+    return Object.entries(prepared)
       .filter(([, value]) => value != null)
       .map(([key, value]) =>
         cleanMapping({
@@ -480,13 +560,19 @@ function normalizeSocialConnections(cvData: UnknownRecord) {
   }
 }
 
-function normalizeMediaEntries(entries: unknown[]) {
+function normalizeMediaEntries(
+  entries: unknown[],
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+) {
   return entries.flatMap((entry) => {
-    if (!isRecord(entry)) {
+    const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+    if (!prepared) {
       return [];
     }
 
-    const normalized = stripCompatFields(normalizeFlavoredFields(entry));
+    const normalized = stripCompatFields(prepared);
     if (!isRecord(normalized)) {
       return [];
     }
@@ -510,13 +596,19 @@ function normalizeMediaEntries(entries: unknown[]) {
   });
 }
 
-function normalizeMembershipEntries(entries: unknown[]) {
+function normalizeMembershipEntries(
+  entries: unknown[],
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+) {
   return entries.flatMap((entry) => {
-    if (!isRecord(entry)) {
+    const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+    if (!prepared) {
       return [];
     }
 
-    const normalized = stripCompatFields(normalizeFlavoredFields(entry));
+    const normalized = stripCompatFields(prepared);
     if (!isRecord(normalized)) {
       return [];
     }
@@ -531,13 +623,19 @@ function normalizeMembershipEntries(entries: unknown[]) {
   });
 }
 
-function normalizeEventAdministrationEntries(entries: unknown[]) {
+function normalizeEventAdministrationEntries(
+  entries: unknown[],
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+) {
   return entries.flatMap((entry) => {
-    if (!isRecord(entry)) {
+    const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+    if (!prepared) {
       return [];
     }
 
-    const normalized = stripCompatFields(normalizeFlavoredFields(entry));
+    const normalized = stripCompatFields(prepared);
     if (!isRecord(normalized)) {
       return [];
     }
@@ -574,37 +672,65 @@ function normalizeResearchKeywords(entries: unknown[]) {
   });
 }
 
-function normalizeSectionEntries(sectionName: string, entries: unknown[]) {
+function normalizeSectionEntries(
+  sectionName: string,
+  entries: unknown[],
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+) {
   switch (sectionName) {
     case 'experience':
     case 'volunteer':
-      return entries.flatMap((entry) => expandNestedPositions(entry));
-    case 'education':
       return entries.flatMap((entry) =>
-        isRecord(entry) ? [normalizeEducationEntry(entry)] : []
+        expandNestedPositions(entry, preferredFlavors, selectedTags, variantActive)
       );
+    case 'education':
+      return entries.flatMap((entry) => {
+        const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+        return prepared ? [normalizeEducationEntry(prepared)] : [];
+      });
     case 'awards':
-      return entries.flatMap((entry) => (isRecord(entry) ? [normalizeAwardEntry(entry)] : []));
+      return entries.flatMap((entry) => {
+        const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+        return prepared ? [normalizeAwardEntry(prepared)] : [];
+      });
     case 'publications':
-      return normalizePublications(entries);
+      return normalizePublications(entries, preferredFlavors, selectedTags, variantActive);
     case 'supervisory_activities':
-      return normalizeSupervisoryActivities(entries);
+      return normalizeSupervisoryActivities(entries, preferredFlavors, selectedTags, variantActive);
     case 'media':
-      return normalizeMediaEntries(entries);
+      return normalizeMediaEntries(entries, preferredFlavors, selectedTags, variantActive);
     case 'memberships':
-      return normalizeMembershipEntries(entries);
+      return normalizeMembershipEntries(entries, preferredFlavors, selectedTags, variantActive);
     case 'event_administration':
-      return normalizeEventAdministrationEntries(entries);
+      return normalizeEventAdministrationEntries(entries, preferredFlavors, selectedTags, variantActive);
     case 'research_keywords':
       return normalizeResearchKeywords(entries);
     default:
-      return entries.flatMap((entry) =>
-        isRecord(entry) ? [cleanMapping(stripCompatFields(normalizeFlavoredFields(entry)) as UnknownRecord)] : []
-      );
+      return entries.reduce<unknown[]>((normalizedEntries, entry) => {
+        if (typeof entry === 'string') {
+          const text = entry.trim();
+          if (text) {
+            normalizedEntries.push(text);
+          }
+          return normalizedEntries;
+        }
+
+        const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+        if (prepared) {
+          normalizedEntries.push(cleanMapping(stripCompatFields(prepared) as UnknownRecord));
+        }
+
+        return normalizedEntries;
+      }, []);
   }
 }
 
-export function normalizeCompatibilityCvYaml(yamlText: string) {
+export function normalizeCompatibilityCvYaml(
+  yamlText: string,
+  options?: NormalizeCompatibilityOptions
+) {
   const parsed = YAML.parse(yamlText);
   if (!isRecord(parsed)) {
     return yamlText;
@@ -617,14 +743,31 @@ export function normalizeCompatibilityCvYaml(yamlText: string) {
 
   normalizeSocialConnections(cvData);
 
+  const variantActive = Boolean(options?.variant);
+  const selectedTags = normalizeStringList(options?.variant?.tags);
+  const preferredFlavors = normalizeStringList(options?.variant?.flavors);
+  const excludedSections = new Set(
+    variantActive ? normalizeStringList(options?.variant?.exclude_sections) : []
+  );
   const sections = cvData.sections;
   if (isRecord(sections)) {
     for (const [sectionName, entries] of Object.entries(sections)) {
+      if (excludedSections.has(sectionName)) {
+        delete sections[sectionName];
+        continue;
+      }
+
       if (!Array.isArray(entries)) {
         continue;
       }
 
-      sections[sectionName] = normalizeSectionEntries(sectionName, entries);
+      sections[sectionName] = normalizeSectionEntries(
+        sectionName,
+        entries,
+        preferredFlavors,
+        selectedTags,
+        variantActive
+      );
     }
   }
 
