@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RenderCV</title>
+    <script>
+      const pathSegmentsToKeep = 1;
+      const locationInfo = window.location;
+      const redirectPath = locationInfo.pathname
+        .split('/')
+        .slice(1 + pathSegmentsToKeep)
+        .join('/')
+        .replace(/&/g, '~and~');
+      const redirectQuery = locationInfo.search ? `&${locationInfo.search.slice(1).replace(/&/g, '~and~')}` : '';
+      const basePath = locationInfo.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/');
+
+      locationInfo.replace(
+        `${locationInfo.protocol}//${locationInfo.host}${basePath}/?/${redirectPath}${redirectQuery}${locationInfo.hash}`
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
