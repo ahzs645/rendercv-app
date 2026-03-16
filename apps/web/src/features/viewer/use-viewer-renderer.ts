@@ -56,6 +56,11 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const [renderErrors, setRenderErrors] = useState<RenderError[]>([]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | undefined>();
+  const hasSections = sections !== undefined;
+  const cvContent = sections?.cv ?? '';
+  const designContent = sections?.design ?? '';
+  const localeContent = sections?.locale ?? '';
+  const settingsContent = sections?.settings ?? '';
 
   const pyodideWorkerRef = useRef<Worker | null>(null);
   const typstWorkerRef = useRef<Worker | null>(null);
@@ -231,14 +236,20 @@ export function useViewerRenderer(sections?: CvFileSections) {
   }, [postMessageToPyodide, postMessageToTypst]);
 
   useEffect(() => {
-    if (!sections || isInitializing || initError || !sections.cv.trim()) {
+    if (!hasSections || isInitializing || initError || !cvContent.trim()) {
       return;
     }
 
+    const renderSections: CvFileSections = {
+      cv: cvContent,
+      design: designContent,
+      locale: localeContent,
+      settings: settingsContent
+    };
     const requestId = ++currentRenderRequest.current;
     const timer = window.setTimeout(async () => {
       try {
-        const result = await postMessageToPyodide('RENDER', sections);
+        const result = await postMessageToPyodide('RENDER', renderSections);
         if (requestId !== currentRenderRequest.current) {
           return;
         }
@@ -302,7 +313,18 @@ export function useViewerRenderer(sections?: CvFileSections) {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [sections, isInitializing, initError, checkAndLoadFonts, postMessageToPyodide, postMessageToTypst]);
+  }, [
+    hasSections,
+    cvContent,
+    designContent,
+    localeContent,
+    settingsContent,
+    isInitializing,
+    initError,
+    checkAndLoadFonts,
+    postMessageToPyodide,
+    postMessageToTypst
+  ]);
 
   const zoomIn = useCallback(() => {
     setZoomFactor((current) => Math.min(MAX_ZOOM, current + ZOOM_STEP));

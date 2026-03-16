@@ -114,7 +114,7 @@
     "colorMode": "dark",
     "showArchive": false,
     "showTrash": false,
-    "activeSection": "settings",
+    "activeSection": "locale",
     "wordWrap": true,
     "entriesExpanded": true,
     "selectedModel": "gpt-5-mini"
