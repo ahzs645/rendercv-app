@@ -53,6 +53,7 @@ export const filesRouter = new Hono()
     const body = z.object({
       id: z.string(),
       name: z.string().optional(),
+      designs: z.record(z.string(), z.string()).optional(),
       selectedTheme: z.string().optional(),
       selectedLocale: z.string().optional(),
       isLocked: z.boolean().optional(),

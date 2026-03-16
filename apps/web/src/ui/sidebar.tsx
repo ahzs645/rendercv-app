@@ -18,6 +18,7 @@ import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { GitHubSyncCard } from './github-sync-card';
 import { PdfImportButton } from './pdf-import-button';
+import { YamlImportButton } from './yaml-import-button';
 
 type SidebarMode = 'full' | 'compact' | 'mini';
 
@@ -84,6 +85,7 @@ export function Sidebar() {
           <FilePlus2 className="size-4 shrink-0" />
           {isMini ? <span className="sr-only">Create new CV</span> : <span>Create new CV</span>}
         </button>
+        <YamlImportButton mode={mode} />
         {ENABLE_PDF_IMPORT ? <PdfImportButton mode={mode} /> : null}
       </div>
 
@@ -110,7 +112,7 @@ export function Sidebar() {
         </ul>
         {!activeFiles.length && !isMini ? (
           <div className="mt-3 rounded-lg border border-dashed border-sidebar-border px-3 py-4 text-sm text-sidebar-foreground/60">
-            Create a CV or import one from PDF to get started.
+            Create a CV, import YAML, or start from another source.
           </div>
         ) : null}
         {mode !== 'mini' ? (

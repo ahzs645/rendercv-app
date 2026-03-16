@@ -15,6 +15,22 @@ import { WorkspaceToolbar } from './workspace-toolbar';
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
 
+function withThemeOverride(design: string, themeName: string) {
+  if (!design.trim()) {
+    return `design:\n  theme: ${themeName}\n`;
+  }
+
+  if (/^\s*theme:\s*.+$/m.test(design)) {
+    return design.replace(/(^\s*theme:\s*).+$/m, `$1${themeName}`);
+  }
+
+  if (/^\s*design:\s*$/m.test(design)) {
+    return design.replace(/(^\s*design:\s*$)/m, `$1\n  theme: ${themeName}`);
+  }
+
+  return `design:\n  theme: ${themeName}\n`;
+}
+
 export function Workspace() {
   const fileSnapshot = useStore(fileStore);
   const preferences = useStore(preferencesStore);
@@ -28,28 +44,8 @@ export function Workspace() {
   const viewer = useViewerRenderer(sections);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <header className="shrink-0 border-b border-border">
-        <WorkspaceToolbar
-          editorRef={monacoRef}
-          onOpenPopup={() => {
-            window.open(`${import.meta.env.BASE_URL}preview`, '_blank', 'noopener,noreferrer');
-          }}
-          onToggleSidebar={() => {
-            if (sidebarRef.current?.isCollapsed()) {
-              sidebarRef.current.expand(SIDEBAR_DEFAULT_SIZE);
-              return;
-            }
-
-            sidebarRef.current?.collapse();
-          }}
-          sections={sections}
-          selectedFile={selectedFile}
-          sidebarCollapsed={sidebarCollapsed}
-          viewer={viewer}
-        />
-      </header>
-      <PanelGroup className="min-h-0 flex-1" direction="horizontal">
+    <div className="h-screen overflow-hidden bg-background">
+      <PanelGroup className="min-h-0 h-full" direction="horizontal">
         <Panel
           ref={sidebarRef}
           collapsedSize={0}
@@ -62,40 +58,77 @@ export function Workspace() {
           <Sidebar />
         </Panel>
         <PanelResizeHandle className={`workspace-resize-handle ${sidebarCollapsed ? 'hidden' : ''}`} />
-        <Panel defaultSize={41} minSize={28}>
+        <Panel defaultSize={82} minSize={35}>
           <div className="flex h-full flex-col">
-            <div className="flex min-h-0 flex-1 flex-col">
-              <SectionTabs
-                active={activeSection}
-                onSelect={(section) => preferencesStore.patch({ activeSection: section })}
+            <header className="shrink-0 border-b border-border">
+              <WorkspaceToolbar
+                editorRef={monacoRef}
+                onOpenPopup={() => {
+                  window.open(`${import.meta.env.BASE_URL}preview`, '_blank', 'noopener,noreferrer');
+                }}
+                onToggleSidebar={() => {
+                  if (sidebarRef.current?.isCollapsed()) {
+                    sidebarRef.current.expand(SIDEBAR_DEFAULT_SIZE);
+                    return;
+                  }
+
+                  sidebarRef.current?.collapse();
+                }}
+                sections={sections}
                 selectedFile={selectedFile}
+                sidebarCollapsed={sidebarCollapsed}
+                viewer={viewer}
               />
-              <div className="min-h-0 flex-1 p-5 pt-4">
-                {preferences.yamlEditor ? (
-                  <MonacoEditor
-                    ref={monacoRef}
-                    value={currentValue}
-                    onChange={(value) => fileStore.updateSection(activeSection, value)}
-                  />
-                ) : (
-                  <FormEditor
-                    section={activeSection}
-                    value={currentValue}
-                    onChange={(value) => fileStore.updateSection(activeSection, value)}
-                  />
-                )}
-              </div>
-            </div>
+            </header>
+            <PanelGroup className="min-h-0 flex-1" direction="horizontal">
+              <Panel defaultSize={51} minSize={28}>
+                <div className="flex h-full flex-col">
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <SectionTabs
+                      active={activeSection}
+                      onSelect={(section) => preferencesStore.patch({ activeSection: section })}
+                      onImportDesignTheme={
+                        selectedFile
+                          ? async (file) => {
+                              const result = await viewer.importThemeArchive(file);
+                              const nextDesign = withThemeOverride(sections?.design ?? '', result.themeName);
+                              fileStore.addDesignVariant(selectedFile.id, result.themeName, nextDesign);
+                              return result.themeName;
+                            }
+                          : undefined
+                      }
+                      selectedFile={selectedFile}
+                      themeImportDisabled={viewer.isInitializing || Boolean(viewer.initError)}
+                    />
+                    <div className="min-h-0 flex-1 p-5 pt-4">
+                      {preferences.yamlEditor ? (
+                        <MonacoEditor
+                          ref={monacoRef}
+                          value={currentValue}
+                          onChange={(value) => fileStore.updateSection(activeSection, value)}
+                        />
+                      ) : (
+                        <FormEditor
+                          section={activeSection}
+                          value={currentValue}
+                          onChange={(value) => fileStore.updateSection(activeSection, value)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Panel>
+              <PanelResizeHandle className="workspace-resize-handle" />
+              <Panel defaultSize={49} minSize={25}>
+                <PreviewPaneView
+                  fileName={selectedFile?.name ?? 'RenderCV'}
+                  sections={sections}
+                  showHeader={false}
+                  viewer={viewer}
+                />
+              </Panel>
+            </PanelGroup>
           </div>
-        </Panel>
-        <PanelResizeHandle className="workspace-resize-handle" />
-        <Panel defaultSize={40} minSize={25}>
-          <PreviewPaneView
-            fileName={selectedFile?.name ?? 'RenderCV'}
-            sections={sections}
-            showHeader={false}
-            viewer={viewer}
-          />
         </Panel>
       </PanelGroup>
     </div>

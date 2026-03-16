@@ -314,6 +314,18 @@ export class FileStore {
     this.#updateMeta(id, { selectedTheme });
   }
 
+  addDesignVariant(id: string, themeKey: string, design: string) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file) {
+      return;
+    }
+
+    this.#updateMeta(id, {
+      designs: { ...file.designs, [themeKey]: design },
+      selectedTheme: themeKey
+    });
+  }
+
   setLocale(id: string, selectedLocale: string) {
     this.#updateMeta(id, { selectedLocale });
   }

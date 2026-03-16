@@ -6,6 +6,12 @@ interface WorkerErrorPayload {
   stack?: string;
 }
 
+interface StoredCustomTheme {
+  archiveName: string;
+  bytes: Uint8Array;
+  themeName: string;
+}
+
 type LoadPyodide = (options: { indexURL: string }) => Promise<PyodideLike>;
 
 type PyodideLike = {
@@ -35,6 +41,7 @@ const PKG_CACHE_VERSION = 'rendercv-2.7-pyodide-0.29.3-v2';
 const IDB_DB_NAME = 'pyodide-pkg-cache';
 const IDB_STORE = 'packages';
 const BASE_URL = import.meta.env.BASE_URL;
+const CUSTOM_THEMES_KEY = 'custom-themes';
 
 function assetUrl(path: string) {
   return new URL(`${BASE_URL}${path}`, self.location.origin).toString();
@@ -132,6 +139,184 @@ async function writePackagesToIDB(tarball: Uint8Array) {
   db.close();
 }
 
+async function registerCustomThemeArchive(
+  instance: PyodideLike,
+  archiveName: string,
+  archiveBytes: Uint8Array
+): Promise<{ themeName: string }> {
+  instance.globals.set('_custom_theme_bytes', archiveBytes);
+  instance.globals.set('_custom_theme_archive_name', archiveName);
+
+  const result = (await instance.runPythonAsync(`
+import importlib.util, io, pathlib, re, shutil, sys, zipfile
+
+COMPATIBILITY_REPLACEMENTS = {
+    "design-entries-vertical-space-between-entries": "design_entries_vertical_space_between_entries",
+}
+
+LINE_TEXT_WITH_ARGS_PATTERN = re.compile(r'\\btext\\((.+),\\s*"((?:[^"\\\\]|\\\\.)*)"\\)')
+LINE_TEXT_SIMPLE_PATTERN = re.compile(r'\\btext\\("((?:[^"\\\\]|\\\\.)*)"\\)')
+
+MULTILINE_COMPATIBILITY_REPLACEMENTS = {
+    '#text(\\n  size: 26pt,\\n  weight: "bold",\\n  "{{ cv.name }}"\\n)': '#text(size: 26pt, weight: "bold")[{{ cv.name }}]',
+    '''        heading(
+          level: 1,
+          outlined: true,
+          bookmarked: true,
+          text(
+            size: {{ design.section_heading_size }},
+            weight: "bold",
+            upper(title)
+          )
+        )''': '''        heading(
+          level: 1,
+          outlined: true,
+          bookmarked: true,
+        )[ #text(size: {{ design.section_heading_size }}, weight: "bold")[#upper(title)] ]''',
+    '''    heading(
+      level: 1,
+      outlined: true,
+      bookmarked: true,
+      text(
+        size: {{ design.section_heading_size }},
+        weight: "bold",
+        upper(title)
+      )
+    )''': '''    heading(
+      level: 1,
+      outlined: true,
+      bookmarked: true,
+    )[ #text(size: {{ design.section_heading_size }}, weight: "bold")[#upper(title)] ]''',
+}
+
+def normalize_typst_template(text):
+    for source_text, target_text in COMPATIBILITY_REPLACEMENTS.items():
+        text = text.replace(source_text, target_text)
+
+    for source_text, target_text in MULTILINE_COMPATIBILITY_REPLACEMENTS.items():
+        text = text.replace(source_text, target_text)
+
+    normalized_lines = []
+    for line in text.splitlines():
+        line = LINE_TEXT_WITH_ARGS_PATTERN.sub(r'text(\\1)[\\2]', line)
+        line = LINE_TEXT_SIMPLE_PATTERN.sub(r'text[\\1]', line)
+        normalized_lines.append(line)
+
+    normalized_text = "\\n".join(normalized_lines)
+    if text.endswith("\\n"):
+        normalized_text += "\\n"
+    return normalized_text
+
+archive_name = _custom_theme_archive_name
+archive_bytes = bytes(_custom_theme_bytes.to_py())
+pyodide_root = pathlib.Path("/home/pyodide")
+legacy_base_dir = pyodide_root / "custom_themes"
+legacy_base_dir.mkdir(parents=True, exist_ok=True)
+
+with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+    package_dir = None
+    theme_name = None
+
+    for name in archive.namelist():
+        if not name.endswith("__init__.py"):
+            continue
+
+        text = archive.read(name).decode("utf-8", errors="ignore")
+        match = re.search(r'Literal\\["([^"]+)"\\]', text)
+        if match:
+            package_dir = name.rsplit("/", 1)[0]
+            theme_name = match.group(1)
+            break
+
+    if package_dir is None or theme_name is None:
+        raise RuntimeError(
+            "Could not find a RenderCV theme package in the uploaded archive. "
+            "Expected a package with __init__.py declaring theme: Literal[\\\"...\\\"]."
+        )
+
+    custom_theme_folder = pyodide_root / theme_name
+    legacy_theme_folder = legacy_base_dir / theme_name
+    if custom_theme_folder.exists():
+        shutil.rmtree(custom_theme_folder)
+    if legacy_theme_folder.exists():
+        shutil.rmtree(legacy_theme_folder)
+
+    custom_theme_folder.mkdir(parents=True, exist_ok=True)
+    package_path = pathlib.PurePosixPath(package_dir)
+
+    for info in archive.infolist():
+        archive_path = pathlib.PurePosixPath(info.filename)
+        try:
+            relative_path = archive_path.relative_to(package_path)
+        except ValueError:
+            continue
+
+        if not relative_path.parts:
+            continue
+
+        destination = custom_theme_folder.joinpath(*relative_path.parts)
+        if info.is_dir():
+            destination.mkdir(parents=True, exist_ok=True)
+            continue
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        file_bytes = archive.read(info)
+        if destination.suffix == ".typ":
+            try:
+                file_text = file_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                pass
+            else:
+                file_text = normalize_typst_template(file_text)
+                file_bytes = file_text.encode("utf-8")
+
+        with open(destination, "wb") as target:
+            target.write(file_bytes)
+
+    pyodide_root_str = str(pyodide_root)
+    if pyodide_root_str not in sys.path:
+        sys.path.insert(0, pyodide_root_str)
+
+    init_file = custom_theme_folder / "__init__.py"
+    spec = importlib.util.spec_from_file_location(theme_name, init_file)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Failed to load custom theme from {init_file}")
+
+    theme_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(theme_module)
+    result = {"themeName": theme_name}
+
+del _custom_theme_archive_name
+del _custom_theme_bytes
+result
+  `)).toJs() as { themeName: string };
+
+  return result;
+}
+
+async function restoreCustomThemes(instance: PyodideLike) {
+  try {
+    const db = await openIDB();
+    const themes = (await idbGet<StoredCustomTheme[]>(db, CUSTOM_THEMES_KEY)) ?? [];
+    db.close();
+
+    for (const theme of themes) {
+      await registerCustomThemeArchive(instance, theme.archiveName, theme.bytes);
+    }
+  } catch {
+    // Ignore theme restore failures and let render-time validation surface issues.
+  }
+}
+
+async function persistCustomTheme(theme: StoredCustomTheme) {
+  const db = await openIDB();
+  const existing = (await idbGet<StoredCustomTheme[]>(db, CUSTOM_THEMES_KEY)) ?? [];
+  const next = existing.filter((entry) => entry.themeName !== theme.themeName);
+  next.push(theme);
+  await idbPut(db, CUSTOM_THEMES_KEY, next);
+  db.close();
+}
+
 async function initialize() {
   const loadPyodide = await getLoadPyodide();
   pyodide = await loadPyodide({
@@ -169,6 +354,7 @@ async function initialize() {
     void writePackagesToIDB(tarball);
   }
 
+  await restoreCustomThemes(pyodide);
   await pyodide.runPythonAsync(PREWARM_IMPORTS);
 }
 
@@ -197,6 +383,25 @@ self.onmessage = async (event: MessageEvent<{ id: number; type: string; payload?
           id,
           type: 'RENDER_SUCCESS',
           payload: (await pyodide.runPythonAsync(yamlToTypstPy)).toJs()
+        });
+        break;
+      }
+      case 'IMPORT_THEME_ARCHIVE': {
+        const themePayload = payload as { archiveName: string; bytes: Uint8Array };
+        const result = await registerCustomThemeArchive(
+          pyodide,
+          themePayload.archiveName,
+          themePayload.bytes
+        );
+        await persistCustomTheme({
+          archiveName: themePayload.archiveName,
+          bytes: themePayload.bytes,
+          themeName: result.themeName
+        });
+        self.postMessage({
+          id,
+          type: 'IMPORT_THEME_ARCHIVE_SUCCESS',
+          payload: result
         });
         break;
       }

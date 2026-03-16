@@ -1,19 +1,27 @@
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import type { CvFile, SectionKey } from '@rendercv/contracts';
 import { SECTION_LABELS } from '@rendercv/contracts';
 import { fileStore, localeLabel, themeLabel } from '@rendercv/core';
+import { toast } from 'sonner';
 
 const TAB_ORDER = Object.keys(SECTION_LABELS) as SectionKey[];
 
 export function SectionTabs({
   active,
   onSelect,
-  selectedFile
+  onImportDesignTheme,
+  selectedFile,
+  themeImportDisabled = false
 }: {
   active: SectionKey;
   onSelect: (section: SectionKey) => void;
+  onImportDesignTheme?: (file: File) => Promise<string | null>;
   selectedFile?: CvFile;
+  themeImportDisabled?: boolean;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const variant =
     active === 'design'
       ? {
@@ -67,6 +75,49 @@ export function SectionTabs({
 
         {variant && variant.options.length > 0 ? (
           <div className="ml-auto flex items-center gap-0.5" data-testid="variant-selector">
+            {active === 'design' && onImportDesignTheme ? (
+              <>
+                <input
+                  ref={inputRef}
+                  accept=".zip,application/zip"
+                  className="hidden"
+                  type="file"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) {
+                      return;
+                    }
+
+                    setIsImporting(true);
+                    void onImportDesignTheme(file)
+                      .then((themeName) => {
+                        if (themeName) {
+                          toast.success(`Imported theme "${themeName}".`);
+                        }
+                      })
+                      .catch((error) => {
+                        toast.error(error instanceof Error ? error.message : 'Failed to import theme.');
+                      })
+                      .finally(() => {
+                        setIsImporting(false);
+                        if (inputRef.current) {
+                          inputRef.current.value = '';
+                        }
+                      });
+                  }}
+                />
+                <button
+                  aria-label="Import theme zip"
+                  className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                  disabled={isImporting || themeImportDisabled}
+                  onClick={() => inputRef.current?.click()}
+                  type="button"
+                >
+                  <Upload className="size-3.5" />
+                  {isImporting ? 'Importing…' : 'Import zip'}
+                </button>
+              </>
+            ) : null}
             <button
               aria-label={`Previous ${variant.label.toLowerCase()}`}
               className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"

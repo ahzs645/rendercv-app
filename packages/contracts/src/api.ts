@@ -27,6 +27,7 @@ export interface FileContentPatch {
 export interface FileMetaPatch {
   id: string;
   name?: string;
+  designs?: Record<string, string>;
   selectedTheme?: string;
   selectedLocale?: string;
   isLocked?: boolean;

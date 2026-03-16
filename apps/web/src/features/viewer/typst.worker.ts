@@ -16,6 +16,49 @@ function assetUrl(path: string) {
   return new URL(`${BASE_URL}${path}`, self.location.origin).toString();
 }
 
+function formatTypstError(error: unknown) {
+  const extractDiagnosticMessages = (value: string) => {
+    const matches = Array.from(value.matchAll(/message:\s*"([^"]+)"/g), (match) => match[1]);
+    if (matches.length === 0) {
+      return value;
+    }
+
+    return [...new Set(matches)].join('; ');
+  };
+
+  if (error instanceof Error) {
+    return {
+      message: extractDiagnosticMessages(error.message),
+      name: error.name,
+      stack: error.stack
+    };
+  }
+
+  if (Array.isArray(error)) {
+    const messages = error
+      .map((entry) => {
+        if (entry && typeof entry === 'object' && 'message' in entry) {
+          return String((entry as { message?: unknown }).message ?? '');
+        }
+        return '';
+      })
+      .filter(Boolean);
+
+    return {
+      message: messages.length > 0 ? [...new Set(messages)].join('; ') : String(error),
+      name: 'TypstError',
+      stack: undefined
+    };
+  }
+
+  const message = typeof error === 'string' ? error : String(error);
+  return {
+    message: extractDiagnosticMessages(message),
+    name: 'Error',
+    stack: undefined
+  };
+}
+
 function extractSvgPages(svg: string): string[] {
   if (!svg) return [];
 
@@ -115,10 +158,7 @@ self.onmessage = async (event: MessageEvent<{ id: number; type: string; payload?
     self.postMessage({
       id,
       type: 'ERROR',
-      payload:
-        error instanceof Error
-          ? { message: error.message, name: error.name, stack: error.stack }
-          : { message: String(error), name: 'Error', stack: undefined }
+      payload: formatTypstError(error)
     });
   }
 };

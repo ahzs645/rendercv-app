@@ -28,6 +28,10 @@ interface WorkerErrorPayload {
   stack?: string;
 }
 
+interface ImportedThemePayload {
+  themeName: string;
+}
+
 type PendingRequest<T = unknown> = {
   resolve: (value: T) => void;
   reject: (error: Error) => void;
@@ -64,7 +68,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
   const pyodideWorkerRef = useRef<Worker | null>(null);
   const typstWorkerRef = useRef<Worker | null>(null);
-  const pyodidePending = useRef(new Map<number, PendingRequest<RenderResult>>());
+  const pyodidePending = useRef(new Map<number, PendingRequest>());
   const typstPending = useRef(new Map<number, PendingRequest>());
   const nextPyodideId = useRef(0);
   const nextTypstId = useRef(0);
@@ -76,14 +80,14 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const effectiveZoom = zoomFactor;
   const zoomPercent = Math.round(effectiveZoom * 100);
 
-  const postMessageToPyodide = useCallback((type: string, payload?: unknown) => {
+  const postMessageToPyodide = useCallback(<T = unknown,>(type: string, payload?: unknown) => {
     if (!pyodideWorkerRef.current) {
       return Promise.reject(new Error('Pyodide worker not initialized'));
     }
 
-    return new Promise<RenderResult>((resolve, reject) => {
+    return new Promise<T>((resolve, reject) => {
       const id = ++nextPyodideId.current;
-      pyodidePending.current.set(id, { resolve, reject });
+      pyodidePending.current.set(id, { resolve: resolve as (value: unknown) => void, reject });
       pyodideWorkerRef.current?.postMessage({ id, type, payload });
     });
   }, []);
@@ -131,7 +135,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
   const renderToTypst = useCallback(
     async (renderSections: CvFileSections) => {
-      const result = await postMessageToPyodide('RENDER', renderSections);
+      const result = await postMessageToPyodide<RenderResult>('RENDER', renderSections);
       if (!result.content) return null;
       const fontsChanged = checkAndLoadFonts(result.content);
       if (fontsChanged) {
@@ -249,7 +253,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
     const requestId = ++currentRenderRequest.current;
     const timer = window.setTimeout(async () => {
       try {
-        const result = await postMessageToPyodide('RENDER', renderSections);
+        const result = await postMessageToPyodide<RenderResult>('RENDER', renderSections);
         if (requestId !== currentRenderRequest.current) {
           return;
         }
@@ -326,6 +330,17 @@ export function useViewerRenderer(sections?: CvFileSections) {
     postMessageToTypst
   ]);
 
+  const importThemeArchive = useCallback(
+    async (file: File) => {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      return await postMessageToPyodide<ImportedThemePayload>('IMPORT_THEME_ARCHIVE', {
+        archiveName: file.name,
+        bytes
+      });
+    },
+    [postMessageToPyodide]
+  );
+
   const zoomIn = useCallback(() => {
     setZoomFactor((current) => Math.min(MAX_ZOOM, current + ZOOM_STEP));
   }, []);
@@ -351,7 +366,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomOut,
       zoomReset,
       renderToPdf,
-      renderToTypst
+      renderToTypst,
+      importThemeArchive
     }),
     [
       svgPages,
@@ -365,7 +381,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomOut,
       zoomReset,
       renderToPdf,
-      renderToTypst
+      renderToTypst,
+      importThemeArchive
     ]
   );
 }
