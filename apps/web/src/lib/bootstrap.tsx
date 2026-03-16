@@ -5,6 +5,7 @@ import { preferencesStore } from '@rendercv/core';
 import { resolveFileSections } from '@rendercv/core';
 import { useEffect, useRef } from 'react';
 import { api } from './api';
+import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 
 const FILE_STORAGE_KEY = 'rendercv_guest_files';
 const PREFERENCE_STORAGE_KEY = 'rendercv_preferences';
@@ -37,6 +38,27 @@ function syncThemeLibraryFromFiles(files: Array<ReturnType<typeof stripReadOnly>
   }
 }
 
+function ensureBundledThemeLibraryEntries() {
+  const currentLibrary = preferencesStore.getSnapshot().themeLibrary;
+  let nextLibrary: Record<string, string> | undefined;
+
+  for (const theme of BUNDLED_THEMES) {
+    if (currentLibrary[theme.themeKey]) {
+      continue;
+    }
+
+    if (!nextLibrary) {
+      nextLibrary = { ...currentLibrary };
+    }
+
+    nextLibrary[theme.themeKey] = theme.design;
+  }
+
+  if (nextLibrary) {
+    preferencesStore.patch({ themeLibrary: nextLibrary });
+  }
+}
+
 export function WorkspaceBootstrap() {
   const bootstrapped = useRef(false);
   const contentTimers = useRef(new Map<string, number>());
@@ -55,6 +77,7 @@ export function WorkspaceBootstrap() {
     } catch {
       preferencesStore.hydrate(undefined);
     }
+    ensureBundledThemeLibraryEntries();
 
     try {
       const rawFiles = localStorage.getItem(FILE_STORAGE_KEY);
@@ -68,9 +91,11 @@ export function WorkspaceBootstrap() {
     } catch {
       fileStore.loadDefaults();
     }
+    ensureBundledThemeLibraryEntries();
 
     api.getPreferences().then((response) => {
       preferencesStore.patch(response.preferences);
+      ensureBundledThemeLibraryEntries();
       if (response.preferences.selectedFileId) {
         fileStore.selectFile(response.preferences.selectedFileId);
       }
@@ -80,6 +105,7 @@ export function WorkspaceBootstrap() {
       if (response.files.length > 0) {
         fileStore.hydrate(response.files);
         syncThemeLibraryFromFiles(response.files);
+        ensureBundledThemeLibraryEntries();
       }
     }).catch(() => {});
   }, []);

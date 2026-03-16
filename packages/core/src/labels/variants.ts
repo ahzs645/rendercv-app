@@ -1,4 +1,5 @@
 export const THEME_LABELS: Record<string, string> = {
+  ahmadstyle: 'Ahmad Style',
   classic: 'Classic',
   engineeringclassic: 'Engineering Classic',
   engineeringresumes: 'Engineering Resumes',

@@ -1,4 +1,5 @@
 import yamlToTypstPy from './yaml_to_typst';
+import { BUNDLED_THEMES } from './bundled-themes.generated';
 
 interface WorkerErrorPayload {
   message: string;
@@ -317,17 +318,50 @@ result
   return result;
 }
 
-async function restoreCustomThemes(instance: PyodideLike) {
-  try {
-    const db = await openIDB();
-    const themes = (await idbGet<StoredCustomTheme[]>(db, CUSTOM_THEMES_KEY)) ?? [];
-    db.close();
+async function readStoredCustomThemes() {
+  const db = await openIDB();
 
-    for (const theme of themes) {
-      await registerCustomThemeArchive(instance, theme.archiveName, ensureUint8Array(theme.bytes));
+  try {
+    return (await idbGet<StoredCustomTheme[]>(db, CUSTOM_THEMES_KEY)) ?? [];
+  } finally {
+    db.close();
+  }
+}
+
+async function restoreCustomThemes(instance: PyodideLike, themes: StoredCustomTheme[]) {
+  for (const theme of themes) {
+    await registerCustomThemeArchive(instance, theme.archiveName, ensureUint8Array(theme.bytes));
+  }
+}
+
+async function ensureBundledThemes(instance: PyodideLike, storedThemes: StoredCustomTheme[]) {
+  for (const theme of BUNDLED_THEMES) {
+    const alreadyCached = storedThemes.some(
+      (entry) => entry.themeName === theme.themeKey && entry.archiveName === theme.archiveName
+    );
+
+    if (alreadyCached) {
+      continue;
     }
-  } catch {
-    // Ignore theme restore failures and let render-time validation surface issues.
+
+    try {
+      const response = await fetch(assetUrl(theme.archivePath));
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${theme.archivePath}: ${response.status}`);
+      }
+
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const result = await registerCustomThemeArchive(instance, theme.archiveName, bytes);
+      await persistCustomTheme({
+        archiveName: theme.archiveName,
+        bytes,
+        themeName: result.themeName
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[RenderCV worker] failed to register bundled theme', theme.themeKey, error);
+      }
+    }
   }
 }
 
@@ -492,7 +526,13 @@ async function initialize() {
     void writePackagesToIDB(tarball);
   }
 
-  await restoreCustomThemes(pyodide);
+  try {
+    const storedThemes = await readStoredCustomThemes();
+    await restoreCustomThemes(pyodide, storedThemes);
+    await ensureBundledThemes(pyodide, storedThemes);
+  } catch {
+    // Ignore theme restore failures and let render-time validation surface issues.
+  }
   await pyodide.runPythonAsync(PREWARM_IMPORTS);
 }
 

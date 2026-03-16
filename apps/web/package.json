@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ./scripts/sync-bundled-themes.mjs",
+    "prebuild": "node ./scripts/sync-bundled-themes.mjs",
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
