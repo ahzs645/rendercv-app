@@ -5,8 +5,11 @@ import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { useStore } from '../lib/use-store';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
-import { normalizeCompatibilityCvYaml } from '../features/viewer/normalize-compat-cv';
-import { normalizeLegacyDesignYaml, resolveViewerSections } from '../features/viewer/viewer-sections';
+import {
+  normalizeLegacyDesignYaml,
+  prepareViewerSections,
+  resolveViewerSections
+} from '../features/viewer/viewer-sections';
 import { MonacoEditor } from './monaco-editor';
 import type { MonacoEditorHandle } from './monaco-editor';
 import { PreviewPaneView } from './preview-pane';
@@ -51,13 +54,11 @@ function looksLikeLegacyDesignSchema(design: string) {
 }
 
 function normalizeCompatibilitySections(sections: ImportedSections): ImportedSections {
-  const normalizedCv = sections.cv ? normalizeCompatibilityCvYaml(sections.cv) : sections.cv;
   const normalizedDesign = sections.design
     ? normalizeLegacyDesignYaml(sections.design)
     : sections.design;
   return {
     ...sections,
-    cv: normalizedCv,
     design: normalizedDesign
   };
 }
@@ -115,15 +116,12 @@ export function Workspace() {
     let cancelled = false;
 
     void viewer
-      .validateSections(fillMissingSections(normalizeCompatibilitySections(rawSections)))
-      .then((validationResult) => {
+      .validateSections(
+        prepareViewerSections(fillMissingSections(normalizeCompatibilitySections(rawSections)))
+      )
+      .then(() => {
         if (cancelled) {
           return;
-        }
-
-        const normalizedCv = normalizeCompatibilityCvYaml(rawSections.cv);
-        if (normalizedCv !== rawSections.cv) {
-          fileStore.updateSection('cv', normalizedCv);
         }
 
         const normalizedDesign = normalizeLegacyDesignYaml(rawSections.design);
@@ -135,10 +133,6 @@ export function Workspace() {
 
         if (needsClassicCompatibilityTheme(selectedFile.selectedTheme)) {
           return;
-        }
-
-        if (selectedFile.selectedTheme === 'classic' && looksLikeLegacyDesignSchema(rawSections.design)) {
-          fileStore.updateSection('design', classicTheme.design);
         }
       })
       .catch(() => {});
@@ -172,13 +166,7 @@ export function Workspace() {
               const additionalDesigns: Record<string, string> = {};
               let message: string | undefined;
 
-              if (nextSections.selectedTheme === 'classic' && nextSections.design) {
-                if (looksLikeLegacyDesignSchema(nextSections.design)) {
-                  nextSections.design = classicTheme.design;
-                }
-              }
-
-              const validatedSections = fillMissingSections(nextSections);
+              const validatedSections = prepareViewerSections(fillMissingSections(nextSections));
               const validationResult = await viewer.validateSections(validatedSections);
 
               if (
@@ -189,12 +177,6 @@ export function Workspace() {
               ) {
                 additionalDesigns[importedSections.selectedTheme] = importedSections.design;
                 message = `YAML imported with compatibility mode. Preview will temporarily use classic until the ${importedSections.selectedTheme} theme zip is loaded.`;
-              } else if (
-                nextSections.selectedTheme === 'classic' &&
-                nextSections.design &&
-                looksLikeLegacyDesignSchema(nextSections.design)
-              ) {
-                nextSections.design = classicTheme.design;
               }
 
               return {
@@ -204,12 +186,14 @@ export function Workspace() {
               };
             }}
             validateYamlImport={async (importedSections) => {
-              const result = await viewer.validateSections({
-                cv: importedSections.cv ?? classicTheme.cv,
-                design: importedSections.design ?? classicTheme.design,
-                locale: importedSections.locale ?? classicTheme.locale,
-                settings: importedSections.settings ?? classicTheme.settings
-              });
+              const result = await viewer.validateSections(
+                prepareViewerSections({
+                  cv: importedSections.cv ?? classicTheme.cv,
+                  design: importedSections.design ?? classicTheme.design,
+                  locale: importedSections.locale ?? classicTheme.locale,
+                  settings: importedSections.settings ?? classicTheme.settings
+                })
+              );
 
               return (result.errors ?? []).map((error) => ({
                 message: error.message || '',

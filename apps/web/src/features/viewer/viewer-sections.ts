@@ -1,4 +1,4 @@
-import type { CvFile, CvFileSections } from '@rendercv/contracts';
+import type { CvFile, CvFileSections, CvVariantDefinition } from '@rendercv/contracts';
 import { resolveFileSections } from '@rendercv/core';
 import YAML from 'yaml';
 import { normalizeCompatibilityCvYaml } from './normalize-compat-cv';
@@ -84,9 +84,16 @@ export function resolveViewerSections(file: CvFile): CvFileSections {
       ? file.variants[file.selectedVariant]
       : undefined;
 
+  return prepareViewerSections(sections, variant);
+}
+
+export function prepareViewerSections(
+  sections: CvFileSections,
+  variant?: CvVariantDefinition | null
+): CvFileSections {
   return {
     ...sections,
-    cv: normalizeCompatibilityCvYaml(sections.cv, { variant }),
+    cv: normalizeCompatibilityCvYaml(sections.cv, { variant: variant ?? undefined }),
     design: normalizeLegacyDesignYaml(sections.design) ?? sections.design
   };
 }
