@@ -6,9 +6,11 @@ import { api } from '../lib/api';
 
 const MAX_PDF_SIZE = 5 * 1024 * 1024;
 
-export function PdfImportButton() {
+export function PdfImportButton({ mode = 'full' }: { mode?: 'full' | 'compact' | 'mini' }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
+  const mini = mode === 'mini';
+  const compact = mode === 'compact';
 
   async function importFile(file: File) {
     if (file.type !== 'application/pdf') {
@@ -52,13 +54,29 @@ export function PdfImportButton() {
         }}
       />
       <button
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card px-4 py-2.5 text-foreground"
+        className={`flex w-full items-center rounded-md border border-dashed border-sidebar-border transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+          mini ? 'h-10 justify-center px-0' : compact ? 'justify-start gap-2 px-3 py-2.5' : 'justify-start gap-3 px-3 py-3'
+        }`}
         disabled={pending}
         onClick={() => inputRef.current?.click()}
+        title="Import from PDF"
         type="button"
       >
         <Upload className="size-4" />
-        {pending ? 'Importing PDF…' : 'Import from PDF'}
+        {mini ? (
+          <span className="sr-only">{pending ? 'Importing PDF' : 'Import from PDF'}</span>
+        ) : (
+          <span className="min-w-0 text-left">
+            <span className="block text-sm font-medium">
+              {pending ? 'Importing PDF…' : 'Import from PDF'}
+            </span>
+            {!compact ? (
+              <span className="block text-xs text-sidebar-foreground/60">
+                Drag and drop is supported
+              </span>
+            ) : null}
+          </span>
+        )}
       </button>
     </>
   );

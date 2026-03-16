@@ -12,6 +12,9 @@ import { Sidebar } from './sidebar';
 import { FormEditor } from '../features/form/form-editor';
 import { WorkspaceToolbar } from './workspace-toolbar';
 
+const SIDEBAR_DEFAULT_SIZE = 18;
+const SIDEBAR_MIN_SIZE = 10;
+
 export function Workspace() {
   const fileSnapshot = useStore(fileStore);
   const preferences = useStore(preferencesStore);
@@ -31,8 +34,8 @@ export function Workspace() {
           ref={sidebarRef}
           collapsedSize={0}
           collapsible
-          defaultSize={19}
-          minSize={16}
+          defaultSize={SIDEBAR_DEFAULT_SIZE}
+          minSize={SIDEBAR_MIN_SIZE}
           onCollapse={() => setSidebarCollapsed(true)}
           onExpand={() => setSidebarCollapsed(false)}
         >
@@ -49,7 +52,7 @@ export function Workspace() {
                 }}
                 onToggleSidebar={() => {
                   if (sidebarRef.current?.isCollapsed()) {
-                    sidebarRef.current.expand(19);
+                    sidebarRef.current.expand(SIDEBAR_DEFAULT_SIZE);
                     return;
                   }
 
