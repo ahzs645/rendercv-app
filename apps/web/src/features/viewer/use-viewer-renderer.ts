@@ -183,6 +183,15 @@ export function useViewerRenderer(sections?: CvFileSections) {
     [postMessageToTypst, renderToTypst]
   );
 
+  const renderToSvg = useCallback(
+    async (renderSections: CvFileSections) => {
+      const typst = await renderToTypst(renderSections);
+      if (!typst) return null;
+      return (await postMessageToTypst('SVG', { content: typst })) as string[];
+    },
+    [postMessageToTypst, renderToTypst]
+  );
+
   useEffect(() => {
     try {
       const storedFonts = localStorage.getItem('loadedFonts');
@@ -422,6 +431,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomOut,
       zoomReset,
       renderToPdf,
+      renderToSvg,
       renderToTypst,
       importThemeArchive,
       validateSections
@@ -438,6 +448,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomOut,
       zoomReset,
       renderToPdf,
+      renderToSvg,
       renderToTypst,
       importThemeArchive,
       validateSections

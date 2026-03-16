@@ -266,6 +266,8 @@ export function Workspace() {
                       }
                       selectedFile={selectedFile}
                       themeImportDisabled={viewer.isInitializing || Boolean(viewer.initError)}
+                      viewer={viewer}
+                      viewerSections={viewerSections}
                     />
                     <div className="min-h-0 flex-1 p-5 pt-4">
                       {preferences.yamlEditor ? (

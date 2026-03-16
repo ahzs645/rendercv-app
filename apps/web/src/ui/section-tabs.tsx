@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
-import type { CvFile, SectionKey } from '@rendercv/contracts';
+import type { CvFile, CvFileSections, SectionKey } from '@rendercv/contracts';
 import { SECTION_LABELS } from '@rendercv/contracts';
 import {
   defaultDesigns,
@@ -12,6 +12,8 @@ import {
 } from '@rendercv/core';
 import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
+import type { ViewerRenderer } from './preview-pane';
+import { ThemeLibraryDialog } from './theme-library-dialog';
 
 const TAB_ORDER = Object.keys(SECTION_LABELS) as SectionKey[];
 const BUILT_IN_THEME_KEYS = Object.keys(defaultDesigns);
@@ -22,7 +24,9 @@ export function SectionTabs({
   onImportDesignTheme,
   onImportVariants,
   selectedFile,
-  themeImportDisabled = false
+  themeImportDisabled = false,
+  viewer,
+  viewerSections
 }: {
   active: SectionKey;
   onSelect: (section: SectionKey) => void;
@@ -30,6 +34,8 @@ export function SectionTabs({
   onImportVariants?: (file: File) => Promise<string | null>;
   selectedFile?: CvFile;
   themeImportDisabled?: boolean;
+  viewer: ViewerRenderer;
+  viewerSections?: CvFileSections;
 }) {
   const themeInputRef = useRef<HTMLInputElement>(null);
   const variantsInputRef = useRef<HTMLInputElement>(null);
@@ -159,6 +165,13 @@ export function SectionTabs({
                   <Upload className="size-3.5" />
                   {isImportingTheme ? 'Importing…' : 'Import zip'}
                 </button>
+                <ThemeLibraryDialog
+                  disabled={themeImportDisabled}
+                  sections={viewerSections}
+                  selectedFile={selectedFile}
+                  themeKeys={themeOptions}
+                  viewer={viewer}
+                />
               </>
             ) : null}
             {active === 'cv' && onImportVariants ? (
@@ -260,33 +273,13 @@ export function SectionTabs({
         ) : null}
       </div>
       {active === 'design' && designLibraryThemes.length > 0 ? (
-        <div className="flex items-center gap-2 overflow-x-auto py-2">
-          <p className="shrink-0 text-[11px] font-medium tracking-[0.18em] text-muted-foreground uppercase">
-            Theme Library
+        <div className="flex items-center justify-between gap-3 py-2">
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            {designLibraryThemes.length} themes available for this resume
           </p>
-          <div className="flex items-center gap-1">
-            {designLibraryThemes.map((themeKey) => {
-              const selected = selectedFile?.selectedTheme === themeKey;
-              return (
-                <button
-                  key={themeKey}
-                  className={`rounded-md border px-2 py-1 text-xs transition-colors ${
-                    selected
-                      ? 'border-primary/40 bg-primary/10 text-primary'
-                      : 'border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground'
-                  }`}
-                  onClick={() => {
-                    if (selectedFile) {
-                      fileStore.setTheme(selectedFile.id, themeKey);
-                    }
-                  }}
-                  type="button"
-                >
-                  {themeLabel(themeKey)}
-                </button>
-              );
-            })}
-          </div>
+          <p className="truncate text-xs text-muted-foreground">
+            Current: {selectedFile?.selectedTheme ? themeLabel(selectedFile.selectedTheme) : 'Classic'}
+          </p>
         </div>
       ) : (
         <div className="pb-2" />
