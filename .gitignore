@@ -4,3 +4,8 @@ build
 .env.local
 .env.*.local
 .DS_Store
+dist
+coverage
+playwright-report
+test-results
+.turbo

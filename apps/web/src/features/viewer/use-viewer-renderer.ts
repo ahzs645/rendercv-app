@@ -1,0 +1,349 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CvFileSections, SectionKey } from '@rendercv/contracts';
+import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP } from './zoom-config';
+import { DEFAULT_FONT_FAMILIES, FONT_VARIANTS, getDefaultFontUrls, getFontUrls } from './fonts';
+
+export interface RenderError {
+  message: string;
+  schema_location: string[] | null;
+  input: string;
+  yaml_source: SectionKey;
+  yaml_location: [[number, number], [number, number]] | null;
+}
+
+interface RenderResult {
+  content: string | null;
+  errors: Array<{
+    message: string;
+    schema_location: string[] | null;
+    input: string;
+    yaml_source: string;
+    yaml_location: [[number, number], [number, number]] | null;
+  }> | null;
+}
+
+interface WorkerErrorPayload {
+  message: string;
+  name: string;
+  stack?: string;
+}
+
+type PendingRequest<T = unknown> = {
+  resolve: (value: T) => void;
+  reject: (error: Error) => void;
+};
+
+const YAML_SOURCE_TO_SECTION: Record<string, SectionKey> = {
+  main_yaml_file: 'cv',
+  design_yaml_file: 'design',
+  locale_yaml_file: 'locale',
+  settings_yaml_file: 'settings'
+};
+
+function errorFromWorker(payload: WorkerErrorPayload | string) {
+  if (typeof payload === 'string') return new Error(payload);
+  const error = new Error(payload.message);
+  error.name = payload.name;
+  if (payload.stack) {
+    error.stack = payload.stack;
+  }
+  return error;
+}
+
+export function useViewerRenderer(sections?: CvFileSections) {
+  const [zoomFactor, setZoomFactor] = useState(1);
+  const [svgPages, setSvgPages] = useState<string[]>([]);
+  const [renderErrors, setRenderErrors] = useState<RenderError[]>([]);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initError, setInitError] = useState<string | undefined>();
+
+  const pyodideWorkerRef = useRef<Worker | null>(null);
+  const typstWorkerRef = useRef<Worker | null>(null);
+  const pyodidePending = useRef(new Map<number, PendingRequest<RenderResult>>());
+  const typstPending = useRef(new Map<number, PendingRequest>());
+  const nextPyodideId = useRef(0);
+  const nextTypstId = useRef(0);
+  const pageUrls = useRef<string[]>([]);
+  const currentRenderRequest = useRef(0);
+  const loadedFonts = useRef<string[]>([]);
+  const loadedFontFamilies = useRef(new Set<string>());
+
+  const effectiveZoom = zoomFactor;
+  const zoomPercent = Math.round(effectiveZoom * 100);
+
+  const postMessageToPyodide = useCallback((type: string, payload?: unknown) => {
+    if (!pyodideWorkerRef.current) {
+      return Promise.reject(new Error('Pyodide worker not initialized'));
+    }
+
+    return new Promise<RenderResult>((resolve, reject) => {
+      const id = ++nextPyodideId.current;
+      pyodidePending.current.set(id, { resolve, reject });
+      pyodideWorkerRef.current?.postMessage({ id, type, payload });
+    });
+  }, []);
+
+  const postMessageToTypst = useCallback((type: string, payload?: unknown) => {
+    if (!typstWorkerRef.current) {
+      return Promise.reject(new Error('Typst worker not initialized'));
+    }
+
+    return new Promise<unknown>((resolve, reject) => {
+      const id = ++nextTypstId.current;
+      typstPending.current.set(id, { resolve, reject });
+      typstWorkerRef.current?.postMessage({ id, type, payload });
+    });
+  }, []);
+
+  const checkAndLoadFonts = useCallback((typstContent: string) => {
+    let fontsAdded = false;
+    const requestedFonts = new Set(
+      Array.from(typstContent.matchAll(/font-family-\w+:\s*"([^"]+)"/g), (match) => match[1])
+    );
+
+    for (const fontFamily of Object.keys(FONT_VARIANTS)) {
+      if (!loadedFontFamilies.current.has(fontFamily) && requestedFonts.has(fontFamily)) {
+        for (const url of getFontUrls(fontFamily, import.meta.env.BASE_URL)) {
+          if (!loadedFonts.current.includes(url)) {
+            loadedFonts.current.push(url);
+            fontsAdded = true;
+          }
+        }
+        loadedFontFamilies.current.add(fontFamily);
+      }
+    }
+
+    if (fontsAdded) {
+      localStorage.setItem('loadedFonts', JSON.stringify(loadedFonts.current));
+      localStorage.setItem(
+        'loadedFontFamilies',
+        JSON.stringify(Array.from(loadedFontFamilies.current))
+      );
+    }
+
+    return fontsAdded;
+  }, []);
+
+  const renderToTypst = useCallback(
+    async (renderSections: CvFileSections) => {
+      const result = await postMessageToPyodide('RENDER', renderSections);
+      if (!result.content) return null;
+      const fontsChanged = checkAndLoadFonts(result.content);
+      if (fontsChanged) {
+        await postMessageToTypst('REINIT', { fontUrls: loadedFonts.current });
+      }
+      return result.content;
+    },
+    [checkAndLoadFonts, postMessageToPyodide, postMessageToTypst]
+  );
+
+  const renderToPdf = useCallback(
+    async (renderSections: CvFileSections) => {
+      const typst = await renderToTypst(renderSections);
+      if (!typst) return null;
+      return (await postMessageToTypst('PDF', { content: typst })) as Uint8Array;
+    },
+    [postMessageToTypst, renderToTypst]
+  );
+
+  useEffect(() => {
+    try {
+      const storedFonts = localStorage.getItem('loadedFonts');
+      loadedFonts.current = storedFonts
+        ? (JSON.parse(storedFonts) as string[])
+        : getDefaultFontUrls(import.meta.env.BASE_URL);
+      const storedFamilies = localStorage.getItem('loadedFontFamilies');
+      loadedFontFamilies.current = storedFamilies
+        ? new Set(JSON.parse(storedFamilies) as string[])
+        : new Set(DEFAULT_FONT_FAMILIES);
+    } catch {
+      loadedFonts.current = getDefaultFontUrls(import.meta.env.BASE_URL);
+      loadedFontFamilies.current = new Set(DEFAULT_FONT_FAMILIES);
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function initialize() {
+      try {
+        const TypstWorker = (await import('./typst.worker?worker')).default;
+        const PyodideWorker = (await import('./pyodide.worker?worker')).default;
+
+        const typstWorker = new TypstWorker();
+        const pyodideWorker = new PyodideWorker();
+        typstWorkerRef.current = typstWorker;
+        pyodideWorkerRef.current = pyodideWorker;
+
+        typstWorker.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
+          const { id, type, payload } = event.data;
+          const pending = typstPending.current.get(id);
+          if (!pending) return;
+          if (type === 'ERROR') {
+            pending.reject(errorFromWorker(payload as WorkerErrorPayload));
+          } else {
+            pending.resolve(payload);
+          }
+          typstPending.current.delete(id);
+        };
+
+        pyodideWorker.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
+          const { id, type, payload } = event.data;
+          const pending = pyodidePending.current.get(id);
+          if (!pending) return;
+          if (type === 'ERROR') {
+            pending.reject(errorFromWorker(payload as WorkerErrorPayload));
+          } else {
+            pending.resolve(payload as RenderResult);
+          }
+          pyodidePending.current.delete(id);
+        };
+
+        await Promise.all([
+          postMessageToTypst('INIT', { fontUrls: loadedFonts.current }),
+          postMessageToPyodide('INIT')
+        ]);
+
+        if (!cancelled) {
+          setIsInitializing(false);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setInitError(error instanceof Error ? error.message : String(error));
+          setIsInitializing(false);
+        }
+      }
+    }
+
+    void initialize();
+
+    return () => {
+      cancelled = true;
+      for (const url of pageUrls.current) {
+        URL.revokeObjectURL(url);
+      }
+      pageUrls.current = [];
+      typstWorkerRef.current?.terminate();
+      pyodideWorkerRef.current?.terminate();
+      typstWorkerRef.current = null;
+      pyodideWorkerRef.current = null;
+    };
+  }, [postMessageToPyodide, postMessageToTypst]);
+
+  useEffect(() => {
+    if (!sections || isInitializing || initError || !sections.cv.trim()) {
+      return;
+    }
+
+    const requestId = ++currentRenderRequest.current;
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await postMessageToPyodide('RENDER', sections);
+        if (requestId !== currentRenderRequest.current) {
+          return;
+        }
+
+        if (result.errors) {
+          setRenderErrors(
+            result.errors.map((error) => ({
+              message: error.message || '',
+              schema_location: error.schema_location || [],
+              input: error.input || '',
+              yaml_source: YAML_SOURCE_TO_SECTION[error.yaml_source] ?? 'cv',
+              yaml_location: error.yaml_location || null
+            }))
+          );
+          return;
+        }
+
+        if (!result.content) {
+          setSvgPages([]);
+          setRenderErrors([]);
+          return;
+        }
+
+        const fontsChanged = checkAndLoadFonts(result.content);
+        if (fontsChanged) {
+          await postMessageToTypst('REINIT', { fontUrls: loadedFonts.current });
+        }
+
+        const svg = (await postMessageToTypst('SVG', {
+          content: result.content
+        })) as string[];
+
+        if (requestId !== currentRenderRequest.current) {
+          return;
+        }
+
+        for (const url of pageUrls.current) {
+          URL.revokeObjectURL(url);
+        }
+        const urls = svg.map((page) => URL.createObjectURL(new Blob([page], { type: 'image/svg+xml' })));
+        pageUrls.current = urls;
+        setSvgPages(urls);
+        setRenderErrors([]);
+      } catch (error) {
+        if (requestId !== currentRenderRequest.current) {
+          return;
+        }
+
+        setRenderErrors([
+          {
+            message: error instanceof Error ? error.message : String(error),
+            schema_location: [],
+            input: '',
+            yaml_source: 'cv',
+            yaml_location: null
+          }
+        ]);
+      }
+    }, 50);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [sections, isInitializing, initError, checkAndLoadFonts, postMessageToPyodide, postMessageToTypst]);
+
+  const zoomIn = useCallback(() => {
+    setZoomFactor((current) => Math.min(MAX_ZOOM, current + ZOOM_STEP));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomFactor((current) => Math.max(MIN_ZOOM, current - ZOOM_STEP));
+  }, []);
+
+  const zoomReset = useCallback(() => {
+    setZoomFactor(1);
+  }, []);
+
+  return useMemo(
+    () => ({
+      svgPages,
+      renderErrors,
+      isInitializing,
+      initError,
+      zoomFactor,
+      effectiveZoom,
+      zoomPercent,
+      zoomIn,
+      zoomOut,
+      zoomReset,
+      renderToPdf,
+      renderToTypst
+    }),
+    [
+      svgPages,
+      renderErrors,
+      isInitializing,
+      initError,
+      zoomFactor,
+      effectiveZoom,
+      zoomPercent,
+      zoomIn,
+      zoomOut,
+      zoomReset,
+      renderToPdf,
+      renderToTypst
+    ]
+  );
+}

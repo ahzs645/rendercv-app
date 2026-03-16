@@ -1,0 +1,15 @@
+.workspace-resize-handle {
+  width: 6px;
+  background: linear-gradient(180deg, transparent, color-mix(in oklch, var(--border) 80%, transparent), transparent);
+}
+
+.workspace-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.prose pre {
+  white-space: pre-wrap;
+}

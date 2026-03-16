@@ -1,46 +1,17 @@
 {
-  "name": "rendercv-app",
-  "version": "0.0.1",
+  "name": "rendercv",
+  "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "packageManager": "pnpm@10.28.0",
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@ai-sdk/svelte": "^4.0.97",
-    "@fontsource-variable/dm-sans": "^5.2.8",
-    "@lucide/svelte": "^0.562.0",
-    "@polar-sh/better-auth": "^1.8.1",
-    "@sentry/sveltekit": "^10.42.0",
-    "@shikijs/themes": "^3.23.0",
-    "ai": "^6.0.105",
-    "better-auth": "^1.4.19",
-    "bits-ui": "^2.15.6",
-    "clsx": "^2.1.1",
-    "jszip": "^3.10.1",
-    "mode-watcher": "^1.1.0",
-    "monaco-editor": "^0.52.2",
-    "monaco-yaml": "^5.4.1",
-    "paneforge": "^1.0.2",
-    "posthog-js": "^1.356.1",
-    "pyodide": "^0.29.3",
-    "svelte-sonner": "^1.0.7",
-    "svelte-streamdown": "^3.0.1",
-    "tailwind-merge": "^3.4.1",
-    "tailwind-variants": "^3.2.2",
-    "valibot": "^1.0.0",
-    "yaml": "^2.8.2"
-  },
-  "devDependencies": {
-    "@sveltejs/adapter-static": "^3.0.0",
-    "@sveltejs/kit": "^2.52.0",
-    "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "@tailwindcss/vite": "^4.1.0",
-    "svelte": "^5.51.3",
-    "tailwindcss": "^4.1.18",
-    "typescript": "^5.7.0",
-    "vite": "^6.0.0"
+    "dev": "pnpm --filter @rendercv/web dev",
+    "dev:web": "pnpm --filter @rendercv/web dev",
+    "dev:api": "pnpm --filter @rendercv/api dev",
+    "build": "pnpm -r build",
+    "build:web": "pnpm --filter @rendercv/web build",
+    "build:api": "pnpm --filter @rendercv/api build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "preview": "pnpm --filter @rendercv/web preview"
   }
 }
