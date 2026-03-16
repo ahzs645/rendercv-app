@@ -1,84 +1,72 @@
-import { fileStore, localeLabel, preferencesStore, resolveFileSections, themeLabel } from '@rendercv/core';
+import { useRef, useState } from 'react';
+import { fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { useStore } from '../lib/use-store';
+import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import { MonacoEditor } from './monaco-editor';
-import { PreviewPane } from './preview-pane';
+import type { MonacoEditorHandle } from './monaco-editor';
+import { PreviewPaneView } from './preview-pane';
 import { SectionTabs } from './section-tabs';
 import { Sidebar } from './sidebar';
 import { FormEditor } from '../features/form/form-editor';
-import { WorkspaceAiEditor } from './workspace-ai-editor';
+import { WorkspaceToolbar } from './workspace-toolbar';
 
 export function Workspace() {
   const fileSnapshot = useStore(fileStore);
   const preferences = useStore(preferencesStore);
+  const sidebarRef = useRef<ImperativePanelHandle>(null);
+  const monacoRef = useRef<MonacoEditorHandle>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileSnapshot.selectedFileId);
   const sections = selectedFile ? resolveFileSections(selectedFile) : undefined;
   const activeSection = preferences.activeSection;
   const currentValue = sections?.[activeSection] ?? '';
+  const viewer = useViewerRenderer(sections);
 
   return (
     <div className="h-screen overflow-hidden bg-background">
       <PanelGroup direction="horizontal">
-        <Panel defaultSize={19} minSize={16}>
+        <Panel
+          ref={sidebarRef}
+          collapsedSize={0}
+          collapsible
+          defaultSize={19}
+          minSize={16}
+          onCollapse={() => setSidebarCollapsed(true)}
+          onExpand={() => setSidebarCollapsed(false)}
+        >
           <Sidebar />
         </Panel>
-        <PanelResizeHandle className="workspace-resize-handle" />
+        <PanelResizeHandle className={`workspace-resize-handle ${sidebarCollapsed ? 'hidden' : ''}`} />
         <Panel defaultSize={41} minSize={28}>
           <div className="flex h-full flex-col">
-            <header className="workspace-toolbar border-b border-border px-5 py-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspace</p>
-                <h1 className="mt-1 text-xl font-semibold">{selectedFile?.name ?? 'RenderCV'}</h1>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                <button
-                  className={`rounded-xl px-3 py-2 ${preferences.yamlEditor ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-foreground'}`}
-                  onClick={() => preferencesStore.patch({ yamlEditor: true })}
-                >
-                  YAML
-                </button>
-                <button
-                  className={`rounded-xl px-3 py-2 ${!preferences.yamlEditor ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-foreground'}`}
-                  onClick={() => preferencesStore.patch({ yamlEditor: false })}
-                >
-                  Form
-                </button>
-                <label className="flex items-center gap-2">
-                  Theme
-                  <select
-                    className="rounded-lg border border-border bg-card px-2 py-1 text-foreground"
-                    value={selectedFile?.selectedTheme ?? 'classic'}
-                    onChange={(event) => selectedFile && fileStore.setTheme(selectedFile.id, event.target.value)}
-                  >
-                    {Object.keys(selectedFile?.designs ?? { classic: '' }).map((theme) => (
-                      <option key={theme} value={theme}>
-                        {themeLabel(theme)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex items-center gap-2">
-                  Locale
-                  <select
-                    className="rounded-lg border border-border bg-card px-2 py-1 text-foreground"
-                    value={selectedFile?.selectedLocale ?? 'english'}
-                    onChange={(event) => selectedFile && fileStore.setLocale(selectedFile.id, event.target.value)}
-                  >
-                    {Object.keys(selectedFile?.locales ?? { english: '' }).map((locale) => (
-                      <option key={locale} value={locale}>
-                        {localeLabel(locale)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} />
-              </div>
+            <header className="border-b border-border">
+              <WorkspaceToolbar
+                editorRef={monacoRef}
+                onOpenPopup={() => {
+                  window.open(`${import.meta.env.BASE_URL}preview`, '_blank', 'noopener,noreferrer');
+                }}
+                onToggleSidebar={() => {
+                  if (sidebarRef.current?.isCollapsed()) {
+                    sidebarRef.current.expand(19);
+                    return;
+                  }
+
+                  sidebarRef.current?.collapse();
+                }}
+                sections={sections}
+                selectedFile={selectedFile}
+                sidebarCollapsed={sidebarCollapsed}
+                viewer={viewer}
+              />
             </header>
             <div className="flex min-h-0 flex-1 flex-col gap-4 p-5">
               <SectionTabs active={activeSection} onSelect={(section) => preferencesStore.patch({ activeSection: section })} />
               <div className="min-h-0 flex-1">
                 {preferences.yamlEditor ? (
                   <MonacoEditor
+                    ref={monacoRef}
                     value={currentValue}
                     onChange={(value) => fileStore.updateSection(activeSection, value)}
                   />
@@ -95,12 +83,11 @@ export function Workspace() {
         </Panel>
         <PanelResizeHandle className="workspace-resize-handle" />
         <Panel defaultSize={40} minSize={25}>
-          <PreviewPane
+          <PreviewPaneView
             fileName={selectedFile?.name ?? 'RenderCV'}
             sections={sections}
-            onOpenPopup={() => {
-              window.open(`${import.meta.env.BASE_URL}preview`, '_blank', 'noopener,noreferrer');
-            }}
+            showHeader={false}
+            viewer={viewer}
           />
         </Panel>
       </PanelGroup>

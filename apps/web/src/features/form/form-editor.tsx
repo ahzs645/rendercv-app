@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ComponentType } from 'react';
 import type { SectionKey } from '@rendercv/contracts';
 import YAML from 'yaml';
-import { localeLabel, themeLabel } from '@rendercv/core';
+import { localeLabel, preferencesStore, themeLabel } from '@rendercv/core';
 import {
   AlignCenter,
   AlignJustify,
@@ -30,6 +30,7 @@ import {
   findTemplateByName
 } from './schema/entry-templates';
 import type { EntryTemplate, FieldDef, SectionSchema, SelectOption } from './schema/types';
+import { useStore } from '../../lib/use-store';
 
 const FONT_OPTIONS = [
   'DejaVu Sans Mono',
@@ -60,6 +61,7 @@ export function FormEditor({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const preferences = useStore(preferencesStore);
   const schema = getSchema(section);
 
   let documentValue: Record<string, unknown>;
@@ -118,7 +120,11 @@ export function FormEditor({
         ))
       ) : null}
       {section === 'cv' ? (
-        <CvSectionEditor rootValue={rootValue} onChange={updateRoot} />
+        <CvSectionEditor
+          entriesExpanded={preferences.entriesExpanded}
+          rootValue={rootValue}
+          onChange={updateRoot}
+        />
       ) : null}
     </div>
   );
@@ -140,9 +146,11 @@ function getSchema(section: SectionKey): SectionSchema | null {
 }
 
 function CvSectionEditor({
+  entriesExpanded,
   rootValue,
   onChange
 }: {
+  entriesExpanded: boolean;
   rootValue: Record<string, unknown>;
   onChange: (nextRoot: Record<string, unknown>) => void;
 }) {
@@ -163,16 +171,18 @@ function CvSectionEditor({
       <EntryArrayEditor
         title="Social Networks"
         entries={socialNetworks}
+        entriesExpanded={entriesExpanded}
         template={socialNetworkTemplate}
         onChange={(nextEntries) => updateCvField('social_networks', nextEntries)}
       />
       <EntryArrayEditor
         title="Custom Connections"
         entries={customConnections}
+        entriesExpanded={entriesExpanded}
         template={customConnectionTemplate}
         onChange={(nextEntries) => updateCvField('custom_connections', nextEntries)}
       />
-      <SectionMapEditor sections={sections} onChange={updateSections} />
+      <SectionMapEditor entriesExpanded={entriesExpanded} sections={sections} onChange={updateSections} />
     </>
   );
 }
@@ -180,6 +190,7 @@ function CvSectionEditor({
 function EntryArrayEditor({
   title,
   entries,
+  entriesExpanded = true,
   template,
   onChange,
   showHeader = true,
@@ -187,6 +198,7 @@ function EntryArrayEditor({
 }: {
   title: string;
   entries: unknown[];
+  entriesExpanded?: boolean;
   template: EntryTemplate | 'text';
   onChange: (entries: unknown[]) => void;
   showHeader?: boolean;
@@ -253,6 +265,7 @@ function EntryArrayEditor({
                     entry={entry}
                     index={index}
                     entriesLength={entries.length}
+                    entriesExpanded={entriesExpanded}
                     onChange={updateEntry}
                     onRemove={removeEntry}
                     template={template}
@@ -269,12 +282,13 @@ function EntryArrayEditor({
           {entries.map((entry, index) => (
             <EntryArrayItem
               key={`${template === 'text' ? 'text' : template.name}-${index}`}
-              entry={entry}
-              index={index}
-              entriesLength={entries.length}
-              onChange={updateEntry}
-              onRemove={removeEntry}
-              template={template}
+            entry={entry}
+            index={index}
+            entriesLength={entries.length}
+            entriesExpanded={entriesExpanded}
+            onChange={updateEntry}
+            onRemove={removeEntry}
+            template={template}
             />
           ))}
           <button
@@ -292,9 +306,11 @@ function EntryArrayEditor({
 }
 
 function SectionMapEditor({
+  entriesExpanded,
   sections,
   onChange
 }: {
+  entriesExpanded: boolean;
   sections: Record<string, unknown>;
   onChange: (sections: Record<string, unknown>) => void;
 }) {
@@ -344,6 +360,7 @@ function SectionMapEditor({
           total={sectionEntries.length}
           sectionKey={sectionKey}
           entries={asArray(sectionValue)}
+          entriesExpanded={entriesExpanded}
           onDelete={() => deleteSection(sectionKey)}
           onMove={(direction) => moveSection(index, direction)}
           onRename={renameSection}
@@ -366,6 +383,7 @@ function SectionMapEditor({
 function SectionEditor({
   sectionKey,
   entries,
+  entriesExpanded,
   index,
   total,
   onRename,
@@ -375,6 +393,7 @@ function SectionEditor({
 }: {
   sectionKey: string;
   entries: unknown[];
+  entriesExpanded: boolean;
   index: number;
   total: number;
   onRename: (oldKey: string, nextTitle: string) => void;
@@ -450,6 +469,7 @@ function SectionEditor({
         <EntryArrayEditor
           title={dictionaryKeyToTitle(sectionKey)}
           entries={entries}
+          entriesExpanded={entriesExpanded}
           template={detectedTemplate}
           onChange={onChangeEntries}
           showHeader={false}
@@ -463,6 +483,7 @@ function EntryArrayItem({
   entry,
   index,
   entriesLength,
+  entriesExpanded,
   template,
   onChange,
   onRemove
@@ -470,6 +491,7 @@ function EntryArrayItem({
   entry: unknown;
   index: number;
   entriesLength: number;
+  entriesExpanded: boolean;
   template: EntryTemplate | 'text';
   onChange: (index: number, value: unknown) => void;
   onRemove: (index: number) => void;
@@ -498,6 +520,7 @@ function EntryArrayItem({
           <TemplateEntryFields
             entry={asRecord(entry)}
             index={index}
+            entriesExpanded={entriesExpanded}
             total={entriesLength}
             template={template}
             onChange={(nextValue) => onChange(index, nextValue)}
@@ -512,22 +535,24 @@ function EntryArrayItem({
 function TemplateEntryFields({
   entry,
   index,
+  entriesExpanded,
   total,
   template,
   onChange
 }: {
   entry: Record<string, unknown>;
   index: number;
+  entriesExpanded: boolean;
   total: number;
   template: EntryTemplate;
   onChange: (value: Record<string, unknown>) => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(entriesExpanded);
   const dynamicLabel = dynamicEntryMarker(template.name, index, total);
 
   useEffect(() => {
-    setExpanded(true);
-  }, [template.name]);
+    setExpanded(entriesExpanded);
+  }, [entriesExpanded, template.name]);
 
   function updateField(path: string[], nextValue: unknown) {
     onChange(updateEntryField(entry, path, nextValue));

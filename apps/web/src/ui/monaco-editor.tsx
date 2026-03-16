@@ -1,15 +1,59 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { monaco } from '../lib/monaco';
 
-export function MonacoEditor({
-  value,
-  onChange
-}: {
+export interface MonacoEditorHandle {
+  focus: () => void;
+  insertMarkdownLink: () => void;
+  surroundSelection: (prefix: string, suffix: string, placeholder?: string) => void;
+}
+
+type MonacoEditorProps = {
   value: string;
   onChange: (value: string) => void;
-}) {
+};
+
+export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(function MonacoEditor({
+  value,
+  onChange
+}, ref) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+
+  function editSelections(transform: (selected: string) => string) {
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model) {
+      return;
+    }
+
+    const selections = editor.getSelections();
+    if (!selections || selections.length === 0) {
+      return;
+    }
+
+    editor.pushUndoStop();
+    editor.executeEdits(
+      'workspace-toolbar',
+      selections.map((selection) => ({
+        range: selection,
+        text: transform(model.getValueInRange(selection))
+      }))
+    );
+    editor.pushUndoStop();
+    editor.focus();
+  }
+
+  useImperativeHandle(ref, () => ({
+    focus() {
+      editorRef.current?.focus();
+    },
+    insertMarkdownLink() {
+      editSelections((selected) => `[${selected || 'label'}](https://)`);
+    },
+    surroundSelection(prefix, suffix, placeholder = 'text') {
+      editSelections((selected) => `${prefix}${selected || placeholder}${suffix}`);
+    }
+  }));
 
   useEffect(() => {
     if (!hostRef.current || editorRef.current) {
@@ -51,4 +95,4 @@ export function MonacoEditor({
   }, [value]);
 
   return <div ref={hostRef} className="h-full min-h-[420px] w-full rounded-2xl border border-border" />;
-}
+});

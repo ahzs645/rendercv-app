@@ -18,6 +18,8 @@ type FileStateSnapshot = {
   files: CvFile[];
   selectedFileId?: string;
   loading: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
 };
 
 type CreateFileOptions = Partial<
@@ -28,7 +30,10 @@ type UndoEntry = {
   fileId: string;
   previous: Record<string, unknown>;
   next: Record<string, unknown>;
+  kind: 'content' | 'meta';
+  groupKey?: string;
   selectedFileId?: string;
+  timestamp: number;
 };
 
 type FilePersistence = {
@@ -114,7 +119,9 @@ export class FileStore {
   readonly #store = createStore<FileStateSnapshot>({
     files: createDefaultFiles(),
     selectedFileId: undefined,
-    loading: false
+    loading: false,
+    canUndo: false,
+    canRedo: false
   });
   #undoStack: UndoEntry[] = [];
   #redoStack: UndoEntry[] = [];
@@ -180,14 +187,26 @@ export class FileStore {
       })
     );
     const selectedFileId = nextFiles[0]?.id;
-    this.#store.setSnapshot({ files: nextFiles, selectedFileId, loading: false });
+    this.#store.setSnapshot({
+      files: nextFiles,
+      selectedFileId,
+      loading: false,
+      canUndo: false,
+      canRedo: false
+    });
     preferencesStore.patch({ selectedFileId });
   }
 
   loadDefaults() {
     const files = createDefaultFiles();
     const selectedFileId = files[0]?.id;
-    this.#store.setSnapshot({ files, selectedFileId, loading: false });
+    this.#store.setSnapshot({
+      files,
+      selectedFileId,
+      loading: false,
+      canUndo: false,
+      canRedo: false
+    });
     preferencesStore.patch({ selectedFileId });
   }
 
@@ -237,33 +256,54 @@ export class FileStore {
       return;
     }
 
-    this.#store.update((current) => ({
-      ...current,
-      files: current.files.map((file) => {
-        if (file.id !== selectedFile.id) {
-          return file;
-        }
+    const previous: Record<string, unknown> = { lastEdited: selectedFile.lastEdited };
+    const next: Record<string, unknown> = { lastEdited: Date.now() };
 
-        const nextFile = { ...file, lastEdited: Date.now() };
-        switch (section) {
-          case 'cv':
-            nextFile.cv = content;
-            break;
-          case 'design':
-            nextFile.designs = { ...nextFile.designs, [nextFile.selectedTheme]: content };
-            break;
-          case 'locale':
-            nextFile.locales = { ...nextFile.locales, [nextFile.selectedLocale]: content };
-            break;
-          case 'settings':
-            nextFile.settings = content;
-            break;
+    switch (section) {
+      case 'cv':
+        if ((selectedFile.cv ?? '') === content) {
+          return;
         }
+        previous.cv = selectedFile.cv ?? '';
+        next.cv = content;
+        break;
+      case 'design': {
+        const currentDesign = selectedFile.designs[selectedFile.selectedTheme] ?? '';
+        if (currentDesign === content) {
+          return;
+        }
+        previous.designs = selectedFile.designs;
+        next.designs = { ...selectedFile.designs, [selectedFile.selectedTheme]: content };
+        break;
+      }
+      case 'locale': {
+        const currentLocale = selectedFile.locales[selectedFile.selectedLocale] ?? '';
+        if (currentLocale === content) {
+          return;
+        }
+        previous.locales = selectedFile.locales;
+        next.locales = { ...selectedFile.locales, [selectedFile.selectedLocale]: content };
+        break;
+      }
+      case 'settings':
+        if ((selectedFile.settings ?? '') === content) {
+          return;
+        }
+        previous.settings = selectedFile.settings ?? '';
+        next.settings = content;
+        break;
+    }
 
-        return withReadOnly(nextFile as Omit<CvFile, 'isReadOnly'>);
-      })
-    }));
-    this.persistence?.onContentChange?.(selectedFile.id);
+    this.#pushUndoEntry({
+      fileId: selectedFile.id,
+      previous,
+      next,
+      kind: 'content',
+      groupKey: `content:${selectedFile.id}:${section}`,
+      selectedFileId: this.selectedFileId,
+      timestamp: Date.now()
+    });
+    this.#applyPatch(selectedFile.id, next, 'content', this.selectedFileId);
   }
 
   renameFile(id: string, name: string) {
@@ -361,7 +401,8 @@ export class FileStore {
     }
 
     this.#redoStack.push(entry);
-    this.#applyMeta(entry.fileId, entry.previous);
+    this.#applyPatch(entry.fileId, entry.previous, entry.kind, entry.selectedFileId);
+    this.#syncHistoryState();
     return true;
   }
 
@@ -372,7 +413,8 @@ export class FileStore {
     }
 
     this.#undoStack.push(entry);
-    this.#applyMeta(entry.fileId, entry.next);
+    this.#applyPatch(entry.fileId, entry.next, entry.kind, entry.selectedFileId);
+    this.#syncHistoryState();
     return true;
   }
 
@@ -385,22 +427,59 @@ export class FileStore {
     const previous = Object.fromEntries(
       Object.keys(patch).map((key) => [key, (file as unknown as Record<string, unknown>)[key]])
     );
-    this.#undoStack.push({
+    this.#pushUndoEntry({
       fileId: id,
       previous,
       next: patch,
+      kind: 'meta',
       selectedFileId: this.selectedFileId
+      ,
+      timestamp: Date.now()
     });
-    if (this.#undoStack.length > MAX_UNDO_STACK) {
-      this.#undoStack.splice(0, this.#undoStack.length - MAX_UNDO_STACK);
-    }
-    this.#redoStack = [];
-    this.#applyMeta(id, patch);
+    this.#applyPatch(id, patch, 'meta', this.selectedFileId);
   }
 
-  #applyMeta(id: string, patch: Record<string, unknown>) {
+  #pushUndoEntry(entry: UndoEntry) {
+    const previousEntry = this.#undoStack.at(-1);
+    const shouldCoalesce =
+      entry.kind === 'content' &&
+      previousEntry?.kind === 'content' &&
+      previousEntry.fileId === entry.fileId &&
+      previousEntry.groupKey === entry.groupKey &&
+      entry.timestamp - previousEntry.timestamp < 850;
+
+    if (shouldCoalesce && previousEntry) {
+      previousEntry.next = entry.next;
+      previousEntry.timestamp = entry.timestamp;
+      previousEntry.selectedFileId = entry.selectedFileId;
+    } else {
+      this.#undoStack.push(entry);
+      if (this.#undoStack.length > MAX_UNDO_STACK) {
+        this.#undoStack.splice(0, this.#undoStack.length - MAX_UNDO_STACK);
+      }
+    }
+
+    this.#redoStack = [];
+    this.#syncHistoryState();
+  }
+
+  #syncHistoryState() {
     this.#store.update((current) => ({
       ...current,
+      canUndo: this.#undoStack.length > 0,
+      canRedo: this.#redoStack.length > 0
+    }));
+  }
+
+  #applyPatch(
+    id: string,
+    patch: Record<string, unknown>,
+    kind: 'content' | 'meta',
+    selectedFileId?: string
+  ) {
+    this.#store.update((current) => ({
+      ...current,
+      selectedFileId: selectedFileId ?? current.selectedFileId,
       files: current.files.map((file) => {
         if (file.id !== id) {
           return file;
@@ -409,7 +488,15 @@ export class FileStore {
         return withReadOnly({ ...(file as Omit<CvFile, 'isReadOnly'>), ...patch });
       })
     }));
-    this.persistence?.onUpdateMeta?.(id, patch);
+    if (selectedFileId) {
+      preferencesStore.patch({ selectedFileId });
+    }
+
+    if (kind === 'content') {
+      this.persistence?.onContentChange?.(id);
+    } else {
+      this.persistence?.onUpdateMeta?.(id, patch);
+    }
   }
 }
 

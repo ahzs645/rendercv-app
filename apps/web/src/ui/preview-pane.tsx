@@ -1,67 +1,53 @@
 import type { ReactNode } from 'react';
 import { AppWindow, Download, FileCode2, Minus, Plus } from 'lucide-react';
 import type { CvFileSections } from '@rendercv/contracts';
-import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import { downloadBlob } from '../features/viewer/download';
+import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+
+export type ViewerRenderer = ReturnType<typeof useViewerRenderer>;
 
 export function PreviewPane({
   fileName,
   sections,
-  onOpenPopup
+  onOpenPopup,
+  showHeader = true
 }: {
   fileName: string;
   sections?: CvFileSections;
   onOpenPopup?: () => void;
+  showHeader?: boolean;
 }) {
   const viewer = useViewerRenderer(sections);
 
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
-      <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Preview</p>
-          <h2 className="mt-2 text-2xl font-semibold">{fileName}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Rendered with the ported Pyodide and Typst workers.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <PreviewButton label="Zoom out" onClick={viewer.zoomOut}>
-            <Minus className="size-4" />
-          </PreviewButton>
-          <button className="rounded-xl border border-border px-3 py-2 text-sm">{viewer.zoomPercent}%</button>
-          <PreviewButton label="Zoom in" onClick={viewer.zoomIn}>
-            <Plus className="size-4" />
-          </PreviewButton>
-          <PreviewButton
-            label="Download PDF"
-            onClick={async () => {
-              if (!sections) return;
-              const bytes = await viewer.renderToPdf(sections);
-              if (!bytes) return;
-              await downloadBlob(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${fileName}.pdf`);
-            }}
-          >
-            <Download className="size-4" />
-          </PreviewButton>
-          <PreviewButton
-            label="Download Typst"
-            onClick={async () => {
-              if (!sections) return;
-              const typst = await viewer.renderToTypst(sections);
-              if (!typst) return;
-              await downloadBlob(new Blob([typst], { type: 'application/octet-stream' }), `${fileName}.typ`);
-            }}
-          >
-            <FileCode2 className="size-4" />
-          </PreviewButton>
-          {onOpenPopup ? (
-            <PreviewButton label="Popup preview" onClick={onOpenPopup}>
-              <AppWindow className="size-4" />
-            </PreviewButton>
-          ) : null}
-        </div>
-      </header>
+    <PreviewPaneView
+      fileName={fileName}
+      sections={sections}
+      viewer={viewer}
+      onOpenPopup={onOpenPopup}
+      showHeader={showHeader}
+    />
+  );
+}
+
+export function PreviewPaneView({
+  fileName,
+  sections,
+  viewer,
+  onOpenPopup,
+  showHeader = true
+}: {
+  fileName: string;
+  sections?: CvFileSections;
+  viewer: ViewerRenderer;
+  onOpenPopup?: () => void;
+  showHeader?: boolean;
+}) {
+  return (
+    <div className={`flex h-full flex-col p-6 ${showHeader ? 'gap-4' : ''}`}>
+      {showHeader ? (
+        <PreviewPaneHeader fileName={fileName} onOpenPopup={onOpenPopup} sections={sections} viewer={viewer} />
+      ) : null}
       <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-border bg-sidebar p-6">
         {viewer.initError ? (
           <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{viewer.initError}</div>
@@ -96,6 +82,72 @@ export function PreviewPane({
   );
 }
 
+function PreviewPaneHeader({
+  fileName,
+  sections,
+  viewer,
+  onOpenPopup
+}: {
+  fileName: string;
+  sections?: CvFileSections;
+  viewer: ViewerRenderer;
+  onOpenPopup?: () => void;
+}) {
+  return (
+    <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5">
+      <div>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Preview</p>
+        <h2 className="mt-2 text-2xl font-semibold">{fileName}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Rendered with the ported Pyodide and Typst workers.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <PreviewButton label="Zoom out" onClick={viewer.zoomOut}>
+          <Minus className="size-4" />
+        </PreviewButton>
+        <button
+          className="rounded-xl border border-border px-3 py-2 text-sm"
+          onClick={viewer.zoomReset}
+          type="button"
+        >
+          {viewer.zoomPercent}%
+        </button>
+        <PreviewButton label="Zoom in" onClick={viewer.zoomIn}>
+          <Plus className="size-4" />
+        </PreviewButton>
+        <PreviewButton
+          label="Download PDF"
+          onClick={async () => {
+            if (!sections) return;
+            const bytes = await viewer.renderToPdf(sections);
+            if (!bytes) return;
+            await downloadBlob(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${fileName}.pdf`);
+          }}
+        >
+          <Download className="size-4" />
+        </PreviewButton>
+        <PreviewButton
+          label="Download Typst"
+          onClick={async () => {
+            if (!sections) return;
+            const typst = await viewer.renderToTypst(sections);
+            if (!typst) return;
+            await downloadBlob(new Blob([typst], { type: 'application/octet-stream' }), `${fileName}.typ`);
+          }}
+        >
+          <FileCode2 className="size-4" />
+        </PreviewButton>
+        {onOpenPopup ? (
+          <PreviewButton label="Popup preview" onClick={onOpenPopup}>
+            <AppWindow className="size-4" />
+          </PreviewButton>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
 function PreviewButton({
   children,
   label,
@@ -111,6 +163,7 @@ function PreviewButton({
       onClick={() => void onClick()}
       aria-label={label}
       title={label}
+      type="button"
     >
       {children}
     </button>
