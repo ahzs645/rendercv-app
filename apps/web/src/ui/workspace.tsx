@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { classicTheme, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
+import YAML from 'yaml';
 import { useStore } from '../lib/use-store';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import { normalizeCompatibilityCvYaml } from '../features/viewer/normalize-compat-cv';
@@ -48,11 +49,82 @@ function looksLikeLegacyDesignSchema(design: string) {
   return LEGACY_DESIGN_KEY_PATTERN.test(design);
 }
 
+function normalizeLegacyDesignYaml(designContent: string | undefined) {
+  if (!designContent?.trim() || !looksLikeLegacyDesignSchema(designContent)) {
+    return designContent;
+  }
+
+  try {
+    const parsed = YAML.parse(designContent);
+    if (!parsed || typeof parsed !== 'object' || !('design' in parsed)) {
+      return designContent;
+    }
+
+    const root = parsed as Record<string, unknown> & { design?: Record<string, unknown> };
+    if (!root.design || typeof root.design !== 'object') {
+      return designContent;
+    }
+
+    const design = { ...root.design };
+    let changed = false;
+
+    if (typeof design.font_size === 'string') {
+      const typography =
+        design.typography && typeof design.typography === 'object'
+          ? { ...(design.typography as Record<string, unknown>) }
+          : {};
+      const fontSize =
+        typography.font_size && typeof typography.font_size === 'object'
+          ? { ...(typography.font_size as Record<string, unknown>) }
+          : {};
+
+      if (fontSize.body !== design.font_size) {
+        fontSize.body = design.font_size;
+      }
+
+      typography.font_size = fontSize;
+      design.typography = typography;
+      delete design.font_size;
+      changed = true;
+    }
+
+    if (typeof design.page_size === 'string') {
+      const page =
+        design.page && typeof design.page === 'object'
+          ? { ...(design.page as Record<string, unknown>) }
+          : {};
+
+      if (page.size !== design.page_size) {
+        page.size = design.page_size;
+      }
+
+      design.page = page;
+      delete design.page_size;
+      changed = true;
+    }
+
+    if (!changed) {
+      return designContent;
+    }
+
+    return YAML.stringify({
+      ...root,
+      design
+    });
+  } catch {
+    return designContent;
+  }
+}
+
 function normalizeCompatibilitySections(sections: ImportedSections): ImportedSections {
   const normalizedCv = sections.cv ? normalizeCompatibilityCvYaml(sections.cv) : sections.cv;
+  const normalizedDesign = sections.design
+    ? normalizeLegacyDesignYaml(sections.design)
+    : sections.design;
   return {
     ...sections,
-    cv: normalizedCv
+    cv: normalizedCv,
+    design: normalizedDesign
   };
 }
 
@@ -119,13 +191,14 @@ export function Workspace() {
           fileStore.updateSection('cv', normalizedCv);
         }
 
+        const normalizedDesign = normalizeLegacyDesignYaml(sections.design);
+        if (normalizedDesign && normalizedDesign !== sections.design) {
+          fileStore.updateSection('design', normalizedDesign);
+        }
+
         registerSharedThemeDesign(selectedFile.selectedTheme, selectedFile.designs[selectedFile.selectedTheme]);
 
         if (needsClassicCompatibilityTheme(selectedFile.selectedTheme)) {
-          if (validationResult.usedFallbackTheme) {
-            fileStore.setTheme(selectedFile.id, 'classic');
-            window.setTimeout(() => fileStore.updateSection('design', classicTheme.design), 0);
-          }
           return;
         }
 
@@ -180,9 +253,7 @@ export function Workspace() {
                 importedSections.selectedTheme !== 'classic'
               ) {
                 additionalDesigns[importedSections.selectedTheme] = importedSections.design;
-                nextSections.design = classicTheme.design;
-                nextSections.selectedTheme = 'classic';
-                message = `YAML imported with compatibility mode. Using classic until the ${importedSections.selectedTheme} theme zip is loaded.`;
+                message = `YAML imported with compatibility mode. Preview will temporarily use classic until the ${importedSections.selectedTheme} theme zip is loaded.`;
               } else if (
                 nextSections.selectedTheme === 'classic' &&
                 nextSections.design &&

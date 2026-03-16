@@ -84,6 +84,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const [renderErrors, setRenderErrors] = useState<RenderError[]>([]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | undefined>();
+  const [renderVersion, setRenderVersion] = useState(0);
   const hasSections = sections !== undefined;
   const cvContent = sections?.cv ?? '';
   const designContent = sections?.design ?? '';
@@ -368,6 +369,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
     designContent,
     localeContent,
     settingsContent,
+    renderVersion,
     isInitializing,
     initError,
     checkAndLoadFonts,
@@ -378,10 +380,12 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const importThemeArchive = useCallback(
     async (file: File) => {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      return await postMessageToPyodide<ImportedThemePayload>('IMPORT_THEME_ARCHIVE', {
+      const result = await postMessageToPyodide<ImportedThemePayload>('IMPORT_THEME_ARCHIVE', {
         archiveName: file.name,
         bytes
       });
+      setRenderVersion((current) => current + 1);
+      return result;
     },
     [postMessageToPyodide]
   );
