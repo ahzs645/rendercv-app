@@ -18,7 +18,6 @@ import type { CvFile } from '@rendercv/contracts';
 import { fileStore, localeLabel, themeLabel } from '@rendercv/core';
 import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
-import { GitHubSyncCard } from './github-sync-card';
 import { PdfImportButton } from './pdf-import-button';
 import { YamlImportButton } from './yaml-import-button';
 import type { PreparedYamlImport } from './yaml-import-button';
@@ -143,11 +142,6 @@ export function Sidebar({
             Create a CV, import YAML, or start from another source.
           </div>
         ) : null}
-        {mode !== 'mini' ? (
-          <div className="mt-4">
-            <GitHubSyncCard mode={mode === 'full' ? 'full' : 'compact'} />
-          </div>
-        ) : null}
       </div>
 
       <footer className="border-t border-sidebar-border px-2 py-2">
@@ -171,23 +165,21 @@ export function Sidebar({
 
 function SidebarBrand({ compact, mini }: { compact: boolean; mini: boolean }) {
   return (
-    <div className={`flex items-center gap-3 px-4 ${mini ? 'justify-center py-3' : compact ? 'py-3' : 'py-4'}`}>
-      <img
-        alt=""
-        aria-hidden="true"
-        className="size-8 shrink-0"
-        src={`${import.meta.env.BASE_URL}favicon.svg`}
-      />
-      {mini ? null : (
-        <div className="min-w-0">
-          <h1 className="truncate text-lg leading-tight font-normal text-sidebar-foreground">RenderCV</h1>
-          {!compact ? (
-            <p className="text-xs text-sidebar-foreground/60">
-              Resume workspace
-            </p>
-          ) : null}
-        </div>
-      )}
+    <div className={`px-4 ${mini ? 'py-3 text-center' : compact ? 'py-3' : 'py-4'}`}>
+      <div className="min-w-0">
+        <h1
+          className={`truncate leading-tight font-normal text-sidebar-foreground ${
+            mini ? 'text-sm uppercase tracking-[0.18em]' : 'text-lg'
+          }`}
+        >
+          RenderCV
+        </h1>
+        {!compact && !mini ? (
+          <p className="text-xs text-sidebar-foreground/60">
+            Resume workspace
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
