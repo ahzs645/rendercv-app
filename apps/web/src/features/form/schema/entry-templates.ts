@@ -46,6 +46,41 @@ export const experienceTemplate: EntryTemplate = {
   ]
 };
 
+export const positionSubTemplate: EntryTemplate = {
+  name: 'position',
+  label: 'Position',
+  fields: [
+    {
+      path: ['title'],
+      label: 'Title',
+      type: 'string',
+      required: true,
+      defaultValue: '',
+      preserveEmpty: true
+    },
+    {
+      path: ['start_date'],
+      label: 'Start Date',
+      type: 'string',
+      placeholder: '2020-09, 2020, etc.',
+      defaultValue: ''
+    },
+    {
+      path: ['end_date'],
+      label: 'End Date',
+      type: 'string',
+      placeholder: '2024-05, 2024, present, etc.',
+      defaultValue: ''
+    },
+    {
+      path: ['highlights'],
+      label: 'Highlights',
+      type: 'string_list',
+      placeholder: 'Add a highlight'
+    }
+  ]
+};
+
 export const educationTemplate: EntryTemplate = {
   name: 'education',
   label: 'Education Entry',
