@@ -727,6 +727,51 @@ function normalizeSectionEntries(
   }
 }
 
+function stripPositionMarker(position: string) {
+  if (position.startsWith(POSITION_SPACING_SAME_MARKER)) {
+    return position.slice(POSITION_SPACING_SAME_MARKER.length);
+  }
+
+  if (position.startsWith(POSITION_SPACING_DIFF_MARKER)) {
+    return position.slice(POSITION_SPACING_DIFF_MARKER.length);
+  }
+
+  return position;
+}
+
+export function stripPositionMarkersFromCvYaml(yamlText: string) {
+  const parsed = YAML.parse(yamlText);
+  if (!isRecord(parsed)) {
+    return yamlText;
+  }
+
+  const cvData = parsed.cv;
+  if (!isRecord(cvData)) {
+    return yamlText;
+  }
+
+  const sections = cvData.sections;
+  if (!isRecord(sections)) {
+    return yamlText;
+  }
+
+  for (const entries of Object.values(sections)) {
+    if (!Array.isArray(entries)) {
+      continue;
+    }
+
+    for (const entry of entries) {
+      if (!isRecord(entry) || typeof entry.position !== 'string') {
+        continue;
+      }
+
+      entry.position = stripPositionMarker(entry.position);
+    }
+  }
+
+  return YAML.stringify(parsed);
+}
+
 export function normalizeCompatibilityCvYaml(
   yamlText: string,
   options?: NormalizeCompatibilityOptions

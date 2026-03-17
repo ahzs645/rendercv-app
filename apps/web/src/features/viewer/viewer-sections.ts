@@ -1,13 +1,41 @@
 import type { CvFile, CvFileSections, CvVariantDefinition } from '@rendercv/contracts';
 import { resolveFileSections } from '@rendercv/core';
 import YAML from 'yaml';
-import { normalizeCompatibilityCvYaml } from './normalize-compat-cv';
+import {
+  normalizeCompatibilityCvYaml,
+  stripPositionMarkersFromCvYaml
+} from './normalize-compat-cv';
 
 const LEGACY_DESIGN_KEY_PATTERN =
   /^\s*(font_size|page_size|keep_sections_together|keep_entries_together|prevent_orphaned_headers|section_heading_size)\s*:/m;
 
 function looksLikeLegacyDesignSchema(design: string) {
   return LEGACY_DESIGN_KEY_PATTERN.test(design);
+}
+
+function readThemeName(designContent: string | undefined) {
+  if (!designContent?.trim()) {
+    return undefined;
+  }
+
+  try {
+    const parsed = YAML.parse(designContent);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'design' in parsed &&
+      parsed.design &&
+      typeof parsed.design === 'object' &&
+      'theme' in parsed.design &&
+      typeof parsed.design.theme === 'string'
+    ) {
+      return parsed.design.theme;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
 }
 
 export function normalizeLegacyDesignYaml(designContent: string | undefined) {
@@ -91,9 +119,13 @@ export function prepareViewerSections(
   sections: CvFileSections,
   variant?: CvVariantDefinition | null
 ): CvFileSections {
+  const design = normalizeLegacyDesignYaml(sections.design) ?? sections.design;
+  const normalizedCv = normalizeCompatibilityCvYaml(sections.cv, { variant: variant ?? undefined });
+  const themeName = readThemeName(design);
+
   return {
     ...sections,
-    cv: normalizeCompatibilityCvYaml(sections.cv, { variant: variant ?? undefined }),
-    design: normalizeLegacyDesignYaml(sections.design) ?? sections.design
+    cv: themeName === 'ahmadstyle' ? normalizedCv : stripPositionMarkersFromCvYaml(normalizedCv),
+    design
   };
 }

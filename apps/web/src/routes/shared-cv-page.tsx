@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams } from 'react-router-dom';
 import type { PublicCvPayload } from '@rendercv/contracts';
-import { normalizeCompatibilityCvYaml } from '../features/viewer/normalize-compat-cv';
-import { normalizeLegacyDesignYaml } from '../features/viewer/viewer-sections';
+import { prepareViewerSections } from '../features/viewer/viewer-sections';
 import { api } from '../lib/api';
 import { PreviewPane } from '../ui/preview-pane';
 
@@ -33,11 +32,7 @@ export function SharedCvPage() {
         ? payload.variants[payload.selectedVariant]
         : undefined;
 
-    return {
-      ...payload.sections,
-      cv: normalizeCompatibilityCvYaml(payload.sections.cv, { variant }),
-      design: normalizeLegacyDesignYaml(payload.sections.design) ?? payload.sections.design
-    };
+    return prepareViewerSections(payload.sections, variant);
   }, [payload]);
 
   return (
