@@ -1580,6 +1580,69 @@ function getFlavorItems(value: unknown, flavorKey: string): string[] {
   return [];
 }
 
+function SortableStringItem({
+  id,
+  item,
+  index,
+  onUpdate,
+  onRemove,
+  placeholder
+}: {
+  id: number;
+  item: string;
+  index: number;
+  onUpdate: (index: number, value: string) => void;
+  onRemove: (index: number) => void;
+  placeholder?: string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    zIndex: isDragging ? 10 : undefined,
+    position: 'relative'
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <div className="form-item-wrapper relative -mx-7 border-b border-border/25 px-7 last:border-b-0">
+        <div
+          ref={setActivatorNodeRef}
+          {...listeners}
+          className="form-item-control absolute top-1/2 left-1 -translate-y-1/2 cursor-grab touch-none text-muted-foreground/40 active:cursor-grabbing"
+        >
+          <GripVertical className="size-3.5" />
+        </div>
+        <button
+          type="button"
+          className="form-item-control absolute top-1/2 right-3 flex size-5 -translate-y-1/2 items-center justify-center text-muted-foreground/50 hover:text-destructive"
+          onClick={() => onRemove(index)}
+          aria-label="Remove"
+        >
+          <X className="size-3" />
+        </button>
+        <div className="pr-5">
+          <TextRow
+            value={item}
+            onChange={(nextValue) => onUpdate(index, nextValue)}
+            placeholder={placeholder}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StringListRow({
   field,
   value,
@@ -1599,6 +1662,27 @@ function StringListRow({
       ? value.map((item) => String(item))
       : [];
 
+  const nextIdRef = useRef(0);
+  const [itemIds, setItemIds] = useState<number[]>(() =>
+    items.map(() => nextIdRef.current++)
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } })
+  );
+
+  // Sync IDs when items length changes externally
+  useEffect(() => {
+    if (itemIds.length !== items.length) {
+      setItemIds(items.map(() => nextIdRef.current++));
+    }
+  }, [items.length]);
+
+  // Reset IDs when active flavor changes
+  useEffect(() => {
+    setItemIds(items.map(() => nextIdRef.current++));
+  }, [activeFlavor]);
+
   function commitItems(nextItems: string[]) {
     if (hasFlavors) {
       const obj = value as Record<string, unknown>;
@@ -1610,6 +1694,7 @@ function StringListRow({
   }
 
   function addItem() {
+    setItemIds(prev => [...prev, nextIdRef.current++]);
     commitItems([...items, '']);
   }
 
@@ -1682,7 +1767,20 @@ function StringListRow({
   }
 
   function removeItem(index: number) {
+    setItemIds(prev => prev.filter((_, i) => i !== index));
     commitItems(items.filter((_, currentIndex) => currentIndex !== index));
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = itemIds.indexOf(Number(active.id));
+    const newIndex = itemIds.indexOf(Number(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    setItemIds(prev => arrayMove(prev, oldIndex, newIndex));
+    commitItems(arrayMove([...items], oldIndex, newIndex));
   }
 
   return (
@@ -1738,31 +1836,23 @@ function StringListRow({
         </div>
       </div>
       <div className="pl-4">
-        {items.map((item, index) => (
-          <div
-            key={`${field.path.join('.')}-${activeFlavor}-${index}`}
-            className="form-item-wrapper relative -mx-7 border-b border-border/25 px-7 last:border-b-0"
-          >
-            <div className="form-item-control absolute top-1/2 left-1 -translate-y-1/2 text-muted-foreground/40">
-              <GripVertical className="size-3.5" />
-            </div>
-            <button
-              type="button"
-              className="form-item-control absolute top-1/2 right-3 flex size-5 -translate-y-1/2 items-center justify-center text-muted-foreground/50 hover:text-destructive"
-              onClick={() => removeItem(index)}
-              aria-label="Remove"
-            >
-              <X className="size-3" />
-            </button>
-            <div className="pr-5">
-              <TextRow
-                value={item}
-                onChange={(nextValue) => updateItem(index, nextValue)}
-                placeholder={field.placeholder}
-              />
-            </div>
-          </div>
-        ))}
+        {items.length > 0 ? (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+              {items.map((item, index) => (
+                <SortableStringItem
+                  key={itemIds[index]}
+                  id={itemIds[index]!}
+                  item={item}
+                  index={index}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  placeholder={field.placeholder}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        ) : null}
       </div>
     </>
   );

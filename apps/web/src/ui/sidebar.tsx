@@ -7,6 +7,8 @@ import {
   FileText,
   Files,
   FolderArchive,
+  Lock,
+  LockOpen,
   Monitor,
   Shield,
   Trash2
@@ -218,7 +220,11 @@ function SidebarFileRow({
           title={mini ? file.name : undefined}
           type="button"
         >
-          <Monitor className={`shrink-0 text-sidebar-foreground/70 ${mini ? 'size-4' : 'size-4'}`} />
+          {file.isLocked ? (
+            <Lock className={`shrink-0 text-sidebar-foreground/70 ${mini ? 'size-4' : 'size-4'}`} />
+          ) : (
+            <Monitor className={`shrink-0 text-sidebar-foreground/70 ${mini ? 'size-4' : 'size-4'}`} />
+          )}
           {mini ? <span className="sr-only">{file.name}</span> : null}
           {mini ? null : (
             <span className="min-w-0 flex-1">
@@ -260,6 +266,11 @@ function SidebarFileRow({
           />
           <SidebarActionChip icon={<FolderArchive className="size-3.5" />} label="Archive" onClick={() => fileStore.archiveFile(file.id)} />
           <SidebarActionChip icon={<Trash2 className="size-3.5" />} label="Trash" onClick={() => fileStore.trashFile(file.id)} />
+          {file.isLocked ? (
+            <SidebarActionChip icon={<LockOpen className="size-3.5" />} label="Unlock" onClick={() => fileStore.unlockFile(file.id)} />
+          ) : (
+            <SidebarActionChip icon={<Lock className="size-3.5" />} label="Lock" onClick={() => fileStore.lockFile(file.id)} />
+          )}
           <SidebarActionChip
             icon={<Copy className="size-3.5" />}
             label="Public link"
