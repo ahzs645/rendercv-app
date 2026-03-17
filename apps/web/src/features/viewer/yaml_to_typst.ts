@@ -398,6 +398,45 @@ def normalize_cv_yaml(yaml_text):
 
 normalized_yaml_input_cv = normalize_cv_yaml(yaml_input_cv)
 
+
+def strip_position_markers(cv_yaml_text):
+    parsed = yaml.safe_load(cv_yaml_text)
+    if not isinstance(parsed, dict):
+        return cv_yaml_text
+
+    cv_data = parsed.get("cv")
+    if not isinstance(cv_data, dict):
+        return cv_yaml_text
+
+    sections = cv_data.get("sections")
+    if not isinstance(sections, dict):
+        return cv_yaml_text
+
+    for entries in sections.values():
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            position = entry.get("position")
+            if not isinstance(position, str):
+                continue
+            if position.startswith(POSITION_SPACING_SAME_MARKER):
+                entry["position"] = position[len(POSITION_SPACING_SAME_MARKER):]
+            elif position.startswith(POSITION_SPACING_DIFF_MARKER):
+                entry["position"] = position[len(POSITION_SPACING_DIFF_MARKER):]
+
+    return yaml.safe_dump(parsed, sort_keys=False, allow_unicode=True)
+
+
+design_parsed = yaml.safe_load(yaml_input_design)
+theme_name = ""
+if isinstance(design_parsed, dict) and isinstance(design_parsed.get("design"), dict):
+    theme_name = str(design_parsed["design"].get("theme", ""))
+
+if theme_name != "ahmadstyle":
+    normalized_yaml_input_cv = strip_position_markers(normalized_yaml_input_cv)
+
 kwargs: BuildRendercvModelArguments = {}
 kwargs["design_yaml_file"] = yaml_input_design
 kwargs["locale_yaml_file"] = yaml_input_locale
