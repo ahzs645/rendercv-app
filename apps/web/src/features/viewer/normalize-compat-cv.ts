@@ -181,6 +181,7 @@ function stripCompatFields(entry: unknown): unknown {
   const normalized: UnknownRecord = { ...entry };
   delete normalized.itags;
   delete normalized.tags;
+  delete normalized.spacing_after;
   delete normalized.show_date_in_position;
   return normalized;
 }
