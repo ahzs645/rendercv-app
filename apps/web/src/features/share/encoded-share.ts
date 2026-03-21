@@ -27,3 +27,11 @@ export async function buildEncodedShareUrl(payload: EncodedSharePayload) {
   url.hash = token;
   return url.toString();
 }
+
+export async function buildEncodedSharePdfUrl(payload: EncodedSharePayload) {
+  const token = await encodeSharePayload(payload);
+  const url = new URL(`${import.meta.env.BASE_URL}share`, window.location.origin);
+  url.searchParams.set('dl', 'pdf');
+  url.hash = token;
+  return url.toString();
+}

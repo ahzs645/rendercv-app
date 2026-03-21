@@ -6,6 +6,7 @@ import {
   Copy,
   Download,
   FileCode2,
+  FileDown,
   Italic,
   Link as LinkIcon,
   Minus,
@@ -21,7 +22,7 @@ import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { fileStore, preferencesStore } from '@rendercv/core';
 import { toast } from 'sonner';
 import { downloadBlob } from '../features/viewer/download';
-import { buildEncodedShareUrl } from '../features/share/encoded-share';
+import { buildEncodedShareUrl, buildEncodedSharePdfUrl } from '../features/share/encoded-share';
 import { useStore } from '../lib/use-store';
 import type { MonacoEditorHandle } from './monaco-editor';
 import type { ViewerRenderer } from './preview-pane';
@@ -69,6 +70,24 @@ export function WorkspaceToolbar({
       toast.success('Share link copied.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create share link.');
+    }
+  }
+
+  async function copyPdfLink() {
+    if (!selectedFile || !sections) {
+      return;
+    }
+
+    try {
+      const url = await buildEncodedSharePdfUrl({
+        version: 1,
+        fileName: selectedFile.name,
+        sections
+      });
+      await navigator.clipboard.writeText(url);
+      toast.success('PDF download link copied.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create PDF link.');
     }
   }
 
@@ -258,6 +277,13 @@ export function WorkspaceToolbar({
           onClick={() => void copyShareLink()}
         >
           <Copy className="size-4" />
+        </ToolbarIconButton>
+        <ToolbarIconButton
+          ariaLabel="Copy PDF download link"
+          disabled={!selectedFile || !sections}
+          onClick={() => void copyPdfLink()}
+        >
+          <FileDown className="size-4" />
         </ToolbarIconButton>
         <ToolbarIconButton
           ariaLabel="Toggle color mode"
