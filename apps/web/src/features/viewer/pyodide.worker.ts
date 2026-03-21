@@ -454,7 +454,7 @@ async function renderSectionsWithFallback(sections: {
 
   const fallbackDesign = sections.design.replace(
     /^(\s*theme\s*:\s*).+$/m,
-    '$1classic'
+    '$1ahmadstyle'
   );
 
   if (fallbackDesign === sections.design) {
