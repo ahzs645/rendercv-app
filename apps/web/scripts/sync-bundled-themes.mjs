@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,31 +16,17 @@ const THEME_SOURCES = [
   {
     archiveBaseName: 'ahzs645-resume',
     design: 'design:\n  theme: ahmadstyle\n',
-    sourceZipUrl: 'https://codeload.github.com/ahzs645/resume/zip/refs/heads/main',
+    submodulePath: path.join(projectRoot, 'themes/resume'),
     themeKey: 'ahmadstyle'
   }
 ];
 
-async function fetchArchive(url) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
-
-  try {
-    const response = await fetch(url, {
-      headers: {
-        'user-agent': 'rendercv-theme-sync'
-      },
-      signal: controller.signal
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
-    }
-
-    return Buffer.from(await response.arrayBuffer());
-  } finally {
-    clearTimeout(timeout);
-  }
+function createZipFromSubmodule(submodulePath) {
+  const archiveBuffer = execSync('git archive --format=zip HEAD', {
+    cwd: submodulePath,
+    maxBuffer: 50 * 1024 * 1024
+  });
+  return Buffer.from(archiveBuffer);
 }
 
 async function writeFileIfChanged(filePath, content) {
@@ -62,7 +49,7 @@ async function writeFileIfChanged(filePath, content) {
 async function syncTheme(themeSource) {
   await mkdir(outputDir, { recursive: true });
 
-  const archiveBytes = await fetchArchive(themeSource.sourceZipUrl);
+  const archiveBytes = createZipFromSubmodule(themeSource.submodulePath);
   const hash = createHash('sha256').update(archiveBytes).digest('hex').slice(0, 12);
   const archiveName = `${themeSource.archiveBaseName}-${hash}.zip`;
   const archivePath = path.join(outputDir, archiveName);
