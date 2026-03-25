@@ -741,7 +741,12 @@ function stripPositionMarker(position: string) {
 }
 
 export function stripPositionMarkersFromCvYaml(yamlText: string) {
-  const parsed = YAML.parse(yamlText);
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(yamlText);
+  } catch {
+    return yamlText;
+  }
   if (!isRecord(parsed)) {
     return yamlText;
   }
@@ -777,7 +782,12 @@ export function normalizeCompatibilityCvYaml(
   yamlText: string,
   options?: NormalizeCompatibilityOptions
 ) {
-  const parsed = YAML.parse(yamlText);
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(yamlText);
+  } catch {
+    return yamlText;
+  }
   if (!isRecord(parsed)) {
     return yamlText;
   }
