@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { classicTheme, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
+import { classicTheme, defaultDesigns, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { useStore } from '../lib/use-store';
@@ -22,13 +22,7 @@ import { WorkspaceToolbar } from './workspace-toolbar';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
-const BUILT_IN_THEMES = new Set([
-  'classic',
-  'engineeringclassic',
-  'engineeringresumes',
-  'moderncv',
-  'sb2nov'
-]);
+const BUILT_IN_THEMES = new Set(Object.keys(defaultDesigns));
 
 const LEGACY_DESIGN_KEY_PATTERN =
   /^\s*(font_size|page_size|keep_sections_together|keep_entries_together|prevent_orphaned_headers|section_heading_size)\s*:/m;

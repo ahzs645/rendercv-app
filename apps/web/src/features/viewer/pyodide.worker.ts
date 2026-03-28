@@ -38,7 +38,7 @@ from rendercv.exception import RenderCVUserValidationError
 from dataclasses import asdict
 `;
 
-const PKG_CACHE_VERSION = 'rendercv-2.7-pyodide-0.29.3-v2';
+const PKG_CACHE_VERSION = 'rendercv-2.8-pyodide-0.29.3-v1';
 const IDB_DB_NAME = 'pyodide-pkg-cache';
 const IDB_STORE = 'packages';
 const BASE_URL = import.meta.env.BASE_URL;
@@ -509,7 +509,7 @@ async function initialize() {
     await micropip.install([
       assetUrl('cdn/pypi-wheels/dnspython-2.8.0-py3-none-any.whl'),
       assetUrl('cdn/pypi-wheels/email_validator-2.3.0-py3-none-any.whl'),
-      assetUrl('rendercv-2.7-py3-none-any.whl'),
+      assetUrl('rendercv-2.8-py3-none-any.whl'),
       assetUrl('cdn/pypi-wheels/phonenumbers-9.0.26-py2.py3-none-any.whl'),
       assetUrl('cdn/pypi-wheels/markdown-3.10.2-py3-none-any.whl'),
       assetUrl('cdn/pypi-wheels/pydantic_extra_types-2.11.0-py3-none-any.whl'),

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import YAML from 'yaml';
-import { fileStore } from '@rendercv/core';
+import { defaultDesigns, fileStore } from '@rendercv/core';
 import type { CvFileSections } from '@rendercv/contracts';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
 
@@ -19,13 +19,7 @@ export type PreparedYamlImport = {
   message?: string;
 };
 
-const BUILT_IN_THEMES = new Set([
-  'classic',
-  'engineeringclassic',
-  'engineeringresumes',
-  'moderncv',
-  'sb2nov'
-]);
+const BUILT_IN_THEMES = new Set(Object.keys(defaultDesigns));
 
 function stringifySection<T>(key: keyof CvFileSections, value: T | undefined) {
   if (value === undefined) {

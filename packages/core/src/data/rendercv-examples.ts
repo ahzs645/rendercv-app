@@ -1,3 +1,5 @@
+import { defaultDesigns } from './rendercv-variants';
+
 // Auto-generated from production build
 // classicTheme
 export const classicTheme = {cv:`cv:
@@ -355,6 +357,34 @@ export const classicTheme = {cv:`cv:
   bold_keywords: []
   pdf_title: NAME - CV
 `};
+
+export const emberTheme = {
+  cv: classicTheme.cv,
+  design: defaultDesigns.ember,
+  locale: classicTheme.locale,
+  settings: classicTheme.settings
+};
+
+export const harvardTheme = {
+  cv: classicTheme.cv,
+  design: defaultDesigns.harvard,
+  locale: classicTheme.locale,
+  settings: classicTheme.settings
+};
+
+export const inkTheme = {
+  cv: classicTheme.cv,
+  design: defaultDesigns.ink,
+  locale: classicTheme.locale,
+  settings: classicTheme.settings
+};
+
+export const opalTheme = {
+  cv: classicTheme.cv,
+  design: defaultDesigns.opal,
+  locale: classicTheme.locale,
+  settings: classicTheme.settings
+};
 
 // engineeringClassicTheme
 export const engineeringClassicTheme = {cv:`cv:
@@ -1763,4 +1793,3 @@ export const sb2novTheme = {cv:`cv:
   bold_keywords: []
   pdf_title: NAME - CV
 `};
-

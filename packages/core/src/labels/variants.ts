@@ -1,9 +1,13 @@
 export const THEME_LABELS: Record<string, string> = {
   ahmadstyle: 'Ahmad Style',
   classic: 'Classic',
+  ember: 'Ember',
   engineeringclassic: 'Engineering Classic',
   engineeringresumes: 'Engineering Resumes',
+  harvard: 'Harvard',
+  ink: 'Ink',
   moderncv: 'ModernCV',
+  opal: 'Opal',
   sb2nov: 'Sb2nov'
 };
 

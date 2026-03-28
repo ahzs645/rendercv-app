@@ -5,9 +5,13 @@ import { createStore } from './store';
 import { generateId } from '../utils/uuid';
 import {
   classicTheme,
+  emberTheme,
   engineeringClassicTheme,
   engineeringResumesTheme,
+  harvardTheme,
+  inkTheme,
   moderncvTheme,
+  opalTheme,
   sb2novTheme
 } from '../data/rendercv-examples';
 import { defaultDesigns, defaultLocales } from '../data/rendercv-variants';
@@ -51,6 +55,7 @@ const MAX_UNDO_STACK = 50;
 
 const DEFAULT_EXAMPLES = [
   { id: 'default-classic', name: 'CV (Classic)', theme: 'classic', sections: classicTheme },
+  { id: 'default-ember', name: 'CV (Ember)', theme: 'ember', sections: emberTheme },
   {
     id: 'default-engineering-classic',
     name: 'CV (Engineering Classic)',
@@ -63,7 +68,10 @@ const DEFAULT_EXAMPLES = [
     theme: 'engineeringresumes',
     sections: engineeringResumesTheme
   },
+  { id: 'default-harvard', name: 'CV (Harvard)', theme: 'harvard', sections: harvardTheme },
+  { id: 'default-ink', name: 'CV (Ink)', theme: 'ink', sections: inkTheme },
   { id: 'default-moderncv', name: 'CV (Moderncv)', theme: 'moderncv', sections: moderncvTheme },
+  { id: 'default-opal', name: 'CV (Opal)', theme: 'opal', sections: opalTheme },
   { id: 'default-sb2nov', name: 'CV (Sb2nov)', theme: 'sb2nov', sections: sb2novTheme }
 ] as const;
 

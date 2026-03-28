@@ -1,9 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { SECTION_KEYS } from '@rendercv/contracts';
-import { themeLabel } from '@rendercv/core';
+import { themeLabel, themes } from '@rendercv/core';
 import { OverlayPage } from '../ui/overlay-page';
-
-const THEMES = ['classic', 'engineeringclassic', 'engineeringresumes', 'moderncv', 'sb2nov'];
 
 export function PrototypeRenderersPage() {
   return (
@@ -15,7 +13,7 @@ export function PrototypeRenderersPage() {
         <section className="rounded-2xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold">Theme coverage</h2>
           <ul className="mt-4 grid gap-2 md:grid-cols-2">
-            {THEMES.map((theme) => (
+            {themes.map((theme) => (
               <li key={theme} className="rounded-xl bg-muted px-4 py-3 text-sm">
                 {themeLabel(theme)}
               </li>
