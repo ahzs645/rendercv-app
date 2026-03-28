@@ -1,4 +1,4 @@
-import yamlToTypstPy from './yaml_to_typst';
+import yamlToTypstPy from './yaml_to_typst.py?raw';
 import { BUNDLED_THEMES } from './bundled-themes.generated';
 
 interface WorkerErrorPayload {

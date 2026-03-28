@@ -2,6 +2,11 @@ function normalizeBaseUrl(baseUrl: string) {
   return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
 }
 
+function encodeStaticFontFolder(fontFamily: string) {
+  // The font directories in /static are already percent-encoded on disk.
+  return encodeURIComponent(encodeURIComponent(fontFamily));
+}
+
 const STANDARD = ['Regular', 'Bold', 'Italic', 'BoldItalic'];
 
 export const FONT_VARIANTS: Record<string, string[]> = {
@@ -46,12 +51,13 @@ export const DEFAULT_FONT_FAMILIES = [
 ];
 
 export function getFontUrl(fontFamily: string, variant: string, baseUrl = '/'): string {
-  const folder = encodeURIComponent(fontFamily);
+  const folder = encodeStaticFontFolder(fontFamily);
   const extension = FONT_EXTENSIONS[fontFamily] || '.ttf';
   const fontBaseUrl = `${normalizeBaseUrl(baseUrl)}cdn/fonts/`;
 
   if (fontFamily === 'Font Awesome 7') {
-    return `${fontBaseUrl}${folder}/Font Awesome 7 ${variant}${extension}`;
+    const fileName = encodeURIComponent(`Font Awesome 7 ${variant}${extension}`);
+    return `${fontBaseUrl}${folder}/${fileName}`;
   }
 
   const fileBase = fontFamily.replace(/\s+/g, '');

@@ -1,7 +1,9 @@
-export default String.raw`# ruff: noqa: F821
+# ruff: noqa: F821
 
-import yaml
 from dataclasses import asdict
+from io import StringIO
+
+from ruamel.yaml import YAML
 
 from rendercv.exception import RenderCVUserValidationError
 from rendercv.renderer.templater.templater import render_full_template
@@ -53,6 +55,50 @@ MONTH_NAMES = {
     "11": "November",
     "12": "December",
 }
+HEADER_CONNECTION_ICON_HELPER = """
+#let rendercv-brand-connection-icons = (
+  "linkedin",
+  "github",
+  "gitlab",
+  "imdb",
+  "instagram",
+  "mastodon",
+  "orcid",
+  "stack-overflow",
+  "researchgate",
+  "youtube",
+  "telegram",
+  "whatsapp",
+  "x-twitter",
+  "bluesky",
+  "reddit",
+)
+
+#let connection-with-icon(icon-name, body) = {
+  let icon = if rendercv-brand-connection-icons.contains(icon-name) {
+    fa-icon(icon-name, font: "Font Awesome 7 Brands")
+  } else {
+    fa-icon(icon-name, solid: true)
+  }
+  [#icon #h(0.05cm) #box[#body]]
+}
+"""
+
+YAML_LOADER = YAML(typ="safe", pure=True)
+YAML_DUMPER = YAML()
+YAML_DUMPER.default_flow_style = False
+YAML_DUMPER.allow_unicode = True
+YAML_DUMPER.sort_base_mapping_type_on_output = False
+
+
+def safe_load_yaml(text):
+    return YAML_LOADER.load(text)
+
+
+def safe_dump_yaml(data):
+    output = StringIO()
+    YAML_DUMPER.dump(data, output)
+    return output.getvalue()
 
 
 def join_parts(parts, separator=" · "):
@@ -363,8 +409,23 @@ def normalize_social_connections(cv_data):
         cv_data["custom_connections"] = custom_connections
 
 
+def patch_header_connection_icons(typst_content):
+    if "#connection-with-icon(" not in typst_content:
+        return typst_content
+
+    marker = "\n#connections("
+    if marker not in typst_content:
+        return typst_content
+
+    return typst_content.replace(
+        marker,
+        f"\n{HEADER_CONNECTION_ICON_HELPER}\n#connections(",
+        1,
+    )
+
+
 def normalize_cv_yaml(yaml_text):
-    parsed = yaml.safe_load(yaml_text)
+    parsed = safe_load_yaml(yaml_text)
     if not isinstance(parsed, dict):
         return yaml_text
 
@@ -393,14 +454,14 @@ def normalize_cv_yaml(yaml_text):
                 normalized_entries.extend(expand_nested_positions(entry))
             sections[section_name] = normalized_entries
 
-    return yaml.safe_dump(stringify_numbers(parsed), sort_keys=False, allow_unicode=True)
+    return safe_dump_yaml(stringify_numbers(parsed))
 
 
 normalized_yaml_input_cv = normalize_cv_yaml(yaml_input_cv)
 
 
 def strip_position_markers(cv_yaml_text):
-    parsed = yaml.safe_load(cv_yaml_text)
+    parsed = safe_load_yaml(cv_yaml_text)
     if not isinstance(parsed, dict):
         return cv_yaml_text
 
@@ -426,10 +487,10 @@ def strip_position_markers(cv_yaml_text):
             elif position.startswith(POSITION_SPACING_DIFF_MARKER):
                 entry["position"] = position[len(POSITION_SPACING_DIFF_MARKER):]
 
-    return yaml.safe_dump(parsed, sort_keys=False, allow_unicode=True)
+    return safe_dump_yaml(parsed)
 
 
-design_parsed = yaml.safe_load(yaml_input_design)
+design_parsed = safe_load_yaml(yaml_input_design)
 theme_name = ""
 if isinstance(design_parsed, dict) and isinstance(design_parsed.get("design"), dict):
     theme_name = str(design_parsed["design"].get("theme", ""))
@@ -471,11 +532,11 @@ except Exception as e:
         "normalized_cv": normalized_yaml_input_cv,
     }
 else:
+    typst_content = render_full_template(model, "typst")
     result = {
-        "content": render_full_template(model, "typst"),
+        "content": patch_header_connection_icons(typst_content),
         "errors": None,
         "normalized_cv": normalized_yaml_input_cv,
     }
 
 result
-`;

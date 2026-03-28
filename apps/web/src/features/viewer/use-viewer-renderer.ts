@@ -78,6 +78,16 @@ function errorFromWorker(payload: WorkerErrorPayload | string) {
   return error;
 }
 
+function mergeStoredFontFamilies(storedFamilies: string[] | null | undefined) {
+  return new Set([...(storedFamilies ?? []), ...DEFAULT_FONT_FAMILIES]);
+}
+
+function buildFontUrls(fontFamilies: Iterable<string>, baseUrl: string) {
+  return Array.from(
+    new Set(Array.from(fontFamilies).flatMap((fontFamily) => getFontUrls(fontFamily, baseUrl)))
+  );
+}
+
 export function useViewerRenderer(sections?: CvFileSections) {
   const [zoomFactor, setZoomFactor] = useState(1);
   const [svgPages, setSvgPages] = useState<string[]>([]);
@@ -194,14 +204,17 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
   useEffect(() => {
     try {
-      const storedFonts = localStorage.getItem('loadedFonts');
-      loadedFonts.current = storedFonts
-        ? (JSON.parse(storedFonts) as string[])
-        : getDefaultFontUrls(import.meta.env.BASE_URL);
       const storedFamilies = localStorage.getItem('loadedFontFamilies');
-      loadedFontFamilies.current = storedFamilies
-        ? new Set(JSON.parse(storedFamilies) as string[])
-        : new Set(DEFAULT_FONT_FAMILIES);
+      loadedFontFamilies.current = mergeStoredFontFamilies(
+        storedFamilies ? (JSON.parse(storedFamilies) as string[]) : null
+      );
+      loadedFonts.current = buildFontUrls(loadedFontFamilies.current, import.meta.env.BASE_URL);
+
+      localStorage.setItem('loadedFonts', JSON.stringify(loadedFonts.current));
+      localStorage.setItem(
+        'loadedFontFamilies',
+        JSON.stringify(Array.from(loadedFontFamilies.current))
+      );
     } catch {
       loadedFonts.current = getDefaultFontUrls(import.meta.env.BASE_URL);
       loadedFontFamilies.current = new Set(DEFAULT_FONT_FAMILIES);
