@@ -91,10 +91,6 @@ export function SectionTabs({
 
   const currentIndex = variant?.value ? variant.options.indexOf(variant.value) : -1;
   const canCycle = Boolean(variant && variant.options.length > 1 && currentIndex >= 0);
-  const designLibraryThemes =
-    active === 'design'
-      ? Array.from(new Set([...themeOptions]))
-      : [];
   const showVariantControls = Boolean(
     (variant && variant.options.length > 0) ||
       (active === 'design' && onImportDesignTheme) ||
@@ -272,18 +268,7 @@ export function SectionTabs({
           </div>
         ) : null}
       </div>
-      {active === 'design' && designLibraryThemes.length > 0 ? (
-        <div className="flex items-center justify-between gap-3 py-2">
-          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            {designLibraryThemes.length} themes available for this resume
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            Current: {selectedFile?.selectedTheme ? themeLabel(selectedFile.selectedTheme) : 'Classic'}
-          </p>
-        </div>
-      ) : (
-        <div className="pb-2" />
-      )}
+      <div className="pb-2" />
     </div>
   );
 }

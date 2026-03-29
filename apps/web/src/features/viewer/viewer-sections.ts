@@ -3,6 +3,7 @@ import { resolveFileSections } from '@rendercv/core';
 import YAML from 'yaml';
 import {
   normalizeCompatibilityCvYaml,
+  restoreAhmadStylePositionMarkersInCvYaml,
   stripPositionMarkersFromCvYaml
 } from './normalize-compat-cv';
 
@@ -122,10 +123,14 @@ export function prepareViewerSections(
   const design = normalizeLegacyDesignYaml(sections.design) ?? sections.design;
   const normalizedCv = normalizeCompatibilityCvYaml(sections.cv, { variant: variant ?? undefined });
   const themeName = readThemeName(design);
+  const strippedCv = stripPositionMarkersFromCvYaml(normalizedCv);
 
   return {
     ...sections,
-    cv: themeName === 'ahmadstyle' ? normalizedCv : stripPositionMarkersFromCvYaml(normalizedCv),
+    cv:
+      themeName === 'ahmadstyle'
+        ? restoreAhmadStylePositionMarkersInCvYaml(strippedCv)
+        : strippedCv,
     design
   };
 }

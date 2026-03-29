@@ -74,11 +74,11 @@ HEADER_CONNECTION_ICON_HELPER = """
   "reddit",
 )
 
-#let connection-with-icon(icon-name, body) = {
+#let rendercv-header-connection-with-icon(icon-name, body) = {
   let icon = if rendercv-brand-connection-icons.contains(icon-name) {
-    fa-icon(icon-name, font: "Font Awesome 7 Brands")
+    fa-icon(icon-name, font: "Font Awesome 7 Brands", size: 0.9em)
   } else {
-    fa-icon(icon-name, solid: true)
+    fa-icon(icon-name, solid: true, size: 0.9em)
   }
   [#icon #h(0.05cm) #box[#body]]
 }
@@ -417,7 +417,12 @@ def patch_header_connection_icons(typst_content):
     if marker not in typst_content:
         return typst_content
 
-    return typst_content.replace(
+    patched_content = typst_content.replace(
+        "#connection-with-icon(",
+        "#rendercv-header-connection-with-icon(",
+    )
+
+    return patched_content.replace(
         marker,
         f"\n{HEADER_CONNECTION_ICON_HELPER}\n#connections(",
         1,

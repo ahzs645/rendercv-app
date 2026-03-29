@@ -740,6 +740,14 @@ function stripPositionMarker(position: string) {
   return position;
 }
 
+function isContinuationEntry(entry: unknown) {
+  return (
+    isRecord(entry) &&
+    typeof entry.position === 'string' &&
+    String(entry.company ?? '').trim().length === 0
+  );
+}
+
 export function stripPositionMarkersFromCvYaml(yamlText: string) {
   let parsed: unknown;
   try {
@@ -772,6 +780,49 @@ export function stripPositionMarkersFromCvYaml(yamlText: string) {
       }
 
       entry.position = stripPositionMarker(entry.position);
+    }
+  }
+
+  return YAML.stringify(parsed);
+}
+
+export function restoreAhmadStylePositionMarkersInCvYaml(yamlText: string) {
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(yamlText);
+  } catch {
+    return yamlText;
+  }
+  if (!isRecord(parsed)) {
+    return yamlText;
+  }
+
+  const cvData = parsed.cv;
+  if (!isRecord(cvData)) {
+    return yamlText;
+  }
+
+  const sections = cvData.sections;
+  if (!isRecord(sections)) {
+    return yamlText;
+  }
+
+  for (const entries of Object.values(sections)) {
+    if (!Array.isArray(entries)) {
+      continue;
+    }
+
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index];
+      if (!isRecord(entry) || typeof entry.position !== 'string') {
+        continue;
+      }
+
+      const nextEntry = entries[index + 1];
+      const cleanedPosition = stripPositionMarker(entry.position);
+      entry.position = isContinuationEntry(nextEntry)
+        ? `${POSITION_SPACING_SAME_MARKER}${cleanedPosition}`
+        : cleanedPosition;
     }
   }
 

@@ -7,6 +7,7 @@ import { useStore } from '../lib/use-store';
 import { useIsMobile } from '../lib/use-mobile';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
+import { stripPositionMarkersFromCvYaml } from '../features/viewer/normalize-compat-cv';
 import {
   normalizeLegacyDesignYaml,
   prepareViewerSections,
@@ -197,6 +198,17 @@ export function Workspace() {
       sidebarRef.current?.collapse();
     }
   }, [isMobile]);
+
+  useEffect(() => {
+    if (!selectedFile || !rawSections?.cv.includes('RCVSPACING')) {
+      return;
+    }
+
+    const strippedCv = stripPositionMarkersFromCvYaml(rawSections.cv);
+    if (strippedCv !== rawSections.cv) {
+      fileStore.updateSection('cv', strippedCv);
+    }
+  }, [rawSections?.cv, selectedFile]);
 
   useEffect(() => {
     if (!selectedFile || !rawSections || viewer.isInitializing || viewer.initError) {
