@@ -23,6 +23,7 @@ const CUSTOM_CONNECTION_ICONS: Record<string, string> = {
 };
 const POSITION_SPACING_SAME_MARKER = 'RCVSPACINGSAME:';
 const POSITION_SPACING_DIFF_MARKER = 'RCVSPACINGDIFF:';
+const ARCHIVED_TAG = 'archived';
 const MONTH_NAMES: Record<string, string> = {
   '01': 'January',
   '02': 'February',
@@ -159,6 +160,11 @@ function normalizeFlavoredFields(entry: unknown, preferredFlavors: string[]): un
 }
 
 function matchesEntryVariant(entry: UnknownRecord, selectedTags: string[], variantActive: boolean) {
+  const requiredTags = normalizeStringList(entry.tags);
+  if (requiredTags.includes(ARCHIVED_TAG) && !selectedTags.includes(ARCHIVED_TAG)) {
+    return false;
+  }
+
   if (!variantActive) {
     return true;
   }
@@ -168,7 +174,6 @@ function matchesEntryVariant(entry: UnknownRecord, selectedTags: string[], varia
     return false;
   }
 
-  const requiredTags = normalizeStringList(entry.tags);
   if (requiredTags.length > 0 && !requiredTags.some((tag) => selectedTags.includes(tag))) {
     return false;
   }

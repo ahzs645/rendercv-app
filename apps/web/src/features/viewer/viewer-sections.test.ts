@@ -2,6 +2,55 @@ import { describe, expect, it } from 'vitest';
 import { prepareViewerSections } from './viewer-sections';
 
 describe('prepareViewerSections', () => {
+  it('hides archived-tagged entries by default', () => {
+    const sections = prepareViewerSections({
+      cv: `cv:
+  sections:
+    experience:
+      - company: Active Company
+        position: Active Role
+      - company: Archived Company
+        position: Archived Role
+        tags: [archived]
+`,
+      design: `design:
+  theme: classic
+`,
+      locale: '',
+      settings: ''
+    });
+
+    expect(sections.cv).toContain('company: Active Company');
+    expect(sections.cv).not.toContain('company: Archived Company');
+    expect(sections.cv).not.toContain('tags:');
+  });
+
+  it('shows archived-tagged entries when archived is explicitly selected', () => {
+    const sections = prepareViewerSections(
+      {
+        cv: `cv:
+  sections:
+    experience:
+      - company: Active Company
+        position: Active Role
+      - company: Archived Company
+        position: Archived Role
+        tags: [archived]
+`,
+        design: `design:
+  theme: classic
+`,
+        locale: '',
+        settings: ''
+      },
+      { tags: ['archived'] }
+    );
+
+    expect(sections.cv).toContain('company: Active Company');
+    expect(sections.cv).toContain('company: Archived Company');
+    expect(sections.cv).not.toContain('tags:');
+  });
+
   it('strips position spacing markers for non-ahmad themes', () => {
     const sections = prepareViewerSections({
       cv: `cv:

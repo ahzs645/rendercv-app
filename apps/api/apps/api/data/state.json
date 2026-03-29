@@ -19,7 +19,115 @@
       "isPublic": false,
       "chatMessages": [],
       "editCount": 7,
-      "lastEdited": 1774746069589
+      "lastEdited": 1774746069589,
+      "variants": {
+        "full": {
+          "description": "Complete resume with all sections"
+        },
+        "academic": {
+          "description": "Academic focus (no projects)",
+          "exclude_sections": [
+            "projects"
+          ]
+        },
+        "minimal": {
+          "description": "Essential sections only (experience, education, awards, skills)",
+          "exclude_sections": [
+            "projects",
+            "volunteer",
+            "presentations"
+          ]
+        },
+        "industry": {
+          "description": "Industry focus (no volunteer, presentations, publications)",
+          "exclude_sections": [
+            "volunteer",
+            "presentations",
+            "publications"
+          ]
+        },
+        "tech": {
+          "description": "Tech-focused resume (only core technical sections)",
+          "exclude_sections": [
+            "volunteer",
+            "presentations",
+            "publications",
+            "professional_development"
+          ]
+        },
+        "mechatronics": {
+          "description": "Mechatronics-focused resume",
+          "exclude_sections": [
+            "volunteer",
+            "presentations",
+            "publications",
+            "professional_development"
+          ],
+          "tags": [
+            "mechatronics"
+          ]
+        },
+        "consulting_life_sciences": {
+          "description": "One-page life sciences strategy consulting application resume",
+          "exclude_sections": [
+            "projects",
+            "professional_development",
+            "certifications_skills",
+            "volunteer",
+            "event_administration",
+            "memberships",
+            "media"
+          ],
+          "tags": [
+            "consulting_onepage"
+          ],
+          "flavors": [
+            "consulting_onepage"
+          ]
+        },
+        "consulting_tech": {
+          "description": "One-page tech strategy consulting application resume",
+          "exclude_sections": [
+            "professional_development",
+            "certifications_skills",
+            "volunteer",
+            "event_administration",
+            "memberships",
+            "media",
+            "awards",
+            "publications"
+          ],
+          "tags": [
+            "consulting_onepage",
+            "consulting_tech"
+          ],
+          "flavors": [
+            "consulting_onepage"
+          ]
+        },
+        "chamath_main": {
+          "description": "Chamath's main resume - Production Engineering / SRE focus, no skills section",
+          "exclude_sections": [
+            "skills"
+          ],
+          "tags": [
+            "main"
+          ],
+          "flavors": [
+            "main"
+          ]
+        },
+        "chamath_swe": {
+          "description": "Chamath's SWE resume - Software Engineering titles, skills section included",
+          "tags": [
+            "swe"
+          ],
+          "flavors": [
+            "swe"
+          ]
+        }
+      },
+      "selectedVariant": "consulting_tech"
     },
     {
       "id": "533e27c7-8db0-48e3-92b1-853d5820ef89",
@@ -522,7 +630,8 @@
       "designs": {
         "moderncv": "design:\n  theme: moderncv\n  page:\n    size: us-letter\n    top_margin: 0.7in\n    bottom_margin: 0.7in\n    left_margin: 0.7in\n    right_margin: 0.7in\n    show_footer: true\n    show_top_note: true\n  colors:\n    body: rgb(0, 0, 0)\n    name: rgb(0, 79, 144)\n    headline: rgb(0, 79, 144)\n    connections: rgb(0, 79, 144)\n    section_titles: rgb(0, 79, 144)\n    links: rgb(0, 79, 144)\n    footer: rgb(128, 128, 128)\n    top_note: rgb(128, 128, 128)\n  typography:\n    line_spacing: 0.6em\n    alignment: justified\n    date_and_location_column_alignment: right\n    font_family:\n      body: Fontin\n      name: Fontin\n      headline: Fontin\n      connections: Fontin\n      section_titles: Fontin\n    font_size:\n      body: 10pt\n      name: 25pt\n      headline: 10pt\n      connections: 10pt\n      section_titles: 1.4em\n    small_caps:\n      name: false\n      headline: false\n      connections: false\n      section_titles: false\n    bold:\n      name: false\n      headline: false\n      connections: false\n      section_titles: false\n  links:\n    underline: true\n    show_external_link_icon: false\n  header:\n    alignment: left\n    photo_width: 4.15cm\n    photo_position: left\n    photo_space_left: 0cm\n    photo_space_right: 0.3cm\n    space_below_name: 0.7cm\n    space_below_headline: 0.7cm\n    space_below_connections: 0.7cm\n    connections:\n      phone_number_format: national\n      hyperlink: true\n      show_icons: true\n      display_urls_instead_of_usernames: false\n      separator: ''\n      space_between_connections: 0.5cm\n  section_titles:\n    type: moderncv\n    line_thickness: 0.15cm\n    space_above: 0.55cm\n    space_below: 0.3cm\n  sections:\n    allow_page_break: true\n    space_between_regular_entries: 1.2em\n    space_between_text_based_entries: 0.3em\n    show_time_spans_in: []\n  entries:\n    date_and_location_width: 4.15cm\n    side_space: 0cm\n    space_between_columns: 0.3cm\n    allow_page_break: false\n    short_second_row: false\n    degree_width: 1cm\n    summary:\n      space_above: 0.1cm\n      space_left: 0cm\n    highlights:\n      bullet: •\n      nested_bullet: •\n      space_left: 0cm\n      space_above: 0.15cm\n      space_between_items: 0.1cm\n      space_between_bullet_and_text: 0.3em\n  templates:\n    footer: '*NAME -- PAGE_NUMBER/TOTAL_PAGES*'\n    top_note: '*LAST_UPDATED CURRENT_DATE*'\n    single_date: MONTH_ABBREVIATION YEAR\n    date_range: START_DATE – END_DATE\n    time_span: HOW_MANY_YEARS YEARS HOW_MANY_MONTHS MONTHS\n    one_line_entry:\n      main_column: '**LABEL:** DETAILS'\n    education_entry:\n      main_column: |-\n        **INSTITUTION**, DEGREE_WITH_AREA -- LOCATION\n        SUMMARY\n        HIGHLIGHTS\n      degree_column:\n      date_and_location_column: DATE\n    normal_entry:\n      main_column: |-\n        **NAME** -- **LOCATION**\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: DATE\n    experience_entry:\n      main_column: |-\n        **POSITION**, COMPANY -- LOCATION\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: DATE\n    publication_entry:\n      main_column: |-\n        **TITLE**\n        SUMMARY\n        AUTHORS\n        URL (JOURNAL)\n      date_and_location_column: DATE\n",
         "ahmadstyle": "design:\n  theme: ahmadstyle\n  page:\n    size: us-letter\n    top_margin: 0.7in\n    bottom_margin: 0.7in\n    left_margin: 0.7in\n    right_margin: 0.7in\n    show_footer: true\n    show_top_note: true\n  colors:\n    body: rgb(0, 0, 0)\n    name: rgb(0, 79, 144)\n    headline: rgb(0, 79, 144)\n    connections: rgb(0, 79, 144)\n    section_titles: rgb(0, 79, 144)\n    links: rgb(0, 79, 144)\n    footer: rgb(128, 128, 128)\n    top_note: rgb(128, 128, 128)\n  typography:\n    line_spacing: 0.6em\n    alignment: justified\n    date_and_location_column_alignment: right\n    font_family:\n      body: Source Sans 3\n      name: Source Sans 3\n      headline: Source Sans 3\n      connections: Source Sans 3\n      section_titles: Source Sans 3\n    font_size:\n      body: 10pt\n      name: 30pt\n      headline: 10pt\n      connections: 10pt\n      section_titles: 1.4em\n    small_caps:\n      name: false\n      headline: false\n      connections: false\n      section_titles: false\n    bold:\n      name: true\n      headline: false\n      connections: false\n      section_titles: true\n  links:\n    underline: false\n    show_external_link_icon: false\n  header:\n    alignment: center\n    photo_width: 3.5cm\n    photo_position: left\n    photo_space_left: 0.4cm\n    photo_space_right: 0.4cm\n    space_below_name: 0.7cm\n    space_below_headline: 0.7cm\n    space_below_connections: 0.7cm\n    connections:\n      phone_number_format: national\n      hyperlink: true\n      show_icons: true\n      display_urls_instead_of_usernames: false\n      separator: ''\n      space_between_connections: 0.5cm\n  section_titles:\n    type: with_partial_line\n    line_thickness: 0.5pt\n    space_above: 0.5cm\n    space_below: 0.3cm\n  sections:\n    allow_page_break: true\n    space_between_regular_entries: 1.2em\n    space_between_text_based_entries: 0.3em\n    show_time_spans_in:\n      - experience\n  entries:\n    date_and_location_width: 4.15cm\n    side_space: 0.2cm\n    space_between_columns: 0.1cm\n    allow_page_break: false\n    short_second_row: true\n    degree_width: 1cm\n    summary:\n      space_above: 0cm\n      space_left: 0cm\n    highlights:\n      bullet: •\n      nested_bullet: •\n      space_left: 0.15cm\n      space_above: 0cm\n      space_between_items: 0cm\n      space_between_bullet_and_text: 0.5em\n  templates:\n    footer: '*NAME -- PAGE_NUMBER/TOTAL_PAGES*'\n    top_note: '*LAST_UPDATED CURRENT_DATE*'\n    single_date: MONTH_ABBREVIATION YEAR\n    date_range: START_DATE – END_DATE\n    time_span: HOW_MANY_YEARS YEARS HOW_MANY_MONTHS MONTHS\n    one_line_entry:\n      main_column: '**LABEL:** DETAILS'\n    education_entry:\n      main_column: |-\n        **INSTITUTION**, AREA\n        SUMMARY\n        HIGHLIGHTS\n      degree_column: '**DEGREE**'\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    normal_entry:\n      main_column: |-\n        **NAME**\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    experience_entry:\n      main_column: |-\n        **COMPANY**, POSITION\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    publication_entry:\n      main_column: |-\n        **TITLE**\n        SUMMARY\n        AUTHORS\n        URL (JOURNAL)\n      date_and_location_column: DATE\n",
-        "classic": "design:\n  theme: classic\n  page:\n    size: us-letter\n    top_margin: 0.7in\n    bottom_margin: 0.7in\n    left_margin: 0.7in\n    right_margin: 0.7in\n    show_footer: true\n    show_top_note: true\n  colors:\n    body: rgb(0, 0, 0)\n    name: rgb(0, 79, 144)\n    headline: rgb(0, 79, 144)\n    connections: rgb(0, 79, 144)\n    section_titles: rgb(0, 79, 144)\n    links: rgb(0, 79, 144)\n    footer: rgb(128, 128, 128)\n    top_note: rgb(128, 128, 128)\n  typography:\n    line_spacing: 0.6em\n    alignment: justified\n    date_and_location_column_alignment: right\n    font_family:\n      body: Source Sans 3\n      name: Source Sans 3\n      headline: Source Sans 3\n      connections: Source Sans 3\n      section_titles: Source Sans 3\n    font_size:\n      body: 10pt\n      name: 30pt\n      headline: 10pt\n      connections: 10pt\n      section_titles: 1.4em\n    small_caps:\n      name: false\n      headline: false\n      connections: false\n      section_titles: false\n    bold:\n      name: true\n      headline: false\n      connections: false\n      section_titles: true\n  links:\n    underline: false\n    show_external_link_icon: false\n  header:\n    alignment: center\n    photo_width: 3.5cm\n    photo_position: left\n    photo_space_left: 0.4cm\n    photo_space_right: 0.4cm\n    space_below_name: 0.7cm\n    space_below_headline: 0.7cm\n    space_below_connections: 0.7cm\n    connections:\n      phone_number_format: national\n      hyperlink: true\n      show_icons: true\n      display_urls_instead_of_usernames: false\n      separator: ''\n      space_between_connections: 0.5cm\n  section_titles:\n    type: with_partial_line\n    line_thickness: 0.5pt\n    space_above: 0.5cm\n    space_below: 0.3cm\n  sections:\n    allow_page_break: true\n    space_between_regular_entries: 1.2em\n    space_between_text_based_entries: 0.3em\n    show_time_spans_in:\n      - experience\n  entries:\n    date_and_location_width: 4.15cm\n    side_space: 0.2cm\n    space_between_columns: 0.1cm\n    allow_page_break: false\n    short_second_row: true\n    degree_width: 1cm\n    summary:\n      space_above: 0cm\n      space_left: 0cm\n    highlights:\n      bullet: •\n      nested_bullet: •\n      space_left: 0.15cm\n      space_above: 0cm\n      space_between_items: 0cm\n      space_between_bullet_and_text: 0.5em\n  templates:\n    footer: '*NAME -- PAGE_NUMBER/TOTAL_PAGES*'\n    top_note: '*LAST_UPDATED CURRENT_DATE*'\n    single_date: MONTH_ABBREVIATION YEAR\n    date_range: START_DATE – END_DATE\n    time_span: HOW_MANY_YEARS YEARS HOW_MANY_MONTHS MONTHS\n    one_line_entry:\n      main_column: '**LABEL:** DETAILS'\n    education_entry:\n      main_column: |-\n        **INSTITUTION**, AREA\n        SUMMARY\n        HIGHLIGHTS\n      degree_column: '**DEGREE**'\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    normal_entry:\n      main_column: |-\n        **NAME**\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    experience_entry:\n      main_column: |-\n        **COMPANY**, POSITION\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    publication_entry:\n      main_column: |-\n        **TITLE**\n        SUMMARY\n        AUTHORS\n        URL (JOURNAL)\n      date_and_location_column: DATE\n"
+        "classic": "design:\n  theme: classic\n  page:\n    size: us-letter\n    top_margin: 0.7in\n    bottom_margin: 0.7in\n    left_margin: 0.7in\n    right_margin: 0.7in\n    show_footer: true\n    show_top_note: true\n  colors:\n    body: rgb(0, 0, 0)\n    name: rgb(0, 79, 144)\n    headline: rgb(0, 79, 144)\n    connections: rgb(0, 79, 144)\n    section_titles: rgb(0, 79, 144)\n    links: rgb(0, 79, 144)\n    footer: rgb(128, 128, 128)\n    top_note: rgb(128, 128, 128)\n  typography:\n    line_spacing: 0.6em\n    alignment: justified\n    date_and_location_column_alignment: right\n    font_family:\n      body: Source Sans 3\n      name: Source Sans 3\n      headline: Source Sans 3\n      connections: Source Sans 3\n      section_titles: Source Sans 3\n    font_size:\n      body: 10pt\n      name: 30pt\n      headline: 10pt\n      connections: 10pt\n      section_titles: 1.4em\n    small_caps:\n      name: false\n      headline: false\n      connections: false\n      section_titles: false\n    bold:\n      name: true\n      headline: false\n      connections: false\n      section_titles: true\n  links:\n    underline: false\n    show_external_link_icon: false\n  header:\n    alignment: center\n    photo_width: 3.5cm\n    photo_position: left\n    photo_space_left: 0.4cm\n    photo_space_right: 0.4cm\n    space_below_name: 0.7cm\n    space_below_headline: 0.7cm\n    space_below_connections: 0.7cm\n    connections:\n      phone_number_format: national\n      hyperlink: true\n      show_icons: true\n      display_urls_instead_of_usernames: false\n      separator: ''\n      space_between_connections: 0.5cm\n  section_titles:\n    type: with_partial_line\n    line_thickness: 0.5pt\n    space_above: 0.5cm\n    space_below: 0.3cm\n  sections:\n    allow_page_break: true\n    space_between_regular_entries: 1.2em\n    space_between_text_based_entries: 0.3em\n    show_time_spans_in:\n      - experience\n  entries:\n    date_and_location_width: 4.15cm\n    side_space: 0.2cm\n    space_between_columns: 0.1cm\n    allow_page_break: false\n    short_second_row: true\n    degree_width: 1cm\n    summary:\n      space_above: 0cm\n      space_left: 0cm\n    highlights:\n      bullet: •\n      nested_bullet: •\n      space_left: 0.15cm\n      space_above: 0cm\n      space_between_items: 0cm\n      space_between_bullet_and_text: 0.5em\n  templates:\n    footer: '*NAME -- PAGE_NUMBER/TOTAL_PAGES*'\n    top_note: '*LAST_UPDATED CURRENT_DATE*'\n    single_date: MONTH_ABBREVIATION YEAR\n    date_range: START_DATE – END_DATE\n    time_span: HOW_MANY_YEARS YEARS HOW_MANY_MONTHS MONTHS\n    one_line_entry:\n      main_column: '**LABEL:** DETAILS'\n    education_entry:\n      main_column: |-\n        **INSTITUTION**, AREA\n        SUMMARY\n        HIGHLIGHTS\n      degree_column: '**DEGREE**'\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    normal_entry:\n      main_column: |-\n        **NAME**\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    experience_entry:\n      main_column: |-\n        **COMPANY**, POSITION\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    publication_entry:\n      main_column: |-\n        **TITLE**\n        SUMMARY\n        AUTHORS\n        URL (JOURNAL)\n      date_and_location_column: DATE\n",
+        "opal": "design:\n  theme: opal\n  page:\n    top_margin: 0.65in\n    bottom_margin: 0.65in\n    left_margin: 0.65in\n    right_margin: 0.65in\n    show_footer: false\n    show_top_note: false\n  typography:\n    line_spacing: 0.6em\n    alignment: left\n    font_family:\n      body: Lato\n      name: Lato\n      headline: Lato\n      connections: Lato\n      section_titles: Lato\n    font_size:\n      body: 10pt\n      name: 26pt\n      headline: 10pt\n      connections: 9pt\n      section_titles: 1.2em\n    small_caps:\n      name: false\n      headline: true\n      connections: false\n      section_titles: true\n    bold:\n      name: true\n      headline: false\n      connections: false\n      section_titles: false\n  colors:\n    name: rgb(0, 100, 90)\n    headline: rgb(0, 80, 72)\n    connections: rgb(0, 80, 72)\n    section_titles: rgb(0, 100, 90)\n    links: rgb(0, 100, 90)\n    footer: rgb(100, 140, 135)\n    top_note: rgb(100, 140, 135)\n  header:\n    alignment: center\n    space_below_name: 0.3cm\n    space_below_headline: 0.3cm\n    space_below_connections: 0.6cm\n    connections:\n      separator: \"•\"\n      show_icons: true\n      space_between_connections: 0.5cm\n  links:\n    underline: false\n    show_external_link_icon: false\n  section_titles:\n    type: centered_without_line\n    line_thickness: 0.4pt\n    space_above: 0.55cm\n    space_below: 0.25cm\n  sections:\n    space_between_regular_entries: 1.1em\n    space_between_text_based_entries: 0.3em\n    show_time_spans_in: []\n  entries:\n    short_second_row: true\n    side_space: 0.15cm\n    space_between_columns: 0.1cm\n    summary:\n      space_above: 0.04cm\n    highlights:\n      bullet: \"◦\"\n      nested_bullet: \"◦\"\n      space_left: 0.15cm\n      space_above: 0.04cm\n      space_between_items: 0.04cm\n      space_between_bullet_and_text: 0.5em\n  templates:\n    education_entry:\n      main_column: |-\n        **INSTITUTION** -- LOCATION\n        DEGREE_WITH_AREA\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: DATE\n      degree_column:\n    normal_entry:\n      main_column: |-\n        **NAME** -- LOCATION\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: DATE\n    experience_entry:\n      main_column: |-\n        **COMPANY**, *POSITION* -- LOCATION\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: DATE\n"
       },
       "locales": {
         "english": "locale:\n  language: english\n  last_updated: Last updated in\n  month: month\n  months: months\n  year: year\n  years: years\n  present: present\n  phrases:\n    degree_with_area: DEGREE in AREA\n  month_abbreviations:\n    - Jan\n    - Feb\n    - Mar\n    - Apr\n    - May\n    - June\n    - July\n    - Aug\n    - Sept\n    - Oct\n    - Nov\n    - Dec\n  month_names:\n    - January\n    - February\n    - March\n    - April\n    - May\n    - June\n    - July\n    - August\n    - September\n    - October\n    - November\n    - December\n"
@@ -534,7 +643,7 @@
       "isTrashed": false,
       "isPublic": false,
       "chatMessages": [],
-      "editCount": 3,
+      "editCount": 4,
       "lastEdited": 1773684068071
     },
     {
@@ -572,7 +681,7 @@
     "entriesExpanded": true,
     "selectedModel": "gpt-5-mini",
     "themeLibrary": {
-      "ahmadstyle": "design:\n  theme: ahmadstyle\n  page:\n    size: us-letter\n  typography:\n    font_size:\n      body: 11pt\n  keep_sections_together: false\n  keep_entries_together: true\n  prevent_orphaned_headers: true\n  section_heading_size: 13pt\n"
+      "ahmadstyle": "design:\n  theme: ahmadstyle\n  page:\n    size: us-letter\n    top_margin: 0.7in\n    bottom_margin: 0.7in\n    left_margin: 0.7in\n    right_margin: 0.7in\n    show_footer: true\n    show_top_note: true\n  colors:\n    body: rgb(0, 0, 0)\n    name: rgb(0, 79, 144)\n    headline: rgb(0, 79, 144)\n    connections: rgb(0, 79, 144)\n    section_titles: rgb(0, 79, 144)\n    links: rgb(0, 79, 144)\n    footer: rgb(128, 128, 128)\n    top_note: rgb(128, 128, 128)\n  typography:\n    line_spacing: 0.6em\n    alignment: justified\n    date_and_location_column_alignment: right\n    font_family:\n      body: Source Sans 3\n      name: Source Sans 3\n      headline: Source Sans 3\n      connections: Source Sans 3\n      section_titles: Source Sans 3\n    font_size:\n      body: 10pt\n      name: 30pt\n      headline: 10pt\n      connections: 10pt\n      section_titles: 1.4em\n    small_caps:\n      name: false\n      headline: false\n      connections: false\n      section_titles: false\n    bold:\n      name: true\n      headline: false\n      connections: false\n      section_titles: true\n  links:\n    underline: false\n    show_external_link_icon: false\n  header:\n    alignment: center\n    photo_width: 3.5cm\n    photo_position: left\n    photo_space_left: 0.4cm\n    photo_space_right: 0.4cm\n    space_below_name: 0.7cm\n    space_below_headline: 0.7cm\n    space_below_connections: 0.7cm\n    connections:\n      phone_number_format: national\n      hyperlink: true\n      show_icons: true\n      display_urls_instead_of_usernames: false\n      separator: ''\n      space_between_connections: 0.5cm\n  section_titles:\n    type: with_partial_line\n    line_thickness: 0.5pt\n    space_above: 0.5cm\n    space_below: 0.3cm\n  sections:\n    allow_page_break: true\n    space_between_regular_entries: 1.2em\n    space_between_text_based_entries: 0.3em\n    show_time_spans_in:\n      - experience\n  entries:\n    date_and_location_width: 4.15cm\n    side_space: 0.2cm\n    space_between_columns: 0.1cm\n    allow_page_break: false\n    short_second_row: true\n    degree_width: 1cm\n    summary:\n      space_above: 0cm\n      space_left: 0cm\n    highlights:\n      bullet: •\n      nested_bullet: •\n      space_left: 0.15cm\n      space_above: 0cm\n      space_between_items: 0cm\n      space_between_bullet_and_text: 0.5em\n  templates:\n    footer: '*NAME -- PAGE_NUMBER/TOTAL_PAGES*'\n    top_note: '*LAST_UPDATED CURRENT_DATE*'\n    single_date: MONTH_ABBREVIATION YEAR\n    date_range: START_DATE – END_DATE\n    time_span: HOW_MANY_YEARS YEARS HOW_MANY_MONTHS MONTHS\n    one_line_entry:\n      main_column: '**LABEL:** DETAILS'\n    education_entry:\n      main_column: |-\n        **INSTITUTION**, AREA\n        SUMMARY\n        HIGHLIGHTS\n      degree_column: '**DEGREE**'\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    normal_entry:\n      main_column: |-\n        **NAME**\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    experience_entry:\n      main_column: |-\n        **COMPANY**, POSITION\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    publication_entry:\n      main_column: |-\n        **TITLE**\n        SUMMARY\n        AUTHORS\n        URL (JOURNAL)\n      date_and_location_column: DATE\n"
     }
   },
   "aiUsage": {
