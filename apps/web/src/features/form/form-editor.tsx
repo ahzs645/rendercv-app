@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { SectionKey } from '@rendercv/contracts';
 import YAML from 'yaml';
@@ -6,7 +6,7 @@ import { preferencesStore } from '@rendercv/core';
 import {
   cvPersonalInfoGroup
 } from './schema/cv-schema';
-import { designSchema } from './schema/design-schema';
+import { getDesignSchema } from './schema/design-schema';
 import { localeSchema } from './schema/locale-schema';
 import { settingsSchema } from './schema/settings-schema';
 import type { SectionSchema } from './schema/types';
@@ -16,9 +16,9 @@ import { Divider } from './primitives';
 import { CvSectionEditor } from './cv-section-editor';
 import {
   getNestedValue,
-  setNestedValue,
   normalizeFieldValue,
-  labelWidthForFields
+  labelWidthForFields,
+  updateObjectField
 } from './utils';
 
 export function FormEditor({
@@ -31,12 +31,20 @@ export function FormEditor({
   onChange: (value: string) => void;
 }) {
   const preferences = useStore(preferencesStore);
-  const schema = getSchema(section);
 
-  let documentValue: Record<string, unknown>;
-  try {
-    documentValue = (YAML.parse(value || `${section}:\n`) ?? {}) as Record<string, unknown>;
-  } catch {
+  const parsedDocument = useMemo(() => {
+    try {
+      const documentValue = (YAML.parse(value || `${section}:\n`) ?? {}) as Record<string, unknown>;
+      return {
+        documentValue,
+        rootValue: (documentValue[section] as Record<string, unknown> | undefined) ?? {}
+      };
+    } catch {
+      return null;
+    }
+  }, [section, value]);
+
+  if (!parsedDocument) {
     return (
       <div className="rounded-2xl border border-border bg-card p-5 text-sm text-destructive">
         The current YAML cannot be parsed into a form. Switch back to YAML mode to fix it.
@@ -44,19 +52,53 @@ export function FormEditor({
     );
   }
 
-  const rootValue = (documentValue[section] as Record<string, unknown> | undefined) ?? {};
+  const { documentValue, rootValue: parsedRootValue } = parsedDocument;
+  const schema = getSchema(section, documentValue);
+  const [draftRootValue, setDraftRootValue] = useState(parsedRootValue);
+  const [pendingCommitVersion, setPendingCommitVersion] = useState(0);
+  const lastEmittedValueRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (value === lastEmittedValueRef.current) {
+      lastEmittedValueRef.current = null;
+      setPendingCommitVersion(0);
+      return;
+    }
+
+    setDraftRootValue(parsedRootValue);
+    setPendingCommitVersion(0);
+  }, [parsedRootValue, value]);
+
+  useEffect(() => {
+    if (pendingCommitVersion === 0) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const nextValue = YAML.stringify({ [section]: draftRootValue });
+      if (nextValue === value) {
+        return;
+      }
+
+      lastEmittedValueRef.current = nextValue;
+      onChange(nextValue);
+    }, 150);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draftRootValue, onChange, pendingCommitVersion, section, value]);
 
   function updateField(path: string[], nextValue: unknown) {
-    const draft = structuredClone(documentValue);
-    const root = ((draft[section] as Record<string, unknown> | undefined) ??= {});
-    setNestedValue(root, path, normalizeFieldValue(nextValue));
-    onChange(YAML.stringify(draft));
+    setDraftRootValue((currentValue) =>
+      updateObjectField(currentValue, path, normalizeFieldValue(nextValue))
+    );
+    setPendingCommitVersion((currentVersion) => currentVersion + 1);
   }
 
   function updateRoot(nextRootValue: Record<string, unknown>) {
-    const draft = structuredClone(documentValue);
-    draft[section] = nextRootValue;
-    onChange(YAML.stringify(draft));
+    setDraftRootValue(nextRootValue);
+    setPendingCommitVersion((currentVersion) => currentVersion + 1);
   }
 
   return (
@@ -71,7 +113,7 @@ export function FormEditor({
             ) : null}
             <div style={{ '--label-width': labelWidthForFields(group.fields) } as CSSProperties}>
               {group.fields.map((field) => {
-                const fieldValue = getNestedValue(rootValue, field.path);
+                const fieldValue = getNestedValue(draftRootValue, field.path);
                 return (
                   <Fragment key={field.path.join('.')}>
                     <FieldControl
@@ -91,7 +133,7 @@ export function FormEditor({
       {section === 'cv' ? (
         <CvSectionEditor
           entriesExpanded={preferences.entriesExpanded}
-          rootValue={rootValue}
+          rootValue={draftRootValue}
           onChange={updateRoot}
         />
       ) : null}
@@ -99,10 +141,10 @@ export function FormEditor({
   );
 }
 
-function getSchema(section: SectionKey): SectionSchema | null {
+function getSchema(section: SectionKey, documentValue: Record<string, unknown>): SectionSchema | null {
   switch (section) {
     case 'design':
-      return designSchema;
+      return getDesignSchema(readDesignThemeName(documentValue.design));
     case 'locale':
       return localeSchema;
     case 'settings':
@@ -112,4 +154,13 @@ function getSchema(section: SectionKey): SectionSchema | null {
     default:
       return null;
   }
+}
+
+function readDesignThemeName(designSection: unknown) {
+  if (!designSection || typeof designSection !== 'object' || Array.isArray(designSection)) {
+    return undefined;
+  }
+
+  const theme = (designSection as Record<string, unknown>).theme;
+  return typeof theme === 'string' ? theme : undefined;
 }

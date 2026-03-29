@@ -20,12 +20,13 @@ import { MonacoEditor } from './monaco-editor';
 import type { MonacoEditorHandle } from './monaco-editor';
 import { PreviewPaneView } from './preview-pane';
 import { SectionTabs } from './section-tabs';
-import { Sidebar } from './sidebar';
+import { Sidebar, SIDEBAR_MINI_WIDTH } from './sidebar';
 import { FormEditor } from '../features/form/form-editor';
 import { WorkspaceToolbar } from './workspace-toolbar';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
+const SIDEBAR_OVERLAY_BREAKPOINT = Math.ceil(SIDEBAR_MINI_WIDTH / (SIDEBAR_DEFAULT_SIZE / 100));
 const BUILT_IN_THEMES = new Set(Object.keys(defaultDesigns));
 
 const LEGACY_DESIGN_KEY_PATTERN =
@@ -97,8 +98,9 @@ export function Workspace() {
   const sidebarRef = useRef<ImperativePanelHandle>(null);
   const monacoRef = useRef<MonacoEditorHandle>(null);
   const compatibilityRepairRef = useRef<string | undefined>(undefined);
+  const restoreInlineSidebarRef = useRef<boolean | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const isMobile = useIsMobile();
+  const sidebarOverlays = useIsMobile(SIDEBAR_OVERLAY_BREAKPOINT);
   const [mobileOpen, setMobileOpen] = useState(false);
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileSnapshot.selectedFileId);
   const rawSections = selectedFile ? resolveFileSections(selectedFile) : undefined;
@@ -106,6 +108,12 @@ export function Workspace() {
   const activeSection = preferences.activeSection;
   const currentValue = rawSections?.[activeSection] ?? '';
   const viewer = useViewerRenderer(viewerSections);
+  const handleSectionChange = useCallback(
+    (nextValue: string) => {
+      fileStore.updateSection(activeSection, nextValue);
+    },
+    [activeSection]
+  );
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -172,26 +180,36 @@ export function Workspace() {
     return () => window.removeEventListener('keydown', handleKeydown);
   }, [fileSnapshot.files, fileSnapshot.selectedFileId]);
 
-  // Auto-collapse sidebar panel on mobile; close mobile drawer when returning to desktop
+  // Switch the sidebar into an overlay drawer before the default 18% panel shrinks into icon-only mode.
   useEffect(() => {
-    if (isMobile) {
+    if (sidebarOverlays) {
+      if (restoreInlineSidebarRef.current === null) {
+        restoreInlineSidebarRef.current = sidebarRef.current?.isCollapsed() ?? sidebarCollapsed;
+      }
+
       if (sidebarRef.current && !sidebarRef.current.isCollapsed()) {
         sidebarRef.current.collapse();
       }
     } else {
       setMobileOpen(false);
-    }
-  }, [isMobile]);
 
-  // Close mobile drawer when a file is selected
+      if (restoreInlineSidebarRef.current === false && sidebarRef.current?.isCollapsed()) {
+        sidebarRef.current.expand(SIDEBAR_DEFAULT_SIZE);
+      }
+
+      restoreInlineSidebarRef.current = null;
+    }
+  }, [sidebarCollapsed, sidebarOverlays]);
+
+  // Close overlay drawer when a file is selected.
   useEffect(() => {
-    if (isMobile) {
+    if (sidebarOverlays) {
       setMobileOpen(false);
     }
   }, [fileSnapshot.selectedFileId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleSidebar = useCallback(() => {
-    if (isMobile) {
+    if (sidebarOverlays) {
       setMobileOpen((v) => !v);
       return;
     }
@@ -200,7 +218,7 @@ export function Workspace() {
     } else {
       sidebarRef.current?.collapse();
     }
-  }, [isMobile]);
+  }, [sidebarOverlays]);
 
   useEffect(() => {
     if (!selectedFile || !rawSections?.cv.includes('RCVSPACING')) {
@@ -339,7 +357,7 @@ export function Workspace() {
 
   return (
     <div className="h-screen overflow-hidden bg-background">
-      {isMobile ? (
+      {sidebarOverlays ? (
         <MobileSidebarDrawer open={mobileOpen} onClose={() => setMobileOpen(false)}>
           {sidebarElement}
         </MobileSidebarDrawer>
@@ -350,17 +368,17 @@ export function Workspace() {
           collapsedSize={0}
           collapsible
           defaultSize={SIDEBAR_DEFAULT_SIZE}
-          minSize={isMobile ? 0 : SIDEBAR_MIN_SIZE}
+          minSize={sidebarOverlays ? 0 : SIDEBAR_MIN_SIZE}
           onCollapse={() => setSidebarCollapsed(true)}
           onExpand={() => {
-            if (!isMobile) setSidebarCollapsed(false);
+            if (!sidebarOverlays) setSidebarCollapsed(false);
           }}
         >
-          {!isMobile ? sidebarElement : null}
+          {!sidebarOverlays ? sidebarElement : null}
         </Panel>
         <PanelResizeHandle
-          className={`workspace-resize-handle ${sidebarCollapsed || isMobile ? 'hidden' : ''}`}
-          disabled={isMobile}
+          className={`workspace-resize-handle ${sidebarCollapsed || sidebarOverlays ? 'hidden' : ''}`}
+          disabled={sidebarOverlays}
         />
         <Panel defaultSize={82} minSize={35}>
           <div className="flex h-full flex-col">
@@ -373,7 +391,7 @@ export function Workspace() {
                 onToggleSidebar={toggleSidebar}
                 sections={viewerSections}
                 selectedFile={selectedFile}
-                sidebarCollapsed={isMobile ? !mobileOpen : sidebarCollapsed}
+                sidebarCollapsed={sidebarOverlays ? !mobileOpen : sidebarCollapsed}
                 viewer={viewer}
               />
             </header>
@@ -414,15 +432,17 @@ export function Workspace() {
                     <div className="min-h-0 flex-1 p-5 pt-4">
                       {preferences.yamlEditor ? (
                         <MonacoEditor
+                          key={activeSection}
                           ref={monacoRef}
                           value={currentValue}
-                          onChange={(value) => fileStore.updateSection(activeSection, value)}
+                          onChange={handleSectionChange}
                         />
                       ) : (
                         <FormEditor
+                          key={activeSection}
                           section={activeSection}
                           value={currentValue}
-                          onChange={(value) => fileStore.updateSection(activeSection, value)}
+                          onChange={handleSectionChange}
                         />
                       )}
                     </div>

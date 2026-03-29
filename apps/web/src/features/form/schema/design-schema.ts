@@ -1,7 +1,6 @@
-import type { SectionSchema } from './types.js';
+import type { FieldGroup, SectionSchema } from './types.js';
 
-export const designSchema: SectionSchema = {
-  groups: [
+const baseDesignGroups: FieldGroup[] = [
     // ── Page ───────────────────────────────────────────────────────────
     {
       title: 'Page',
@@ -469,5 +468,69 @@ export const designSchema: SectionSchema = {
         }
       ]
     }
+];
+
+const themeSpecificDesignGroups: Record<string, FieldGroup[]> = {
+  ahmadstyle: [
+    {
+      title: 'Ahmad Style',
+      fields: [
+        {
+          path: ['keep_sections_together'],
+          label: 'Keep Sections Together',
+          type: 'boolean',
+          description: 'Prevent page breaks within sections to keep content together.'
+        },
+        {
+          path: ['keep_entries_together'],
+          label: 'Keep Entries Together',
+          type: 'boolean',
+          description: 'Keep each entry and its highlights together on the same page when possible.'
+        },
+        {
+          path: ['prevent_orphaned_headers'],
+          label: 'Prevent Orphaned Headers',
+          type: 'boolean',
+          description: 'Avoid section headers appearing alone at the bottom of a page.'
+        },
+        {
+          path: ['section_heading_size'],
+          label: 'Section Heading Size',
+          type: 'dimension',
+          description: 'Font size for section headers such as EXPERIENCE.'
+        },
+        {
+          path: ['website_link_color'],
+          label: 'Website Link Color',
+          type: 'toggle',
+          options: [
+            { value: 'black', label: 'Black' },
+            { value: 'blue', label: 'Blue' }
+          ],
+          description: 'Choose whether the website link matches the text color or uses a hyperlink style.'
+        }
+      ]
+    },
+    {
+      title: 'Ahmad Style Entries',
+      fields: [
+        {
+          path: ['custom_entries', 'show_time_span'],
+          label: 'Show Time Span In',
+          type: 'string_list',
+          placeholder: 'Section name',
+          ordered: false,
+          description: 'Section titles where Ahmad Style should show entry time spans.'
+        }
+      ]
+    }
   ]
 };
+
+export function getDesignSchema(themeName?: string): SectionSchema {
+  return {
+    groups: [...baseDesignGroups, ...(themeName ? themeSpecificDesignGroups[themeName] ?? [] : [])]
+  };
+}
+
+export const designSchema = getDesignSchema();

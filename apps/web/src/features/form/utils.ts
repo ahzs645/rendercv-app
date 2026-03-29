@@ -18,9 +18,15 @@ export function updateEntryField(
   path: string[],
   value: unknown
 ): Record<string, unknown> {
-  const draft = structuredClone(entry);
-  setNestedValue(draft, path, normalizeFieldValue(value));
-  return draft;
+  return updateObjectField(entry, path, normalizeFieldValue(value));
+}
+
+export function updateObjectField<T extends Record<string, unknown>>(
+  entry: T,
+  path: string[],
+  value: unknown
+): T {
+  return updateNestedContainer(entry, path, value) as T;
 }
 
 export function setNestedValue(root: Record<string, unknown>, path: string[], value: unknown) {
@@ -69,6 +75,55 @@ export function stringValue(value: unknown) {
 
 function isNumericKey(value: string) {
   return /^\d+$/.test(value);
+}
+
+function isContainer(value: unknown): value is Record<string, unknown> | unknown[] {
+  return value != null && typeof value === 'object';
+}
+
+function updateNestedContainer(
+  container: Record<string, unknown> | unknown[],
+  path: string[],
+  value: unknown
+): Record<string, unknown> | unknown[] {
+  const [currentKey, ...restPath] = path;
+  if (!currentKey) {
+    return container;
+  }
+
+  if (Array.isArray(container)) {
+    const index = Number(currentKey);
+    const nextArray = [...container];
+
+    if (restPath.length === 0) {
+      nextArray[index] = value;
+      return nextArray;
+    }
+
+    const nextValue = container[index];
+    const fallbackContainer = isNumericKey(restPath[0]!) ? [] : {};
+    nextArray[index] = updateNestedContainer(
+      isContainer(nextValue) ? nextValue : fallbackContainer,
+      restPath,
+      value
+    );
+    return nextArray;
+  }
+
+  const nextObject = { ...container };
+  if (restPath.length === 0) {
+    nextObject[currentKey] = value;
+    return nextObject;
+  }
+
+  const nextValue = container[currentKey];
+  const fallbackContainer = isNumericKey(restPath[0]!) ? [] : {};
+  nextObject[currentKey] = updateNestedContainer(
+    isContainer(nextValue) ? nextValue : fallbackContainer,
+    restPath,
+    value
+  );
+  return nextObject;
 }
 
 export function asRecord(value: unknown): Record<string, unknown> {

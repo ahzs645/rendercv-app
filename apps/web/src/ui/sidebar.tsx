@@ -25,8 +25,8 @@ import type { RenderError } from '../features/viewer/use-viewer-renderer';
 
 type SidebarMode = 'full' | 'compact' | 'mini';
 
-const COMPACT_WIDTH = 300;
-const MINI_WIDTH = 220;
+export const SIDEBAR_COMPACT_WIDTH = 300;
+export const SIDEBAR_MINI_WIDTH = 220;
 
 export function Sidebar({
   prepareYamlImport,
@@ -70,7 +70,7 @@ export function Sidebar({
 
     const updateMode = (width: number) => {
       const nextMode: SidebarMode =
-        width < MINI_WIDTH ? 'mini' : width < COMPACT_WIDTH ? 'compact' : 'full';
+        width < SIDEBAR_MINI_WIDTH ? 'mini' : width < SIDEBAR_COMPACT_WIDTH ? 'compact' : 'full';
       setMode((current) => (current === nextMode ? current : nextMode));
     };
 

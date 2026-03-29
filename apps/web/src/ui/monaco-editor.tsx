@@ -18,6 +18,12 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
 }, ref) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const initialValueRef = useRef(value);
+  const onChangeRef = useRef(onChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   function editSelections(transform: (selected: string) => string) {
     const editor = editorRef.current;
@@ -61,7 +67,7 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
     }
 
     const editor = monaco.editor.create(hostRef.current, {
-      value,
+      value: initialValueRef.current,
       language: 'yaml',
       automaticLayout: true,
       minimap: { enabled: false },
@@ -71,7 +77,7 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
     });
 
     const subscription = editor.onDidChangeModelContent(() => {
-      onChange(editor.getValue());
+      onChangeRef.current(editor.getValue());
     });
 
     editorRef.current = editor;
@@ -81,7 +87,7 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
       editor.dispose();
       editorRef.current = null;
     };
-  }, [onChange, value]);
+  }, []);
 
   useEffect(() => {
     const editor = editorRef.current;
