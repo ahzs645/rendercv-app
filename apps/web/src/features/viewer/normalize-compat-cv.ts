@@ -37,6 +37,9 @@ const MONTH_NAMES: Record<string, string> = {
   '11': 'November',
   '12': 'December'
 };
+const MONTH_NUMBERS_BY_NAME = Object.fromEntries(
+  Object.entries(MONTH_NAMES).map(([month, name]) => [name, month])
+) as Record<string, string>;
 
 type UnknownRecord = Record<string, unknown>;
 type NormalizeCompatibilityOptions = {
@@ -740,6 +743,60 @@ function stripPositionMarker(position: string) {
   return position;
 }
 
+function parseDisplayDate(dateText: string) {
+  const normalized = dateText.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized.toLowerCase() === 'present') {
+    return 'present';
+  }
+
+  if (/^\d{4}$/.test(normalized)) {
+    return normalized;
+  }
+
+  const monthMatch = normalized.match(/^([A-Za-z]+)\s+(\d{4})$/);
+  if (!monthMatch) {
+    return undefined;
+  }
+
+  const [, monthName, year] = monthMatch;
+  const month = MONTH_NUMBERS_BY_NAME[monthName];
+  if (!month) {
+    return undefined;
+  }
+
+  return `${year}-${month}`;
+}
+
+function splitPositionDateSuffix(position: string) {
+  const separatorIndex = position.lastIndexOf(' | ');
+  if (separatorIndex < 0) {
+    return undefined;
+  }
+
+  const title = position.slice(0, separatorIndex).trim();
+  const rawRange = position.slice(separatorIndex + 3).trim();
+  if (!title || !rawRange) {
+    return undefined;
+  }
+
+  const [rawStart, rawEnd] = rawRange.split(/\s+[–-]\s+/, 2);
+  const startDate = rawStart ? parseDisplayDate(rawStart) : undefined;
+  const endDate = rawEnd ? parseDisplayDate(rawEnd) : undefined;
+  if (!startDate && !endDate) {
+    return undefined;
+  }
+
+  return {
+    title,
+    startDate,
+    endDate
+  };
+}
+
 function isContinuationEntry(entry: unknown) {
   return (
     isRecord(entry) &&
@@ -780,6 +837,57 @@ export function stripPositionMarkersFromCvYaml(yamlText: string) {
       }
 
       entry.position = stripPositionMarker(entry.position);
+    }
+  }
+
+  return YAML.stringify(parsed);
+}
+
+export function repairFlattenedPositionDatesInCvYaml(yamlText: string) {
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(yamlText);
+  } catch {
+    return yamlText;
+  }
+  if (!isRecord(parsed)) {
+    return yamlText;
+  }
+
+  const cvData = parsed.cv;
+  if (!isRecord(cvData)) {
+    return yamlText;
+  }
+
+  const sections = cvData.sections;
+  if (!isRecord(sections)) {
+    return yamlText;
+  }
+
+  for (const entries of Object.values(sections)) {
+    if (!Array.isArray(entries)) {
+      continue;
+    }
+
+    for (const entry of entries) {
+      if (!isRecord(entry) || typeof entry.position !== 'string') {
+        continue;
+      }
+
+      const cleanedPosition = stripPositionMarker(entry.position);
+      const parsedPosition = splitPositionDateSuffix(cleanedPosition);
+      if (!parsedPosition) {
+        entry.position = cleanedPosition;
+        continue;
+      }
+
+      entry.position = parsedPosition.title;
+      if (parsedPosition.startDate) {
+        entry.start_date = parsedPosition.startDate;
+      }
+      if (parsedPosition.endDate) {
+        entry.end_date = parsedPosition.endDate;
+      }
     }
   }
 

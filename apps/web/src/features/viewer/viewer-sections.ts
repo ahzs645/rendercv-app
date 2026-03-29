@@ -3,6 +3,7 @@ import { resolveFileSections } from '@rendercv/core';
 import YAML from 'yaml';
 import {
   normalizeCompatibilityCvYaml,
+  repairFlattenedPositionDatesInCvYaml,
   restoreAhmadStylePositionMarkersInCvYaml,
   stripPositionMarkersFromCvYaml
 } from './normalize-compat-cv';
@@ -130,7 +131,7 @@ export function prepareViewerSections(
     cv:
       themeName === 'ahmadstyle'
         ? restoreAhmadStylePositionMarkersInCvYaml(strippedCv)
-        : strippedCv,
+        : repairFlattenedPositionDatesInCvYaml(strippedCv),
     design
   };
 }

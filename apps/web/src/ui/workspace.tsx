@@ -7,7 +7,10 @@ import { useStore } from '../lib/use-store';
 import { useIsMobile } from '../lib/use-mobile';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
-import { stripPositionMarkersFromCvYaml } from '../features/viewer/normalize-compat-cv';
+import {
+  repairFlattenedPositionDatesInCvYaml,
+  stripPositionMarkersFromCvYaml
+} from '../features/viewer/normalize-compat-cv';
 import {
   normalizeLegacyDesignYaml,
   prepareViewerSections,
@@ -207,6 +210,17 @@ export function Workspace() {
     const strippedCv = stripPositionMarkersFromCvYaml(rawSections.cv);
     if (strippedCv !== rawSections.cv) {
       fileStore.updateSection('cv', strippedCv);
+    }
+  }, [rawSections?.cv, selectedFile]);
+
+  useEffect(() => {
+    if (!selectedFile || selectedFile.selectedTheme === 'ahmadstyle' || !rawSections?.cv.includes(' | ')) {
+      return;
+    }
+
+    const repairedCv = repairFlattenedPositionDatesInCvYaml(rawSections.cv);
+    if (repairedCv !== rawSections.cv) {
+      fileStore.updateSection('cv', repairedCv);
     }
   }, [rawSections?.cv, selectedFile]);
 
