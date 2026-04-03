@@ -469,7 +469,7 @@ export function Workspace() {
             </header>
             {mobileWorkspace ? (
               <div className="flex min-h-0 flex-1 flex-col">
-                {sectionTabsElement}
+                {mobilePane === 'editor' ? sectionTabsElement : null}
                 {mobilePane === 'editor' ? editorPane : previewPane}
               </div>
             ) : (

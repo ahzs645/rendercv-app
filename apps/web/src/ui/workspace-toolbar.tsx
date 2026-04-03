@@ -64,6 +64,7 @@ export function WorkspaceToolbar({
   const canFormat = preferences.yamlEditor;
   const canPreviewActions = Boolean(sections);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const showMobileEditorControls = mobilePane === 'editor';
 
   async function copyShareLink() {
     if (!selectedFile || !sections) {
@@ -182,48 +183,50 @@ export function WorkspaceToolbar({
                   Formatting, exports, sharing, and display controls.
                 </Dialog.Description>
                 <div className="mt-5 space-y-5">
-                  <section className="space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Editor
-                      </p>
-                      <YamlToggle
-                        checked={preferences.yamlEditor}
-                        label="YAML"
-                        onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <MobileSheetButton
-                        disabled={preferences.yamlEditor}
-                        label={preferences.entriesExpanded ? 'Collapse' : 'Expand'}
-                        onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
-                      >
-                        <ChevronsDownUp className="size-4" />
-                      </MobileSheetButton>
-                      <MobileSheetButton
-                        disabled={!canFormat}
-                        label="Bold"
-                        onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
-                      >
-                        <Bold className="size-4" />
-                      </MobileSheetButton>
-                      <MobileSheetButton
-                        disabled={!canFormat}
-                        label="Link"
-                        onClick={() => editorRef.current?.insertMarkdownLink()}
-                      >
-                        <LinkIcon className="size-4" />
-                      </MobileSheetButton>
-                      <MobileSheetButton
-                        disabled={!canFormat}
-                        label="Italic"
-                        onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
-                      >
-                        <Italic className="size-4" />
-                      </MobileSheetButton>
-                    </div>
-                  </section>
+                  {showMobileEditorControls ? (
+                    <section className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Editor
+                        </p>
+                        <YamlToggle
+                          checked={preferences.yamlEditor}
+                          label="YAML"
+                          onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <MobileSheetButton
+                          disabled={preferences.yamlEditor}
+                          label={preferences.entriesExpanded ? 'Collapse' : 'Expand'}
+                          onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
+                        >
+                          <ChevronsDownUp className="size-4" />
+                        </MobileSheetButton>
+                        <MobileSheetButton
+                          disabled={!canFormat}
+                          label="Bold"
+                          onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
+                        >
+                          <Bold className="size-4" />
+                        </MobileSheetButton>
+                        <MobileSheetButton
+                          disabled={!canFormat}
+                          label="Link"
+                          onClick={() => editorRef.current?.insertMarkdownLink()}
+                        >
+                          <LinkIcon className="size-4" />
+                        </MobileSheetButton>
+                        <MobileSheetButton
+                          disabled={!canFormat}
+                          label="Italic"
+                          onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
+                        >
+                          <Italic className="size-4" />
+                        </MobileSheetButton>
+                      </div>
+                    </section>
+                  ) : null}
 
                   <section className="space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -343,13 +346,15 @@ export function WorkspaceToolbar({
 
         <div className="flex items-center gap-2">
           <MobilePaneSwitch activePane={mobilePane} onChange={onMobilePaneChange} />
-          <div className="ml-auto">
-            <YamlToggle
-              checked={preferences.yamlEditor}
-              label="YAML"
-              onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
-            />
-          </div>
+          {showMobileEditorControls ? (
+            <div className="ml-auto">
+              <YamlToggle
+                checked={preferences.yamlEditor}
+                label="YAML"
+                onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
+              />
+            </div>
+          ) : null}
         </div>
 
         {mobilePane === 'preview' ? (
