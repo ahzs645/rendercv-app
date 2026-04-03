@@ -121,6 +121,53 @@ function storeValidationResult(
   }
 }
 
+function revokePageUrls(urls: string[]) {
+  for (const url of urls) {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function createSvgPageUrls(svgPages: string[]) {
+  return svgPages.map((page) => URL.createObjectURL(new Blob([page], { type: 'image/svg+xml' })));
+}
+
+function waitForImageDecode(url: string) {
+  return new Promise<void>((resolve, reject) => {
+    const image = new Image();
+    let settled = false;
+
+    const finish = (callback: () => void) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      image.onload = null;
+      image.onerror = null;
+      callback();
+    };
+
+    image.onload = () => finish(resolve);
+    image.onerror = () => {
+      finish(() => reject(new Error('Failed to load rendered preview page')));
+    };
+    image.src = url;
+
+    if (typeof image.decode === 'function') {
+      void image.decode().then(
+        () => finish(resolve),
+        () => {
+          // Fall back to the load/error handlers when decode is not supported for this asset.
+        }
+      );
+    }
+  });
+}
+
+async function waitForSvgPages(urls: string[]) {
+  await Promise.all(urls.map((url) => waitForImageDecode(url)));
+}
+
 export function useViewerRenderer(sections?: CvFileSections) {
   const [zoomFactor, setZoomFactor] = useState(1);
   const [svgPages, setSvgPages] = useState<string[]>([]);
@@ -357,9 +404,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
     return () => {
       cancelled = true;
-      for (const url of pageUrls.current) {
-        URL.revokeObjectURL(url);
-      }
+      revokePageUrls(pageUrls.current);
       pageUrls.current = [];
       lastTypstContent.current = null;
       lastTypstSvgPages.current = null;
@@ -482,13 +527,26 @@ export function useViewerRenderer(sections?: CvFileSections) {
           lastTypstContent.current = typst;
           lastTypstSvgPages.current = svg;
 
-          for (const url of pageUrls.current) {
-            URL.revokeObjectURL(url);
+          const urls = createSvgPageUrls(svg);
+          try {
+            await waitForSvgPages(urls);
+          } catch (error) {
+            revokePageUrls(urls);
+            throw error;
           }
-          const urls = svg.map((page) => URL.createObjectURL(new Blob([page], { type: 'image/svg+xml' })));
+
+          if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
+            revokePageUrls(urls);
+            continue;
+          }
+
+          const previousUrls = pageUrls.current;
           pageUrls.current = urls;
           setSvgPages(urls);
           setRenderErrors([]);
+          window.setTimeout(() => {
+            revokePageUrls(previousUrls);
+          }, 0);
         } catch (error) {
           if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
             continue;

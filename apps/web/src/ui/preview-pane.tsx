@@ -97,7 +97,7 @@ function PreviewCanvas({
         ) : viewer.svgPages.length > 0 ? (
           <div className="mx-auto flex max-w-4xl flex-col gap-6" style={{ width: `${viewer.zoomFactor * 100}%` }}>
             {viewer.svgPages.map((page, index) => (
-              <div key={page} className="overflow-hidden rounded-sm bg-white shadow-2xl">
+              <div key={index} className="overflow-hidden rounded-sm bg-white shadow-2xl">
                 <img
                   src={page}
                   alt={`${fileName} page ${index + 1}`}
