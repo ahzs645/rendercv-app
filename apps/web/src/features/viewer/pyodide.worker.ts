@@ -30,6 +30,7 @@ type PyodideLike = {
 
 let pyodide!: PyodideLike;
 let loadPyodideFn: LoadPyodide | null = null;
+let loadPyodidePromise: Promise<LoadPyodide> | null = null;
 
 const PREWARM_IMPORTS = `
 from rendercv.schema.rendercv_model_builder import build_rendercv_dictionary_and_model, BuildRendercvModelArguments
@@ -57,16 +58,41 @@ function assetUrl(path: string) {
 }
 
 async function getLoadPyodide(): Promise<LoadPyodide> {
-  if (loadPyodideFn) return loadPyodideFn;
-  const response = await fetch(assetUrl('cdn/pyodide/v0.29.3/full/pyodide.js'));
-  const text = await response.text();
-  (0, eval)(text);
-  loadPyodideFn = (globalThis as { loadPyodide?: LoadPyodide }).loadPyodide ?? null;
-  if (!loadPyodideFn) {
-    throw new Error('loadPyodide was not registered on the worker global scope.');
+  if (loadPyodideFn) {
+    return loadPyodideFn;
   }
-  return loadPyodideFn;
+
+  if (!loadPyodidePromise) {
+    loadPyodidePromise = (async () => {
+      try {
+        const response = await fetch(assetUrl('cdn/pyodide/v0.29.3/full/pyodide.js'));
+        if (!response.ok) {
+          throw new Error(`Failed to load pyodide.js: HTTP ${response.status}`);
+        }
+
+        const text = await response.text();
+        (0, eval)(text);
+        loadPyodideFn = (globalThis as { loadPyodide?: LoadPyodide }).loadPyodide ?? null;
+        if (!loadPyodideFn) {
+          throw new Error('loadPyodide was not registered on the worker global scope.');
+        }
+
+        return loadPyodideFn;
+      } catch (error) {
+        loadPyodidePromise = null;
+        throw error;
+      }
+    })();
+  }
+
+  return loadPyodidePromise;
 }
+
+// Kick off the Pyodide bootstrap fetch when the worker module loads so network
+// latency overlaps with worker startup and main-thread initialization.
+void getLoadPyodide().catch(() => {
+  // Swallow eager bootstrap failures here; initialize() will surface them on demand.
+});
 
 function openIDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

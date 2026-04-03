@@ -40,6 +40,10 @@ type PendingRequest<T = unknown> = {
   reject: (error: Error) => void;
 };
 
+type ValidationSource = 'cache' | 'inflight' | 'worker';
+
+const MAX_VALIDATION_CACHE_ENTRIES = 24;
+
 const YAML_SOURCE_TO_SECTION: Record<string, SectionKey> = {
   main_yaml_file: 'cv',
   design_yaml_file: 'design',
@@ -88,6 +92,35 @@ function buildFontUrls(fontFamilies: Iterable<string>, baseUrl: string) {
   );
 }
 
+function buildValidationCacheKey(renderSections: CvFileSections, renderVersion: number) {
+  return JSON.stringify([
+    renderVersion,
+    renderSections.cv,
+    renderSections.design,
+    renderSections.locale,
+    renderSections.settings
+  ]);
+}
+
+function storeValidationResult(
+  cache: Map<string, ViewerValidationResult>,
+  key: string,
+  result: ViewerValidationResult
+) {
+  if (cache.has(key)) {
+    cache.delete(key);
+  }
+
+  cache.set(key, result);
+
+  if (cache.size > MAX_VALIDATION_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) {
+      cache.delete(oldestKey);
+    }
+  }
+}
+
 export function useViewerRenderer(sections?: CvFileSections) {
   const [zoomFactor, setZoomFactor] = useState(1);
   const [svgPages, setSvgPages] = useState<string[]>([]);
@@ -111,6 +144,10 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const currentRenderRequest = useRef(0);
   const loadedFonts = useRef<string[]>([]);
   const loadedFontFamilies = useRef(new Set<string>());
+  const validationCache = useRef(new Map<string, ViewerValidationResult>());
+  const validationInFlight = useRef(new Map<string, Promise<ViewerValidationResult>>());
+  const pendingPreviewSections = useRef<CvFileSections | null>(null);
+  const previewRenderLoopActive = useRef(false);
 
   const effectiveZoom = zoomFactor;
   const zoomPercent = Math.round(effectiveZoom * 100);
@@ -138,6 +175,34 @@ export function useViewerRenderer(sections?: CvFileSections) {
       typstWorkerRef.current?.postMessage({ id, type, payload });
     });
   }, []);
+
+  const loadValidationResult = useCallback(
+    async (renderSections: CvFileSections) => {
+      const key = buildValidationCacheKey(renderSections, renderVersion);
+      const cached = validationCache.current.get(key);
+      if (cached) {
+        return { result: cached, source: 'cache' as const };
+      }
+
+      const existingRequest = validationInFlight.current.get(key);
+      if (existingRequest) {
+        return { result: await existingRequest, source: 'inflight' as const };
+      }
+
+      const request = postMessageToPyodide<ViewerValidationResult>('RENDER', renderSections)
+        .then((result) => {
+          storeValidationResult(validationCache.current, key, result);
+          return result;
+        })
+        .finally(() => {
+          validationInFlight.current.delete(key);
+        });
+
+      validationInFlight.current.set(key, request);
+      return { result: await request, source: 'worker' as const };
+    },
+    [postMessageToPyodide, renderVersion]
+  );
 
   const checkAndLoadFonts = useCallback((typstContent: string) => {
     let fontsAdded = false;
@@ -173,7 +238,14 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
   const renderToTypst = useCallback(
     async (renderSections: CvFileSections) => {
-      const result = await postMessageToPyodide<ViewerValidationResult>('RENDER', renderSections);
+      const startedAt = performance.now();
+      const { result, source } = await loadValidationResult(renderSections);
+
+      logViewerDebug('validation timings', {
+        source: source satisfies ValidationSource,
+        totalMs: Number((performance.now() - startedAt).toFixed(1))
+      });
+
       if (!result.content) return null;
       const fontsChanged = checkAndLoadFonts(result.content);
       if (fontsChanged) {
@@ -181,7 +253,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       }
       return result.content;
     },
-    [checkAndLoadFonts, postMessageToPyodide, postMessageToTypst]
+    [checkAndLoadFonts, loadValidationResult, postMessageToTypst]
   );
 
   const renderToPdf = useCallback(
@@ -226,6 +298,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
     async function initialize() {
       try {
+        const startedAt = performance.now();
         const TypstWorker = (await import('./typst.worker?worker')).default;
         const PyodideWorker = (await import('./pyodide.worker?worker')).default;
 
@@ -263,6 +336,10 @@ export function useViewerRenderer(sections?: CvFileSections) {
           postMessageToPyodide('INIT')
         ]);
 
+        logViewerDebug('init timings', {
+          totalMs: Number((performance.now() - startedAt).toFixed(1))
+        });
+
         if (!cancelled) {
           setIsInitializing(false);
         }
@@ -290,6 +367,121 @@ export function useViewerRenderer(sections?: CvFileSections) {
   }, [postMessageToPyodide, postMessageToTypst]);
 
   useEffect(() => {
+    validationCache.current.clear();
+    validationInFlight.current.clear();
+  }, [renderVersion]);
+
+  const renderLatestPreview = useCallback(async () => {
+    if (previewRenderLoopActive.current) {
+      return;
+    }
+
+    previewRenderLoopActive.current = true;
+
+    try {
+      while (pendingPreviewSections.current) {
+        const renderSections = pendingPreviewSections.current;
+        pendingPreviewSections.current = null;
+        const requestId = ++currentRenderRequest.current;
+
+        try {
+          const renderStartedAt = performance.now();
+          const validationStartedAt = performance.now();
+          const typst = await renderToTypst(renderSections);
+          if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
+            continue;
+          }
+
+          const validationResult =
+            validationCache.current.get(buildValidationCacheKey(renderSections, renderVersion)) ?? null;
+
+          if (validationResult?.errors) {
+            logViewerDebug('render validation errors', {
+              errors: validationResult.errors,
+              usedFallbackTheme: validationResult.usedFallbackTheme,
+              effectiveDesign: validationResult.effectiveDesign,
+              normalizedCvPreview: validationResult.normalizedCv?.slice(0, 2000),
+              cvPreview: renderSections.cv.slice(0, 1200),
+              designPreview: renderSections.design.slice(0, 600)
+            });
+            setRenderErrors(
+              validationResult.errors.map((error) => ({
+                message: error.message || '',
+                schema_location: error.schema_location || [],
+                input: error.input || '',
+                yaml_source: YAML_SOURCE_TO_SECTION[error.yaml_source] ?? 'cv',
+                yaml_location: error.yaml_location || null
+              }))
+            );
+            continue;
+          }
+
+          if (!typst) {
+            setSvgPages([]);
+            setRenderErrors([]);
+            continue;
+          }
+
+          if (validationResult?.usedFallbackTheme) {
+            logViewerDebug('render used fallback theme', {
+              effectiveDesign: validationResult.effectiveDesign,
+              normalizedCvPreview: validationResult.normalizedCv?.slice(0, 2000)
+            });
+          }
+
+          const svgStartedAt = performance.now();
+          const svg = (await postMessageToTypst('SVG', {
+            content: typst
+          })) as string[];
+
+          if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
+            continue;
+          }
+
+          logViewerDebug('render timings', {
+            validationAndTypstMs: Number((svgStartedAt - validationStartedAt).toFixed(1)),
+            svgMs: Number((performance.now() - svgStartedAt).toFixed(1)),
+            totalMs: Number((performance.now() - renderStartedAt).toFixed(1)),
+            pageCount: svg.length
+          });
+
+          for (const url of pageUrls.current) {
+            URL.revokeObjectURL(url);
+          }
+          const urls = svg.map((page) => URL.createObjectURL(new Blob([page], { type: 'image/svg+xml' })));
+          pageUrls.current = urls;
+          setSvgPages(urls);
+          setRenderErrors([]);
+        } catch (error) {
+          if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
+            continue;
+          }
+
+          logViewerDebug('render worker exception', {
+            error
+          });
+
+          setRenderErrors([
+            {
+              message: error instanceof Error ? error.message : String(error),
+              schema_location: [],
+              input: '',
+              yaml_source: 'cv',
+              yaml_location: null
+            }
+          ]);
+        }
+      }
+    } finally {
+      previewRenderLoopActive.current = false;
+
+      if (pendingPreviewSections.current) {
+        void renderLatestPreview();
+      }
+    }
+  }, [postMessageToTypst, renderToTypst, renderVersion]);
+
+  useEffect(() => {
     if (!hasSections || isInitializing || initError || !cvContent.trim()) {
       return;
     }
@@ -300,86 +492,9 @@ export function useViewerRenderer(sections?: CvFileSections) {
       locale: localeContent,
       settings: settingsContent
     };
-    const requestId = ++currentRenderRequest.current;
     const timer = window.setTimeout(async () => {
-      try {
-        const result = await postMessageToPyodide<ViewerValidationResult>('RENDER', renderSections);
-        if (requestId !== currentRenderRequest.current) {
-          return;
-        }
-
-        if (result.errors) {
-          logViewerDebug('render validation errors', {
-            errors: result.errors,
-            usedFallbackTheme: result.usedFallbackTheme,
-            effectiveDesign: result.effectiveDesign,
-            normalizedCvPreview: result.normalizedCv?.slice(0, 2000),
-            cvPreview: renderSections.cv.slice(0, 1200),
-            designPreview: renderSections.design.slice(0, 600)
-          });
-          setRenderErrors(
-            result.errors.map((error) => ({
-              message: error.message || '',
-              schema_location: error.schema_location || [],
-              input: error.input || '',
-              yaml_source: YAML_SOURCE_TO_SECTION[error.yaml_source] ?? 'cv',
-              yaml_location: error.yaml_location || null
-            }))
-          );
-          return;
-        }
-
-        if (!result.content) {
-          setSvgPages([]);
-          setRenderErrors([]);
-          return;
-        }
-
-        const fontsChanged = checkAndLoadFonts(result.content);
-        if (result.usedFallbackTheme) {
-          logViewerDebug('render used fallback theme', {
-            effectiveDesign: result.effectiveDesign,
-            normalizedCvPreview: result.normalizedCv?.slice(0, 2000)
-          });
-        }
-        if (fontsChanged) {
-          await postMessageToTypst('REINIT', { fontUrls: loadedFonts.current });
-        }
-
-        const svg = (await postMessageToTypst('SVG', {
-          content: result.content
-        })) as string[];
-
-        if (requestId !== currentRenderRequest.current) {
-          return;
-        }
-
-        for (const url of pageUrls.current) {
-          URL.revokeObjectURL(url);
-        }
-        const urls = svg.map((page) => URL.createObjectURL(new Blob([page], { type: 'image/svg+xml' })));
-        pageUrls.current = urls;
-        setSvgPages(urls);
-        setRenderErrors([]);
-      } catch (error) {
-        if (requestId !== currentRenderRequest.current) {
-          return;
-        }
-
-        logViewerDebug('render worker exception', {
-          error
-        });
-
-        setRenderErrors([
-          {
-            message: error instanceof Error ? error.message : String(error),
-            schema_location: [],
-            input: '',
-            yaml_source: 'cv',
-            yaml_location: null
-          }
-        ]);
-      }
+      pendingPreviewSections.current = renderSections;
+      void renderLatestPreview();
     }, 50);
 
     return () => {
@@ -394,9 +509,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
     renderVersion,
     isInitializing,
     initError,
-    checkAndLoadFonts,
-    postMessageToPyodide,
-    postMessageToTypst
+    renderLatestPreview
   ]);
 
   const importThemeArchive = useCallback(
@@ -414,9 +527,10 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
   const validateSections = useCallback(
     async (renderSections: CvFileSections) => {
-      return await postMessageToPyodide<ViewerValidationResult>('RENDER', renderSections);
+      const { result } = await loadValidationResult(renderSections);
+      return result;
     },
-    [postMessageToPyodide]
+    [loadValidationResult]
   );
 
   const zoomIn = useCallback(() => {
