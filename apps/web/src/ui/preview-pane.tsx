@@ -49,7 +49,7 @@ export function PreviewPaneView({
   showHeader?: boolean;
 }) {
   return (
-    <div className={`flex h-full flex-col ${showHeader ? 'gap-4 p-6' : ''}`}>
+    <div className={`flex h-full flex-col ${showHeader ? 'gap-3 p-4 sm:gap-4 sm:p-6' : ''}`}>
       {showHeader ? (
         <PreviewPaneHeader
           controls={controls}
@@ -80,12 +80,12 @@ function PreviewCanvas({
   workspaceInset: boolean;
 }) {
   const shellClassName = workspaceInset
-    ? 'min-h-0 flex-1 p-6 pt-4'
+    ? 'min-h-0 flex-1 p-4 pt-3 sm:p-6 sm:pt-4'
     : 'min-h-0 flex-1';
 
   return (
     <div className={shellClassName}>
-      <div className="h-full overflow-auto rounded-2xl border border-border bg-sidebar p-6">
+      <div className="h-full overflow-auto rounded-2xl border border-border bg-sidebar p-3 sm:p-6">
         {viewer.initError ? (
           <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{viewer.initError}</div>
         ) : viewer.renderErrors.length > 0 ? (
@@ -95,7 +95,7 @@ function PreviewCanvas({
             ))}
           </div>
         ) : viewer.svgPages.length > 0 ? (
-          <div className="mx-auto flex max-w-4xl flex-col gap-6" style={{ width: `${viewer.zoomFactor * 100}%` }}>
+          <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:gap-6" style={{ width: `${viewer.zoomFactor * 100}%` }}>
             {viewer.svgPages.map((page, index) => (
               <div key={index} className="overflow-hidden rounded-sm bg-white shadow-2xl">
                 <img
@@ -139,7 +139,7 @@ function PreviewPaneHeader({
   };
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5">
+    <header className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Preview</p>
         <h2 className="mt-2 text-2xl font-semibold">{fileName}</h2>

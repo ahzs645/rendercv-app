@@ -102,7 +102,7 @@ export function FormEditor({
   }
 
   return (
-    <div className="h-full overflow-y-auto px-8 [overflow-anchor:none]" data-form-editor>
+    <div className="h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none]" data-form-editor>
       {schema ? (
         schema.groups.map((group) => (
           <section key={group.title || group.fields.map((field) => field.path.join('.')).join('|')}>

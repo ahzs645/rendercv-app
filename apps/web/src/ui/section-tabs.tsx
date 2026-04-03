@@ -98,9 +98,10 @@ export function SectionTabs({
   );
 
   return (
-    <div className="shrink-0 border-b border-border px-2 pt-1">
-      <div className="flex items-center gap-2 overflow-x-auto">
-        <div className="inline-flex h-9 w-fit items-center justify-center rounded-lg bg-transparent p-[3px] text-muted-foreground">
+    <div className="shrink-0 border-b border-border px-3 pt-2 sm:px-2 sm:pt-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:flex-1 sm:px-0">
+          <div className="inline-flex h-9 min-w-max items-center justify-center rounded-lg bg-transparent p-[3px] text-muted-foreground">
           {TAB_ORDER.map((section) => (
             <button
               key={section}
@@ -116,10 +117,14 @@ export function SectionTabs({
               {SECTION_LABELS[section]}
             </button>
           ))}
+          </div>
         </div>
 
         {showVariantControls ? (
-          <div className="ml-auto flex items-center gap-0.5" data-testid="variant-selector">
+          <div
+            className="-mx-1 flex items-center gap-0.5 overflow-x-auto px-1 sm:ml-3 sm:shrink-0 sm:px-0"
+            data-testid="variant-selector"
+          >
             {active === 'design' && onImportDesignTheme ? (
               <>
                 <input

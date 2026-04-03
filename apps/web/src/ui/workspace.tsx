@@ -100,8 +100,10 @@ export function Workspace() {
   const compatibilityRepairRef = useRef<string | undefined>(undefined);
   const restoreInlineSidebarRef = useRef<boolean | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const mobileWorkspace = useIsMobile();
   const sidebarOverlays = useIsMobile(SIDEBAR_OVERLAY_BREAKPOINT);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobilePane, setMobilePane] = useState<'editor' | 'preview'>('editor');
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileSnapshot.selectedFileId);
   const rawSections = selectedFile ? resolveFileSections(selectedFile) : undefined;
   const viewerSections = selectedFile ? resolveViewerSections(selectedFile) : undefined;
@@ -355,8 +357,75 @@ export function Workspace() {
     />
   );
 
+  const sectionTabsElement = (
+    <SectionTabs
+      active={activeSection}
+      onSelect={(section) => {
+        preferencesStore.patch({ activeSection: section });
+        if (mobileWorkspace) {
+          setMobilePane('editor');
+        }
+      }}
+      onImportDesignTheme={
+        selectedFile
+          ? async (file) => {
+              const result = await viewer.importThemeArchive(file);
+              const nextDesign =
+                preferencesStore.getSnapshot().themeLibrary[result.themeName] ??
+                createMinimalThemeDesign(result.themeName);
+              preferencesStore.registerThemeDesign(result.themeName, nextDesign);
+              fileStore.setTheme(selectedFile.id, result.themeName);
+              return result.themeName;
+            }
+          : undefined
+      }
+      onImportVariants={
+        selectedFile
+          ? async (file) => {
+              const variants = parseCvVariantsYaml(await file.text());
+              fileStore.setVariants(selectedFile.id, variants);
+              return variants.full ? 'full' : Object.keys(variants)[0] ?? null;
+            }
+          : undefined
+      }
+      selectedFile={selectedFile}
+      themeImportDisabled={viewer.isInitializing || Boolean(viewer.initError)}
+      viewer={viewer}
+      viewerSections={viewerSections}
+    />
+  );
+
+  const editorPane = (
+    <div className="min-h-0 flex-1 p-4 pt-3 sm:p-5 sm:pt-4">
+      {preferences.yamlEditor ? (
+        <MonacoEditor
+          key={activeSection}
+          ref={monacoRef}
+          value={currentValue}
+          onChange={handleSectionChange}
+        />
+      ) : (
+        <FormEditor
+          key={activeSection}
+          section={activeSection}
+          value={currentValue}
+          onChange={handleSectionChange}
+        />
+      )}
+    </div>
+  );
+
+  const previewPane = (
+    <PreviewPaneView
+      fileName={selectedFile?.name ?? 'RenderCV'}
+      sections={viewerSections}
+      showHeader={false}
+      viewer={viewer}
+    />
+  );
+
   return (
-    <div className="h-screen overflow-hidden bg-background">
+    <div className="h-dvh overflow-hidden bg-background">
       {sidebarOverlays ? (
         <MobileSidebarDrawer open={mobileOpen} onClose={() => setMobileOpen(false)}>
           {sidebarElement}
@@ -385,9 +454,12 @@ export function Workspace() {
             <header className="shrink-0 border-b border-border">
               <WorkspaceToolbar
                 editorRef={monacoRef}
+                isMobile={mobileWorkspace}
+                mobilePane={mobilePane}
                 onOpenPopup={() => {
                   window.open(`${import.meta.env.BASE_URL}preview`, '_blank', 'noopener,noreferrer');
                 }}
+                onMobilePaneChange={setMobilePane}
                 onToggleSidebar={toggleSidebar}
                 sections={viewerSections}
                 selectedFile={selectedFile}
@@ -395,70 +467,27 @@ export function Workspace() {
                 viewer={viewer}
               />
             </header>
-            <PanelGroup className="min-h-0 flex-1" direction="horizontal">
-              <Panel defaultSize={51} minSize={28}>
-                <div className="flex h-full flex-col">
-                  <div className="flex min-h-0 flex-1 flex-col">
-                    <SectionTabs
-                      active={activeSection}
-                      onSelect={(section) => preferencesStore.patch({ activeSection: section })}
-                      onImportDesignTheme={
-                        selectedFile
-                          ? async (file) => {
-                              const result = await viewer.importThemeArchive(file);
-                              const nextDesign =
-                                preferencesStore.getSnapshot().themeLibrary[result.themeName] ??
-                                createMinimalThemeDesign(result.themeName);
-                              preferencesStore.registerThemeDesign(result.themeName, nextDesign);
-                              fileStore.setTheme(selectedFile.id, result.themeName);
-                              return result.themeName;
-                            }
-                          : undefined
-                      }
-                      onImportVariants={
-                        selectedFile
-                          ? async (file) => {
-                              const variants = parseCvVariantsYaml(await file.text());
-                              fileStore.setVariants(selectedFile.id, variants);
-                              return variants.full ? 'full' : Object.keys(variants)[0] ?? null;
-                            }
-                          : undefined
-                      }
-                      selectedFile={selectedFile}
-                      themeImportDisabled={viewer.isInitializing || Boolean(viewer.initError)}
-                      viewer={viewer}
-                      viewerSections={viewerSections}
-                    />
-                    <div className="min-h-0 flex-1 p-5 pt-4">
-                      {preferences.yamlEditor ? (
-                        <MonacoEditor
-                          key={activeSection}
-                          ref={monacoRef}
-                          value={currentValue}
-                          onChange={handleSectionChange}
-                        />
-                      ) : (
-                        <FormEditor
-                          key={activeSection}
-                          section={activeSection}
-                          value={currentValue}
-                          onChange={handleSectionChange}
-                        />
-                      )}
+            {mobileWorkspace ? (
+              <div className="flex min-h-0 flex-1 flex-col">
+                {sectionTabsElement}
+                {mobilePane === 'editor' ? editorPane : previewPane}
+              </div>
+            ) : (
+              <PanelGroup className="min-h-0 flex-1" direction="horizontal">
+                <Panel defaultSize={51} minSize={28}>
+                  <div className="flex h-full flex-col">
+                    <div className="flex min-h-0 flex-1 flex-col">
+                      {sectionTabsElement}
+                      {editorPane}
                     </div>
                   </div>
-                </div>
-              </Panel>
-              <PanelResizeHandle className="workspace-resize-handle" />
-              <Panel defaultSize={49} minSize={25}>
-                <PreviewPaneView
-                  fileName={selectedFile?.name ?? 'RenderCV'}
-                  sections={viewerSections}
-                  showHeader={false}
-                  viewer={viewer}
-                />
-              </Panel>
-            </PanelGroup>
+                </Panel>
+                <PanelResizeHandle className="workspace-resize-handle" />
+                <Panel defaultSize={49} minSize={25}>
+                  {previewPane}
+                </Panel>
+              </PanelGroup>
+            )}
           </div>
         </Panel>
       </PanelGroup>
