@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,10 +16,29 @@ const THEME_SOURCES = [
   {
     archiveBaseName: 'ahzs645-resume',
     design: 'design:\n  theme: ahmadstyle\n',
+    packageDir: 'ahmadstyle',
     submodulePath: path.join(projectRoot, 'themes/resume'),
     themeKey: 'ahmadstyle'
   }
 ];
+
+async function assertThemeSourceReady(themeSource) {
+  const packageRoot = path.join(themeSource.submodulePath, themeSource.packageDir);
+  const requiredFiles = [
+    path.join(packageRoot, '__init__.py'),
+    path.join(packageRoot, 'Preamble.j2.typ')
+  ];
+
+  try {
+    await Promise.all(requiredFiles.map((filePath) => access(filePath)));
+  } catch {
+    throw new Error(
+      `Theme source is incomplete at ${themeSource.submodulePath}. ` +
+        `Expected ${themeSource.packageDir}/__init__.py and theme templates. ` +
+        'Make sure the submodule is checked out before running the bundle sync.'
+    );
+  }
+}
 
 function createZipFromSubmodule(submodulePath) {
   const archiveBuffer = execSync('git archive --format=zip HEAD', {
@@ -48,6 +67,7 @@ async function writeFileIfChanged(filePath, content) {
 
 async function syncTheme(themeSource) {
   await mkdir(outputDir, { recursive: true });
+  await assertThemeSourceReady(themeSource);
 
   const archiveBytes = createZipFromSubmodule(themeSource.submodulePath);
   const hash = createHash('sha256').update(archiveBytes).digest('hex').slice(0, 12);
