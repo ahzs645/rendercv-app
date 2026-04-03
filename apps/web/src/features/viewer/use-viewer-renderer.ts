@@ -148,6 +148,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const validationInFlight = useRef(new Map<string, Promise<ViewerValidationResult>>());
   const pendingPreviewSections = useRef<CvFileSections | null>(null);
   const previewRenderLoopActive = useRef(false);
+  const lastTypstContent = useRef<string | null>(null);
+  const lastTypstSvgPages = useRef<string[] | null>(null);
 
   const effectiveZoom = zoomFactor;
   const zoomPercent = Math.round(effectiveZoom * 100);
@@ -359,6 +361,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
         URL.revokeObjectURL(url);
       }
       pageUrls.current = [];
+      lastTypstContent.current = null;
+      lastTypstSvgPages.current = null;
       typstWorkerRef.current?.terminate();
       pyodideWorkerRef.current?.terminate();
       typstWorkerRef.current = null;
@@ -369,6 +373,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
   useEffect(() => {
     validationCache.current.clear();
     validationInFlight.current.clear();
+    lastTypstContent.current = null;
+    lastTypstSvgPages.current = null;
   }, [renderVersion]);
 
   const renderLatestPreview = useCallback(async () => {
@@ -386,26 +392,26 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
         try {
           const renderStartedAt = performance.now();
-          const validationStartedAt = performance.now();
-          const typst = await renderToTypst(renderSections);
+          const { result, source } = await loadValidationResult(renderSections);
+          const pyodideMs = performance.now() - renderStartedAt;
+
           if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
             continue;
           }
 
-          const validationResult =
-            validationCache.current.get(buildValidationCacheKey(renderSections, renderVersion)) ?? null;
-
-          if (validationResult?.errors) {
+          if (result.errors) {
             logViewerDebug('render validation errors', {
-              errors: validationResult.errors,
-              usedFallbackTheme: validationResult.usedFallbackTheme,
-              effectiveDesign: validationResult.effectiveDesign,
-              normalizedCvPreview: validationResult.normalizedCv?.slice(0, 2000),
+              validationSource: source,
+              pyodideMs: Number(pyodideMs.toFixed(1)),
+              errors: result.errors,
+              usedFallbackTheme: result.usedFallbackTheme,
+              effectiveDesign: result.effectiveDesign,
+              normalizedCvPreview: result.normalizedCv?.slice(0, 2000),
               cvPreview: renderSections.cv.slice(0, 1200),
               designPreview: renderSections.design.slice(0, 600)
             });
             setRenderErrors(
-              validationResult.errors.map((error) => ({
+              result.errors.map((error) => ({
                 message: error.message || '',
                 schema_location: error.schema_location || [],
                 input: error.input || '',
@@ -416,34 +422,65 @@ export function useViewerRenderer(sections?: CvFileSections) {
             continue;
           }
 
+          const typst = result.content;
+
           if (!typst) {
             setSvgPages([]);
             setRenderErrors([]);
             continue;
           }
 
-          if (validationResult?.usedFallbackTheme) {
+          if (result.usedFallbackTheme) {
             logViewerDebug('render used fallback theme', {
-              effectiveDesign: validationResult.effectiveDesign,
-              normalizedCvPreview: validationResult.normalizedCv?.slice(0, 2000)
+              effectiveDesign: result.effectiveDesign,
+              normalizedCvPreview: result.normalizedCv?.slice(0, 2000)
             });
+          }
+
+          // Skip Typst SVG render if the content is identical to last render
+          if (typst === lastTypstContent.current && lastTypstSvgPages.current) {
+            logViewerDebug('render timings', {
+              validationSource: source,
+              pyodideMs: Number(pyodideMs.toFixed(1)),
+              svgMs: 0,
+              totalMs: Number(pyodideMs.toFixed(1)),
+              typstSvgCache: 'hit',
+              pageCount: lastTypstSvgPages.current.length
+            });
+            // Reuse existing SVG blob URLs — no work needed
+            setRenderErrors([]);
+            continue;
+          }
+
+          const fontsChanged = checkAndLoadFonts(typst);
+          if (fontsChanged) {
+            await postMessageToTypst('REINIT', { fontUrls: loadedFonts.current });
+          }
+          if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
+            continue;
           }
 
           const svgStartedAt = performance.now();
           const svg = (await postMessageToTypst('SVG', {
             content: typst
           })) as string[];
+          const svgMs = performance.now() - svgStartedAt;
 
           if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
             continue;
           }
 
           logViewerDebug('render timings', {
-            validationAndTypstMs: Number((svgStartedAt - validationStartedAt).toFixed(1)),
-            svgMs: Number((performance.now() - svgStartedAt).toFixed(1)),
+            validationSource: source,
+            pyodideMs: Number(pyodideMs.toFixed(1)),
+            svgMs: Number(svgMs.toFixed(1)),
             totalMs: Number((performance.now() - renderStartedAt).toFixed(1)),
+            typstSvgCache: 'miss',
             pageCount: svg.length
           });
+
+          lastTypstContent.current = typst;
+          lastTypstSvgPages.current = svg;
 
           for (const url of pageUrls.current) {
             URL.revokeObjectURL(url);
@@ -479,7 +516,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
         void renderLatestPreview();
       }
     }
-  }, [postMessageToTypst, renderToTypst, renderVersion]);
+  }, [checkAndLoadFonts, loadValidationResult, postMessageToTypst, renderVersion]);
 
   useEffect(() => {
     if (!hasSections || isInitializing || initError || !cvContent.trim()) {
