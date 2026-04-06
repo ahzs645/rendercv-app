@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { GitCompareArrows, Pencil } from 'lucide-react';
+import { Download, GitCompareArrows, Pencil, Upload } from 'lucide-react';
 import { fileStore, readThemeName, readLocaleName } from '@rendercv/core';
+import { toast } from 'sonner';
 import type { EncodedSharePayload } from '../features/share/encoded-share';
 import { decodeSharePayload } from '../features/share/encoded-share';
+import { exportShareFile, importShareFile } from '../features/share/file-share';
 import { hasChanges } from '../features/share/diff-utils';
 import { DiffViewer } from '../features/share/diff-viewer';
 import { downloadBlob } from '../features/viewer/download';
@@ -149,15 +151,30 @@ export function EncodedSharePage() {
               ) : null}
             </div>
 
-            <button
-              type="button"
-              onClick={editInWorkspace}
-              disabled={!payload}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-40"
-            >
-              <Pencil className="size-3.5" />
-              Edit in Workspace
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!payload) return;
+                  void exportShareFile(payload).then(() => toast.success('Exported .rendercv.json file.'));
+                }}
+                disabled={!payload}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                title="Download as .rendercv.json"
+              >
+                <Download className="size-3.5" />
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={editInWorkspace}
+                disabled={!payload}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-40"
+              >
+                <Pencil className="size-3.5" />
+                Edit in Workspace
+              </button>
+            </div>
           </div>
 
           {/* Content area */}

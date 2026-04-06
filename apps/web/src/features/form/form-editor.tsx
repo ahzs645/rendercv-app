@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { SectionKey } from '@rendercv/contracts';
+import type { CvFileSections, SectionKey } from '@rendercv/contracts';
 import YAML from 'yaml';
 import { preferencesStore } from '@rendercv/core';
 import {
@@ -14,6 +14,7 @@ import { useStore } from '../../lib/use-store';
 import { FieldControl, FieldDescription } from './field-controls';
 import { Divider } from './primitives';
 import { CvSectionEditor } from './cv-section-editor';
+import { DiffProvider } from './diff-context';
 import {
   getNestedValue,
   normalizeFieldValue,
@@ -24,11 +25,13 @@ import {
 export function FormEditor({
   section,
   value,
-  onChange
+  onChange,
+  sharedOrigin
 }: {
   section: SectionKey;
   value: string;
   onChange: (value: string) => void;
+  sharedOrigin?: CvFileSections;
 }) {
   const preferences = useStore(preferencesStore);
 
@@ -102,42 +105,44 @@ export function FormEditor({
   }
 
   return (
-    <div className="h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none]" data-form-editor>
-      {schema ? (
-        schema.groups.map((group) => (
-          <section key={group.title || group.fields.map((field) => field.path.join('.')).join('|')}>
-            {group.title ? (
-              <h3 className="mt-6 mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-                {group.title}
-              </h3>
-            ) : null}
-            <div style={{ '--label-width': labelWidthForFields(group.fields) } as CSSProperties}>
-              {group.fields.map((field) => {
-                const fieldValue = getNestedValue(draftRootValue, field.path);
-                return (
-                  <Fragment key={field.path.join('.')}>
-                    <FieldControl
-                      field={field}
-                      value={fieldValue}
-                      onChange={(nextValue) => updateField(field.path, nextValue)}
-                    />
-                    <Divider />
-                    {field.description ? <FieldDescription description={field.description} /> : null}
-                  </Fragment>
-                );
-              })}
-            </div>
-          </section>
-        ))
-      ) : null}
-      {section === 'cv' ? (
-        <CvSectionEditor
-          entriesExpanded={preferences.entriesExpanded}
-          rootValue={draftRootValue}
-          onChange={updateRoot}
-        />
-      ) : null}
-    </div>
+    <DiffProvider section={section} origin={sharedOrigin}>
+      <div className="h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none]" data-form-editor>
+        {schema ? (
+          schema.groups.map((group) => (
+            <section key={group.title || group.fields.map((field) => field.path.join('.')).join('|')}>
+              {group.title ? (
+                <h3 className="mt-6 mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+                  {group.title}
+                </h3>
+              ) : null}
+              <div style={{ '--label-width': labelWidthForFields(group.fields) } as CSSProperties}>
+                {group.fields.map((field) => {
+                  const fieldValue = getNestedValue(draftRootValue, field.path);
+                  return (
+                    <Fragment key={field.path.join('.')}>
+                      <FieldControl
+                        field={field}
+                        value={fieldValue}
+                        onChange={(nextValue) => updateField(field.path, nextValue)}
+                      />
+                      <Divider />
+                      {field.description ? <FieldDescription description={field.description} /> : null}
+                    </Fragment>
+                  );
+                })}
+              </div>
+            </section>
+          ))
+        ) : null}
+        {section === 'cv' ? (
+          <CvSectionEditor
+            entriesExpanded={preferences.entriesExpanded}
+            rootValue={draftRootValue}
+            onChange={updateRoot}
+          />
+        ) : null}
+      </div>
+    </DiffProvider>
   );
 }
 

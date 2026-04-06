@@ -15,6 +15,7 @@ import {
   asHexColor,
   DIMENSION_UNITS
 } from './utils';
+import { useFieldDiff } from './diff-context';
 
 type ChoiceOption = SelectOption & {
   icon?: ComponentType<{ className?: string }>;
@@ -49,71 +50,94 @@ export function FieldControl({
   value: unknown;
   onChange: (value: unknown) => void;
 }) {
-  switch (field.type) {
-    case 'boolean':
-      return <BooleanRow label={field.label} checked={Boolean(value)} onChange={onChange} />;
-    case 'string_list':
-      return <StringListRow field={field} value={value} onChange={onChange} />;
-    case 'dimension':
-      return <DimensionRow label={field.label} value={stringValue(value)} onChange={onChange} />;
-    case 'color':
-      return <ColorRow label={field.label} value={stringValue(value) || '#000000'} onChange={onChange} />;
-    case 'select':
-      return (
-        <CollapsibleChoiceRow
-          label={field.label}
-          value={stringValue(value)}
-          options={resolveOptions(field)}
-          onChange={onChange}
-        />
-      );
-    case 'toggle':
-      return (
-        <ToggleButtonsRow
-          label={field.label}
-          value={stringValue(value)}
-          options={resolveOptions(field)}
-          onChange={onChange}
-        />
-      );
-    case 'alignment':
-    case 'bullet':
-      return (
-        <ToggleButtonsRow
-          label={field.label}
-          value={stringValue(value)}
-          options={resolveOptions(field)}
-          onChange={onChange}
-          square={field.type === 'bullet'}
-        />
-      );
-    case 'font':
-      return (
-        <CollapsibleChoiceRow
-          label={field.label}
-          value={stringValue(value)}
-          options={resolveOptions(field)}
-          onChange={onChange}
-        />
-      );
-    case 'section_style':
-      return (
-        <SectionStyleRow
-          label={field.label}
-          value={stringValue(value)}
-          onChange={onChange}
-        />
-      );
-    default:
-      return (
-        <TextRow
-          label={field.label}
-          placeholder={field.placeholder}
-          value={stringValue(value)}
-          onChange={(nextValue) => onChange(nextValue)}
-        />
-      );
-  }
+  const diff = useFieldDiff(field.path, value);
+
+  const control = (() => {
+    switch (field.type) {
+      case 'boolean':
+        return <BooleanRow label={field.label} checked={Boolean(value)} onChange={onChange} />;
+      case 'string_list':
+        return <StringListRow field={field} value={value} onChange={onChange} />;
+      case 'dimension':
+        return <DimensionRow label={field.label} value={stringValue(value)} onChange={onChange} />;
+      case 'color':
+        return <ColorRow label={field.label} value={stringValue(value) || '#000000'} onChange={onChange} />;
+      case 'select':
+        return (
+          <CollapsibleChoiceRow
+            label={field.label}
+            value={stringValue(value)}
+            options={resolveOptions(field)}
+            onChange={onChange}
+          />
+        );
+      case 'toggle':
+        return (
+          <ToggleButtonsRow
+            label={field.label}
+            value={stringValue(value)}
+            options={resolveOptions(field)}
+            onChange={onChange}
+          />
+        );
+      case 'alignment':
+      case 'bullet':
+        return (
+          <ToggleButtonsRow
+            label={field.label}
+            value={stringValue(value)}
+            options={resolveOptions(field)}
+            onChange={onChange}
+            square={field.type === 'bullet'}
+          />
+        );
+      case 'font':
+        return (
+          <CollapsibleChoiceRow
+            label={field.label}
+            value={stringValue(value)}
+            options={resolveOptions(field)}
+            onChange={onChange}
+          />
+        );
+      case 'section_style':
+        return (
+          <SectionStyleRow
+            label={field.label}
+            value={stringValue(value)}
+            onChange={onChange}
+          />
+        );
+      default:
+        return (
+          <TextRow
+            label={field.label}
+            placeholder={field.placeholder}
+            value={stringValue(value)}
+            onChange={(nextValue) => onChange(nextValue)}
+          />
+        );
+    }
+  })();
+
+  if (!diff.changed) return control;
+
+  const originalDisplay =
+    diff.originalValue === undefined || diff.originalValue === null || diff.originalValue === ''
+      ? '(empty)'
+      : String(diff.originalValue);
+
+  return (
+    <div className="relative rounded-md border-l-2 border-l-amber-500 bg-amber-500/5 pl-2">
+      {control}
+      <span
+        className="absolute right-1 top-1/2 -translate-y-1/2 max-w-[40%] truncate rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-600"
+        title={`was: ${originalDisplay}`}
+      >
+        was: {originalDisplay}
+      </span>
+    </div>
+  );
 }
 
 export function FieldDescription({ description }: { description: string }) {
