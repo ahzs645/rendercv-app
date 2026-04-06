@@ -1,18 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Download, GitCompareArrows, Pencil, Upload } from 'lucide-react';
+import { fileStore, readThemeName, readLocaleName } from '@rendercv/core';
+import { toast } from 'sonner';
 import type { EncodedSharePayload } from '../features/share/encoded-share';
 import { decodeSharePayload } from '../features/share/encoded-share';
+import { exportShareFile, importShareFile } from '../features/share/file-share';
+import { hasChanges } from '../features/share/diff-utils';
+import { DiffViewer } from '../features/share/diff-viewer';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import { PreviewPane } from '../ui/preview-pane';
 
+type ViewMode = 'preview' | 'diff';
+
 export function EncodedSharePage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [payload, setPayload] = useState<EncodedSharePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const isPdfDownload = searchParams.get('dl') === 'pdf';
+
+  const showDiffToggle =
+    payload?.origin != null &&
+    payload.sections != null &&
+    hasChanges(payload.origin, payload.sections);
 
   useEffect(() => {
     const token = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
@@ -33,6 +48,15 @@ export function EncodedSharePage() {
 
         setPayload(decoded);
         setError(null);
+
+        // Auto-switch to diff view when origin is present and has changes
+        if (
+          decoded.origin &&
+          decoded.sections &&
+          hasChanges(decoded.origin, decoded.sections)
+        ) {
+          setViewMode('diff');
+        }
       })
       .catch((cause) => {
         if (cancelled) {
@@ -47,6 +71,26 @@ export function EncodedSharePage() {
       cancelled = true;
     };
   }, [location.hash]);
+
+  function editInWorkspace() {
+    if (!payload) return;
+
+    const designKey = readThemeName(payload.sections.design) ?? 'classic';
+    const localeKey = readLocaleName(payload.sections.locale) ?? 'english';
+
+    fileStore.createFile(payload.fileName, {
+      cv: payload.sections.cv,
+      settings: payload.sections.settings,
+      designs: { [designKey]: payload.sections.design },
+      locales: { [localeKey]: payload.sections.locale },
+      selectedTheme: designKey,
+      selectedLocale: localeKey,
+      // Store the original sections so changes can be tracked
+      sharedOrigin: payload.origin ?? payload.sections
+    });
+
+    navigate('/');
+  }
 
   if (isPdfDownload) {
     return (
@@ -66,18 +110,86 @@ export function EncodedSharePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <Helmet>
         <title>{payload?.fileName ? `${payload.fileName} | Shared Resume` : 'Shared Resume'}</title>
       </Helmet>
+
       {error ? (
         <div className="mx-auto max-w-3xl px-6 py-12 text-destructive">{error}</div>
       ) : (
-        <PreviewPane
-          controls={{ downloadPdf: true, downloadTypst: false, popup: false }}
-          fileName={payload?.fileName ?? 'Shared Resume'}
-          sections={payload?.sections}
-        />
+        <>
+          {/* Action bar */}
+          <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-3">
+              {showDiffToggle ? (
+                <div className="inline-flex items-center rounded-xl border border-border bg-background p-1">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('preview')}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                      viewMode === 'preview'
+                        ? 'bg-foreground text-background'
+                        : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                    }`}
+                  >
+                    Preview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('diff')}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                      viewMode === 'diff'
+                        ? 'bg-foreground text-background'
+                        : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                    }`}
+                  >
+                    <GitCompareArrows className="size-3.5" />
+                    Changes
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!payload) return;
+                  void exportShareFile(payload).then(() => toast.success('Exported .rendercv.json file.'));
+                }}
+                disabled={!payload}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                title="Download as .rendercv.json"
+              >
+                <Download className="size-3.5" />
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={editInWorkspace}
+                disabled={!payload}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-40"
+              >
+                <Pencil className="size-3.5" />
+                Edit in Workspace
+              </button>
+            </div>
+          </div>
+
+          {/* Content area */}
+          {viewMode === 'diff' && payload?.origin ? (
+            <div className="min-h-0 flex-1" style={{ height: 'calc(100vh - 57px)' }}>
+              <DiffViewer origin={payload.origin} modified={payload.sections} />
+            </div>
+          ) : (
+            <PreviewPane
+              controls={{ downloadPdf: true, downloadTypst: false, popup: false }}
+              fileName={payload?.fileName ?? 'Shared Resume'}
+              sections={payload?.sections}
+            />
+          )}
+        </>
       )}
     </div>
   );

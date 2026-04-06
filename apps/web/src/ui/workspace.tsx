@@ -410,6 +410,7 @@ export function Workspace() {
           section={activeSection}
           value={currentValue}
           onChange={handleSectionChange}
+          sharedOrigin={selectedFile?.sharedOrigin}
         />
       )}
     </div>

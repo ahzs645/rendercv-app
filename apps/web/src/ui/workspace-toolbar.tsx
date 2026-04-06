@@ -9,6 +9,8 @@ import {
   Download,
   FileCode2,
   FileDown,
+  FileUp,
+  GitCompareArrows,
   Italic,
   Link as LinkIcon,
   Minus,
@@ -22,10 +24,12 @@ import {
   Undo2
 } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
-import { fileStore, preferencesStore } from '@rendercv/core';
+import { fileStore, preferencesStore, readThemeName, readLocaleName } from '@rendercv/core';
 import { toast } from 'sonner';
 import { downloadBlob } from '../features/viewer/download';
 import { buildEncodedShareUrl, buildEncodedSharePdfUrl } from '../features/share/encoded-share';
+import { exportShareFile, importShareFile } from '../features/share/file-share';
+import { ChangesDialog } from '../features/share/changes-dialog';
 import { useStore } from '../lib/use-store';
 import type { MonacoEditorHandle } from './monaco-editor';
 import type { ViewerRenderer } from './preview-pane';
@@ -64,7 +68,9 @@ export function WorkspaceToolbar({
   const canFormat = preferences.yamlEditor;
   const canPreviewActions = Boolean(sections);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const [changesOpen, setChangesOpen] = useState(false);
   const showMobileEditorControls = mobilePane === 'editor';
+  const hasSharedOrigin = Boolean(selectedFile?.sharedOrigin);
 
   async function copyShareLink() {
     if (!selectedFile || !sections) {
@@ -72,13 +78,21 @@ export function WorkspaceToolbar({
     }
 
     try {
-      const url = await buildEncodedShareUrl({
+      const result = await buildEncodedShareUrl({
         version: 1,
         fileName: selectedFile.name,
-        sections
+        sections,
+        origin: selectedFile.sharedOrigin
       });
-      await navigator.clipboard.writeText(url);
-      toast.success('Share link copied.');
+      await navigator.clipboard.writeText(result.url);
+
+      if (result.originDropped) {
+        toast.info('Share link copied (change history omitted — resume too large for URL).');
+      } else if (selectedFile.sharedOrigin) {
+        toast.success('Share link with changes copied.');
+      } else {
+        toast.success('Share link copied.');
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create share link.');
     }
@@ -127,6 +141,46 @@ export function WorkspaceToolbar({
     }
 
     await downloadBlob(blob, `${selectedFile?.name ?? 'RenderCV'}.pdf`);
+  }
+
+  async function exportJson() {
+    if (!selectedFile || !sections) return;
+
+    try {
+      await exportShareFile({
+        version: 1,
+        fileName: selectedFile.name,
+        sections,
+        origin: selectedFile.sharedOrigin
+      });
+      toast.success('Exported .rendercv.json file.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export file.');
+    }
+  }
+
+  async function importJson() {
+    try {
+      const payload = await importShareFile();
+      if (!payload) return;
+
+      const designKey = readThemeName(payload.sections.design) ?? 'classic';
+      const localeKey = readLocaleName(payload.sections.locale) ?? 'english';
+
+      fileStore.createFile(payload.fileName, {
+        cv: payload.sections.cv,
+        settings: payload.sections.settings,
+        designs: { [designKey]: payload.sections.design },
+        locales: { [localeKey]: payload.sections.locale },
+        selectedTheme: designKey,
+        selectedLocale: localeKey,
+        sharedOrigin: payload.origin ?? payload.sections
+      });
+
+      toast.success(`Imported "${payload.fileName}".`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to import file.');
+    }
   }
 
   if (isMobile) {
@@ -320,6 +374,30 @@ export function WorkspaceToolbar({
                       >
                         <FileDown className="size-4" />
                       </MobileSheetButton>
+                      <MobileSheetButton
+                        disabled={!selectedFile || !sections}
+                        label="Export JSON"
+                        onClick={() => void exportJson()}
+                      >
+                        <FileDown className="size-4" />
+                      </MobileSheetButton>
+                      <MobileSheetButton
+                        label="Import JSON"
+                        onClick={() => void importJson()}
+                      >
+                        <FileUp className="size-4" />
+                      </MobileSheetButton>
+                      {hasSharedOrigin ? (
+                        <MobileSheetButton
+                          label="View changes"
+                          onClick={() => {
+                            setMobileActionsOpen(false);
+                            setChangesOpen(true);
+                          }}
+                        >
+                          <GitCompareArrows className="size-4" />
+                        </MobileSheetButton>
+                      ) : null}
                     </div>
                   </section>
 
@@ -548,12 +626,42 @@ export function WorkspaceToolbar({
           <FileDown className="size-4" />
         </ToolbarIconButton>
         <ToolbarIconButton
+          ariaLabel="Export .rendercv.json"
+          disabled={!selectedFile || !sections}
+          onClick={() => void exportJson()}
+        >
+          <FileDown className="size-4" />
+        </ToolbarIconButton>
+        <ToolbarIconButton
+          ariaLabel="Import .rendercv.json"
+          onClick={() => void importJson()}
+        >
+          <FileUp className="size-4" />
+        </ToolbarIconButton>
+        {hasSharedOrigin && sections ? (
+          <ToolbarIconButton
+            ariaLabel="View changes from original"
+            active={changesOpen}
+            onClick={() => setChangesOpen(true)}
+          >
+            <GitCompareArrows className="size-4" />
+          </ToolbarIconButton>
+        ) : null}
+        <ToolbarIconButton
           ariaLabel="Toggle color mode"
           onClick={() => preferencesStore.patch({ colorMode: isDark ? 'light' : 'dark' })}
         >
           {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </ToolbarIconButton>
       </div>
+      {hasSharedOrigin && sections && selectedFile?.sharedOrigin ? (
+        <ChangesDialog
+          open={changesOpen}
+          onOpenChange={setChangesOpen}
+          origin={selectedFile.sharedOrigin}
+          modified={sections}
+        />
+      ) : null}
     </div>
   );
 }

@@ -32,6 +32,7 @@ export interface FileMetaPatch {
   selectedLocale?: string;
   variants?: CvVariants;
   selectedVariant?: string;
+  sharedOrigin?: CvFileSections;
   isLocked?: boolean;
   isArchived?: boolean;
   isTrashed?: boolean;

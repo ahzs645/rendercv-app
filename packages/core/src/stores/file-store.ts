@@ -30,7 +30,7 @@ type FileStateSnapshot = {
 type CreateFileOptions = Partial<
   Pick<
     CvFile,
-    'cv' | 'settings' | 'designs' | 'locales' | 'selectedTheme' | 'selectedLocale' | 'variants' | 'selectedVariant'
+    'cv' | 'settings' | 'designs' | 'locales' | 'selectedTheme' | 'selectedLocale' | 'variants' | 'selectedVariant' | 'sharedOrigin'
   >
 >;
 
@@ -118,7 +118,7 @@ function resolveEmbeddedSections(cvContent: string) {
   }
 }
 
-function readThemeName(designContent: string | undefined) {
+export function readThemeName(designContent: string | undefined) {
   if (!designContent?.trim()) {
     return undefined;
   }
@@ -143,7 +143,7 @@ function readThemeName(designContent: string | undefined) {
   return undefined;
 }
 
-function readLocaleName(localeContent: string | undefined) {
+export function readLocaleName(localeContent: string | undefined) {
   if (!localeContent?.trim()) {
     return undefined;
   }
@@ -395,6 +395,7 @@ export class FileStore {
       selectedLocale: options?.selectedLocale ?? 'english',
       variants: options?.variants,
       selectedVariant: resolveSelectedVariant(options?.variants, options?.selectedVariant),
+      sharedOrigin: options?.sharedOrigin,
       isLocked: false,
       isArchived: false,
       isTrashed: false,
@@ -581,7 +582,8 @@ export class FileStore {
       selectedTheme: file.selectedTheme,
       selectedLocale: file.selectedLocale,
       variants: file.variants ? { ...file.variants } : undefined,
-      selectedVariant: file.selectedVariant
+      selectedVariant: file.selectedVariant,
+      sharedOrigin: file.sharedOrigin
     });
   }
 

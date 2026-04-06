@@ -44,5 +44,7 @@ export interface CvFile {
   chatMessages: unknown[];
   editCount: number;
   lastEdited: number;
+  /** Snapshot of the original sections when this file was imported from a share link. */
+  sharedOrigin?: CvFileSections;
   readonly isReadOnly: boolean;
 }
