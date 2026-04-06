@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { GitCompareArrows, Pencil } from 'lucide-react';
-import { fileStore } from '@rendercv/core';
+import { fileStore, readThemeName, readLocaleName } from '@rendercv/core';
 import type { EncodedSharePayload } from '../features/share/encoded-share';
 import { decodeSharePayload } from '../features/share/encoded-share';
 import { hasChanges } from '../features/share/diff-utils';
@@ -73,8 +73,8 @@ export function EncodedSharePage() {
   function editInWorkspace() {
     if (!payload) return;
 
-    const designKey = 'classic';
-    const localeKey = 'english';
+    const designKey = readThemeName(payload.sections.design) ?? 'classic';
+    const localeKey = readLocaleName(payload.sections.locale) ?? 'english';
 
     fileStore.createFile(payload.fileName, {
       cv: payload.sections.cv,

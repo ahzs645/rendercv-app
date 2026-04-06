@@ -72,18 +72,21 @@ export function WorkspaceToolbar({
     }
 
     try {
-      const url = await buildEncodedShareUrl({
+      const result = await buildEncodedShareUrl({
         version: 1,
         fileName: selectedFile.name,
         sections,
         origin: selectedFile.sharedOrigin
       });
-      await navigator.clipboard.writeText(url);
-      toast.success(
-        selectedFile.sharedOrigin
-          ? 'Share link with changes copied.'
-          : 'Share link copied.'
-      );
+      await navigator.clipboard.writeText(result.url);
+
+      if (result.originDropped) {
+        toast.info('Share link copied (change history omitted — resume too large for URL).');
+      } else if (selectedFile.sharedOrigin) {
+        toast.success('Share link with changes copied.');
+      } else {
+        toast.success('Share link copied.');
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create share link.');
     }
