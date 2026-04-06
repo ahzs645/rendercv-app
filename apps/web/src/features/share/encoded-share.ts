@@ -5,6 +5,8 @@ export interface EncodedSharePayload {
   version: 1;
   fileName: string;
   sections: CvFileSections;
+  /** Original sections before the recipient edited — present when sharing back changes. */
+  origin?: CvFileSections;
 }
 
 const SHARE_LINK_MAX_LENGTH = 24000;

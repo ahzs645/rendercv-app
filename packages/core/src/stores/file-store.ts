@@ -30,7 +30,7 @@ type FileStateSnapshot = {
 type CreateFileOptions = Partial<
   Pick<
     CvFile,
-    'cv' | 'settings' | 'designs' | 'locales' | 'selectedTheme' | 'selectedLocale' | 'variants' | 'selectedVariant'
+    'cv' | 'settings' | 'designs' | 'locales' | 'selectedTheme' | 'selectedLocale' | 'variants' | 'selectedVariant' | 'sharedOrigin'
   >
 >;
 
@@ -395,6 +395,7 @@ export class FileStore {
       selectedLocale: options?.selectedLocale ?? 'english',
       variants: options?.variants,
       selectedVariant: resolveSelectedVariant(options?.variants, options?.selectedVariant),
+      sharedOrigin: options?.sharedOrigin,
       isLocked: false,
       isArchived: false,
       isTrashed: false,

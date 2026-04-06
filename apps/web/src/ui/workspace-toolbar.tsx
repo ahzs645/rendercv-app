@@ -75,10 +75,15 @@ export function WorkspaceToolbar({
       const url = await buildEncodedShareUrl({
         version: 1,
         fileName: selectedFile.name,
-        sections
+        sections,
+        origin: selectedFile.sharedOrigin
       });
       await navigator.clipboard.writeText(url);
-      toast.success('Share link copied.');
+      toast.success(
+        selectedFile.sharedOrigin
+          ? 'Share link with changes copied.'
+          : 'Share link copied.'
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create share link.');
     }
