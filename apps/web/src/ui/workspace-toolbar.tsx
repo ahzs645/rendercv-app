@@ -166,8 +166,11 @@ export function WorkspaceToolbar({
 
       const designKey = readThemeName(payload.sections.design) ?? 'classic';
       const localeKey = readLocaleName(payload.sections.locale) ?? 'english';
+      const fileName = fileStore.uniqueName(
+        payload.origin ? `${payload.fileName} (Review)` : payload.fileName
+      );
 
-      fileStore.createFile(payload.fileName, {
+      fileStore.createFile(fileName, {
         cv: payload.sections.cv,
         settings: payload.sections.settings,
         designs: { [designKey]: payload.sections.design },
@@ -177,7 +180,7 @@ export function WorkspaceToolbar({
         sharedOrigin: payload.origin ?? payload.sections
       });
 
-      toast.success(`Imported "${payload.fileName}".`);
+      toast.success(`Imported "${fileName}" — your edits will be tracked.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to import file.');
     }

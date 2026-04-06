@@ -337,6 +337,18 @@ export class FileStore {
       .sort((left, right) => right.lastEdited - left.lastEdited);
   }
 
+  /** Return a name that doesn't collide with any active file. */
+  uniqueName(baseName: string): string {
+    const names = new Set(this.activeFiles.map((f) => f.name));
+    if (!names.has(baseName)) return baseName;
+
+    let suffix = 2;
+    while (names.has(`${baseName} ${suffix}`)) {
+      suffix += 1;
+    }
+    return `${baseName} ${suffix}`;
+  }
+
   hydrate(files: Omit<CvFile, 'isReadOnly'>[]) {
     this.#undoStack = [];
     this.#redoStack = [];

@@ -92,3 +92,25 @@ describe('readLocaleName', () => {
     expect(readLocaleName('locale:\n  date_style: full')).toBeUndefined();
   });
 });
+
+describe('fileStore.uniqueName', () => {
+  it('returns the name as-is when no collision', () => {
+    expect(fileStore.uniqueName('Totally Unique Name')).toBe('Totally Unique Name');
+  });
+
+  it('appends a suffix when the name already exists', () => {
+    const file = fileStore.createFile('Collision Test');
+    const unique = fileStore.uniqueName('Collision Test');
+    expect(unique).toBe('Collision Test 2');
+    fileStore.deleteFile(file.id);
+  });
+
+  it('increments suffix when multiple collisions exist', () => {
+    const f1 = fileStore.createFile('Multi Collision');
+    const f2 = fileStore.createFile('Multi Collision 2');
+    const unique = fileStore.uniqueName('Multi Collision');
+    expect(unique).toBe('Multi Collision 3');
+    fileStore.deleteFile(f1.id);
+    fileStore.deleteFile(f2.id);
+  });
+});
