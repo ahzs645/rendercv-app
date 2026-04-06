@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { GitCompareArrows } from 'lucide-react';
 import { classicTheme, defaultDesigns, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
@@ -396,23 +397,34 @@ export function Workspace() {
   );
 
   const editorPane = (
-    <div className="min-h-0 flex-1 p-4 pt-3 sm:p-5 sm:pt-4">
-      {preferences.yamlEditor ? (
-        <MonacoEditor
-          key={activeSection}
-          ref={monacoRef}
-          value={currentValue}
-          onChange={handleSectionChange}
-        />
-      ) : (
-        <FormEditor
-          key={activeSection}
-          section={activeSection}
-          value={currentValue}
-          onChange={handleSectionChange}
-          sharedOrigin={selectedFile?.sharedOrigin}
-        />
-      )}
+    <div className="flex min-h-0 flex-1 flex-col">
+      {selectedFile?.sharedOrigin ? (
+        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+          <GitCompareArrows className="size-3.5 shrink-0" />
+          <span>
+            Reviewing shared CV — edits are tracked against the original.
+            Changed fields are highlighted in the form view.
+          </span>
+        </div>
+      ) : null}
+      <div className="min-h-0 flex-1 p-4 pt-3 sm:p-5 sm:pt-4">
+        {preferences.yamlEditor ? (
+          <MonacoEditor
+            key={activeSection}
+            ref={monacoRef}
+            value={currentValue}
+            onChange={handleSectionChange}
+          />
+        ) : (
+          <FormEditor
+            key={activeSection}
+            section={activeSection}
+            value={currentValue}
+            onChange={handleSectionChange}
+            sharedOrigin={selectedFile?.sharedOrigin}
+          />
+        )}
+      </div>
     </div>
   );
 

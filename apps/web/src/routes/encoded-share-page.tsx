@@ -77,18 +77,19 @@ export function EncodedSharePage() {
 
     const designKey = readThemeName(payload.sections.design) ?? 'classic';
     const localeKey = readLocaleName(payload.sections.locale) ?? 'english';
+    const fileName = fileStore.uniqueName(`${payload.fileName} (Review)`);
 
-    fileStore.createFile(payload.fileName, {
+    fileStore.createFile(fileName, {
       cv: payload.sections.cv,
       settings: payload.sections.settings,
       designs: { [designKey]: payload.sections.design },
       locales: { [localeKey]: payload.sections.locale },
       selectedTheme: designKey,
       selectedLocale: localeKey,
-      // Store the original sections so changes can be tracked
       sharedOrigin: payload.origin ?? payload.sections
     });
 
+    toast.success(`Imported as "${fileName}" — your edits will be tracked.`);
     navigate('/');
   }
 
