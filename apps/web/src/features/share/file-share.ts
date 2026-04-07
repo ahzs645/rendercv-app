@@ -19,7 +19,7 @@ export async function exportShareFile(payload: EncodedSharePayload) {
  * Prompt the user for a `.rendercv.json` file and parse it.
  */
 export function importShareFile(): Promise<EncodedSharePayload | null> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
@@ -32,7 +32,8 @@ export function importShareFile(): Promise<EncodedSharePayload | null> {
       }
 
       if (file.size > MAX_IMPORT_SIZE) {
-        throw new Error(`File too large (max ${MAX_IMPORT_SIZE / 1024 / 1024} MB).`);
+        reject(new Error(`File too large (max ${MAX_IMPORT_SIZE / 1024 / 1024} MB).`));
+        return;
       }
 
       const reader = new FileReader();
@@ -40,7 +41,8 @@ export function importShareFile(): Promise<EncodedSharePayload | null> {
         try {
           const data = JSON.parse(reader.result as string) as EncodedSharePayload;
           if (!data.sections || typeof data.sections !== 'object') {
-            throw new Error('Invalid .rendercv.json — missing sections.');
+            reject(new Error('Invalid .rendercv.json — missing sections.'));
+            return;
           }
           resolve({
             version: data.version ?? 1,
@@ -49,11 +51,11 @@ export function importShareFile(): Promise<EncodedSharePayload | null> {
             origin: data.origin
           });
         } catch (err) {
-          throw err instanceof Error ? err : new Error('Failed to parse .rendercv.json file.');
+          reject(err instanceof Error ? err : new Error('Failed to parse .rendercv.json file.'));
         }
       };
       reader.onerror = () => {
-        throw new Error('Failed to read file.');
+        reject(new Error('Failed to read file.'));
       };
       reader.readAsText(file);
     });

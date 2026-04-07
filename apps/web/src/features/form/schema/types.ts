@@ -9,6 +9,7 @@ export type FieldType =
   | 'string'
   | 'boolean'
   | 'select'
+  | 'date'
   | 'dimension'
   | 'color'
   | 'font'

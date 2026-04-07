@@ -57,6 +57,13 @@ export const filesRouter = new Hono()
       flavors: z.array(z.string()).optional()
     });
 
+    const cvFileSectionsSchema = z.object({
+      cv: z.string(),
+      design: z.string(),
+      locale: z.string(),
+      settings: z.string()
+    });
+
     const body = z.object({
       id: z.string(),
       name: z.string().optional(),
@@ -65,6 +72,7 @@ export const filesRouter = new Hono()
       selectedLocale: z.string().optional(),
       variants: z.record(z.string(), variantDefinitionSchema).optional(),
       selectedVariant: z.string().optional(),
+      sharedOrigin: cvFileSectionsSchema.optional(),
       isLocked: z.boolean().optional(),
       isArchived: z.boolean().optional(),
       isTrashed: z.boolean().optional(),

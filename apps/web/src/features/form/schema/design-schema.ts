@@ -501,13 +501,8 @@ const themeSpecificDesignGroups: Record<string, FieldGroup[]> = {
         },
         {
           path: ['website_link_color'],
-          label: 'Website Link Color',
-          type: 'toggle',
-          options: [
-            { value: 'black', label: 'Black' },
-            { value: 'blue', label: 'Blue' }
-          ],
-          description: 'Choose whether the website link matches the text color or uses a hyperlink style.'
+          label: 'Links',
+          type: 'color'
         }
       ]
     },

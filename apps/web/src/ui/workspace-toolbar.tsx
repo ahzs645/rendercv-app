@@ -87,7 +87,7 @@ export function WorkspaceToolbar({
       await navigator.clipboard.writeText(result.url);
 
       if (result.originDropped) {
-        toast.info('Share link copied (change history omitted — resume too large for URL).');
+        toast.warning('Share link copied, but change history was omitted because the resume is too large for a URL. Use "Export JSON" to share with full change tracking.', { duration: 6000 });
       } else if (selectedFile.sharedOrigin) {
         toast.success('Share link with changes copied.');
       } else {

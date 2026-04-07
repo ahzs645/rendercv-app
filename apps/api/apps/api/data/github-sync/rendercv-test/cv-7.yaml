@@ -183,7 +183,7 @@ cv:
 
 
 design:
-  theme: ahmadstyle
+  theme: classic
   page:
     size: us-letter
     top_margin: 0.7in

@@ -4,7 +4,10 @@ import {
   AlignCenter,
   AlignJustify,
   AlignLeft,
-  AlignRight
+  AlignRight,
+  Calendar,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import type { FieldDef, SelectOption } from './schema/types';
 import { StringListRow } from './string-list-row';
@@ -108,6 +111,8 @@ export function FieldControl({
             onChange={onChange}
           />
         );
+      case 'date':
+        return <DateRow field={field} value={stringValue(value)} onChange={onChange} />;
       default:
         return (
           <TextRow
@@ -460,6 +465,202 @@ function ColorRow({
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
+    </div>
+  );
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const SEASONS = ['Spring', 'Summer', 'Fall', 'Winter'];
+
+function DateRow({
+  field,
+  value,
+  onChange
+}: {
+  field: FieldDef;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isEndDate = field.path[field.path.length - 1] === 'end_date';
+  const isPresent = value.toLowerCase() === 'present';
+
+  const [calYear, setCalYear] = useState(() => {
+    const match = value.match(/(\d{4})/);
+    return match ? parseInt(match[1]) : new Date().getFullYear();
+  });
+
+  useEffect(() => {
+    const match = value.match(/(\d{4})/);
+    if (match) setCalYear(parseInt(match[1]));
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  const selectedMonth = (() => {
+    const match = value.match(/^(\d{4})-(\d{2})$/);
+    if (match && parseInt(match[1]) === calYear) return parseInt(match[2]) - 1;
+    return -1;
+  })();
+
+  const selectedYearOnly = /^\d{4}$/.test(value) && parseInt(value) === calYear;
+
+  const selectedSeason = (() => {
+    for (const season of SEASONS) {
+      const match = value.match(new RegExp(`^${season}\\s+(\\d{4})$`, 'i'));
+      if (match && parseInt(match[1]) === calYear) return season;
+    }
+    return null;
+  })();
+
+  function pick(val: string) {
+    onChange(val);
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative flex items-center py-1.5" ref={containerRef}>
+      <span
+        className="shrink-0 text-xs text-muted-foreground"
+        style={{ width: 'var(--label-width, 8rem)' }}
+      >
+        {field.label}
+      </span>
+      <div className="flex min-w-0 flex-1 items-center gap-1">
+        {isEndDate && (
+          <button
+            type="button"
+            className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] transition-colors ${
+              isPresent
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+            onClick={() => onChange(isPresent ? '' : 'present')}
+          >
+            Present
+          </button>
+        )}
+        <textarea
+          rows={1}
+          className="field-sizing-content min-w-0 flex-1 resize-none bg-transparent py-0 text-sm outline-none select-text placeholder:text-muted-foreground/50"
+          value={value}
+          placeholder={field.placeholder}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <button
+          type="button"
+          className={`shrink-0 rounded p-0.5 transition-colors ${
+            open
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+          onClick={() => setOpen(!open)}
+        >
+          <Calendar className="size-3.5" />
+        </button>
+      </div>
+
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-1 w-56 rounded-lg border border-border bg-popover p-3 shadow-lg">
+          {/* Year navigation */}
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              type="button"
+              className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setCalYear((y) => y - 1)}
+            >
+              <ChevronLeft className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                selectedYearOnly
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-foreground hover:bg-muted'
+              }`}
+              onClick={() => pick(String(calYear))}
+              title="Select year only"
+            >
+              {calYear}
+            </button>
+            <button
+              type="button"
+              className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setCalYear((y) => y + 1)}
+            >
+              <ChevronRight className="size-3.5" />
+            </button>
+          </div>
+
+          {/* Month grid */}
+          <div className="grid grid-cols-4 gap-0.5">
+            {MONTHS.map((month, i) => (
+              <button
+                key={month}
+                type="button"
+                className={`rounded py-1 text-[11px] transition-colors ${
+                  selectedMonth === i
+                    ? 'bg-primary/10 font-medium text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+                onClick={() => pick(`${calYear}-${String(i + 1).padStart(2, '0')}`)}
+              >
+                {month}
+              </button>
+            ))}
+          </div>
+
+          {/* Divider */}
+          <div className="my-2 h-px bg-border/40" />
+
+          {/* Seasons / Semesters */}
+          <div className="mb-1 text-[10px] text-muted-foreground/70">Semester / Season</div>
+          <div className="grid grid-cols-2 gap-0.5">
+            {SEASONS.map((season) => (
+              <button
+                key={season}
+                type="button"
+                className={`rounded py-1 text-[11px] transition-colors ${
+                  selectedSeason === season
+                    ? 'bg-primary/10 font-medium text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+                onClick={() => pick(`${season} ${calYear}`)}
+              >
+                {season} {calYear}
+              </button>
+            ))}
+          </div>
+
+          {/* Present option for end_date */}
+          {isEndDate && (
+            <>
+              <div className="my-2 h-px bg-border/40" />
+              <button
+                type="button"
+                className={`w-full rounded py-1 text-[11px] transition-colors ${
+                  isPresent
+                    ? 'bg-primary/10 font-medium text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+                onClick={() => pick('present')}
+              >
+                Present
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

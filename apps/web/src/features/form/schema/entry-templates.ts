@@ -20,18 +20,18 @@ export const experienceTemplate: EntryTemplate = {
       defaultValue: '',
       preserveEmpty: true
     },
-    { path: ['date'], label: 'Date', type: 'string', placeholder: '2020-09, Fall 2023, etc.' },
+    { path: ['date'], label: 'Date', type: 'date', placeholder: '2020-09, Fall 2023, etc.' },
     {
       path: ['start_date'],
       label: 'Start Date',
-      type: 'string',
+      type: 'date',
       placeholder: '2020-09, 2020, etc.',
       defaultValue: ''
     },
     {
       path: ['end_date'],
       label: 'End Date',
-      type: 'string',
+      type: 'date',
       placeholder: '2024-05, 2024, present, etc.',
       defaultValue: ''
     },
@@ -61,14 +61,14 @@ export const positionSubTemplate: EntryTemplate = {
     {
       path: ['start_date'],
       label: 'Start Date',
-      type: 'string',
+      type: 'date',
       placeholder: '2020-09, 2020, etc.',
       defaultValue: ''
     },
     {
       path: ['end_date'],
       label: 'End Date',
-      type: 'string',
+      type: 'date',
       placeholder: '2024-05, 2024, present, etc.',
       defaultValue: ''
     },
@@ -102,18 +102,18 @@ export const educationTemplate: EntryTemplate = {
       preserveEmpty: true
     },
     { path: ['degree'], label: 'Degree', type: 'string', defaultValue: '' },
-    { path: ['date'], label: 'Date', type: 'string', placeholder: '2020-09, Fall 2023, etc.' },
+    { path: ['date'], label: 'Date', type: 'date', placeholder: '2020-09, Fall 2023, etc.' },
     {
       path: ['start_date'],
       label: 'Start Date',
-      type: 'string',
+      type: 'date',
       placeholder: '2020-09, 2020, etc.',
       defaultValue: ''
     },
     {
       path: ['end_date'],
       label: 'End Date',
-      type: 'string',
+      type: 'date',
       placeholder: '2024-05, 2024, present, etc.',
       defaultValue: ''
     },
@@ -152,7 +152,7 @@ export const publicationTemplate: EntryTemplate = {
     {
       path: ['date'],
       label: 'Date',
-      type: 'string',
+      type: 'date',
       placeholder: '2020-09, Fall 2023, etc.',
       defaultValue: ''
     },
@@ -174,12 +174,12 @@ export const normalTemplate: EntryTemplate = {
       defaultValue: '',
       preserveEmpty: true
     },
-    { path: ['date'], label: 'Date', type: 'string', placeholder: '2020-09, Fall 2023, etc.' },
-    { path: ['start_date'], label: 'Start Date', type: 'string', placeholder: '2020-09 or 2020' },
+    { path: ['date'], label: 'Date', type: 'date', placeholder: '2020-09, Fall 2023, etc.' },
+    { path: ['start_date'], label: 'Start Date', type: 'date', placeholder: '2020-09 or 2020' },
     {
       path: ['end_date'],
       label: 'End Date',
-      type: 'string',
+      type: 'date',
       placeholder: '2024-05, 2024, or present'
     },
     { path: ['location'], label: 'Location', type: 'string' },
