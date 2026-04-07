@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSvgDocumentCandidates,
+  buildSvgPageHitZones,
   buildSvgSectionCandidates,
   buildYamlEntrySearchTerms,
   detectSvgSectionKey,
@@ -201,5 +202,56 @@ describe('svg-click-map', () => {
       startRatio: 0,
       endRatio: 1.001
     });
+  });
+
+  it('builds visible page hit zones from heading and entry anchors', () => {
+    const cvYaml = `cv:
+  sections:
+    awards:
+      - name: Canada Graduate Scholarships
+      - name: British Columbia Graduate Scholarship
+`;
+
+    const documentCandidates = buildSvgDocumentCandidates(cvYaml);
+    expect(documentCandidates).not.toBeNull();
+
+    const boxes: SvgTextBox[] = [
+      { text: 'Awards', topRatio: 0.12 },
+      { text: 'Canada Graduate Scholarships', topRatio: 0.2 },
+      { text: 'British Columbia Graduate Scholarship', topRatio: 0.35 }
+    ];
+
+    expect(buildSvgPageHitZones(boxes, documentCandidates!)).toEqual([
+      { sectionKey: 'awards', entryIndex: -1, startRatio: 0.12, endRatio: 0.2 },
+      { sectionKey: 'awards', entryIndex: 0, startRatio: 0.2, endRatio: 0.35 },
+      { sectionKey: 'awards', entryIndex: 1, startRatio: 0.35, endRatio: 1.001 }
+    ]);
+  });
+
+  it('builds continuation-page hit zones without a visible heading', () => {
+    const cvYaml = `cv:
+  sections:
+    volunteer:
+      - company: Northern Undergraduate Student Society
+        position: Director at Large
+      - company: YouTube
+        position: Diabetes Education Video Creator and Manager
+`;
+
+    const documentCandidates = buildSvgDocumentCandidates(cvYaml);
+    expect(documentCandidates).not.toBeNull();
+
+    const boxes: SvgTextBox[] = [
+      { text: 'Northern Undergraduate Student Society', topRatio: 0.41 },
+      { text: 'Director at Large', topRatio: 0.41 },
+      { text: 'YouTube', topRatio: 0.53 },
+      { text: 'Diabetes Education Video Creator and Manager', topRatio: 0.53 }
+    ];
+
+    expect(buildSvgPageHitZones(boxes, documentCandidates!)).toEqual([
+      { sectionKey: 'volunteer', entryIndex: -1, startRatio: 0, endRatio: 0.41 },
+      { sectionKey: 'volunteer', entryIndex: 0, startRatio: 0.41, endRatio: 0.53 },
+      { sectionKey: 'volunteer', entryIndex: 1, startRatio: 0.53, endRatio: 1.001 }
+    ]);
   });
 });

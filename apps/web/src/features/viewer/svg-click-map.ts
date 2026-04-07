@@ -15,6 +15,13 @@ export interface SvgSectionSegment {
   endRatio: number;
 }
 
+export interface SvgHitZone {
+  sectionKey: string;
+  entryIndex: number;
+  startRatio: number;
+  endRatio: number;
+}
+
 interface SvgEntryCandidate {
   entryIndex: number;
   texts: string[];
@@ -243,6 +250,81 @@ function collectEntryAnchors(
   return anchors;
 }
 
+function findHeadinglessSectionForPage(
+  boxes: SvgTextBox[],
+  documentCandidates: SvgDocumentCandidates
+) {
+  const sectionMatches = documentCandidates.sections
+    .map((section) => {
+      const anchors = collectEntryAnchors(boxes, section);
+      const entryAnchors = anchors.filter((anchor) => anchor.entryIndex >= 0);
+      if (entryAnchors.length === 0) {
+        return null;
+      }
+
+      return {
+        sectionKey: section.sectionKey,
+        firstTopRatio: entryAnchors[0]!.topRatio,
+        matchedCount: entryAnchors.length
+      };
+    })
+    .filter(
+      (
+        match
+      ): match is {
+        sectionKey: string;
+        firstTopRatio: number;
+        matchedCount: number;
+      } => match !== null
+    )
+    .sort((a, b) => {
+      if (a.matchedCount !== b.matchedCount) {
+        return b.matchedCount - a.matchedCount;
+      }
+      return a.firstTopRatio - b.firstTopRatio;
+    });
+
+  return sectionMatches[0] ?? null;
+}
+
+function buildSvgPageSectionSegments(
+  boxes: SvgTextBox[],
+  documentCandidates: SvgDocumentCandidates
+): SvgSectionSegment[] {
+  const headingAnchors = findHeadingAnchors(boxes, documentCandidates);
+  if (headingAnchors.length === 0) {
+    const section = findHeadinglessSectionForPage(boxes, documentCandidates);
+    return section
+      ? [
+          {
+            sectionKey: section.sectionKey,
+            startRatio: 0,
+            endRatio: 1.001
+          }
+        ]
+      : [];
+  }
+
+  const segments = headingAnchors.map((anchor, index) => ({
+    sectionKey: anchor.sectionKey,
+    startRatio: anchor.topRatio,
+    endRatio: headingAnchors[index + 1]?.topRatio ?? 1.001
+  }));
+
+  const firstVisibleHeadingIndex = documentCandidates.sections.findIndex(
+    (section) => section.sectionKey === headingAnchors[0]!.sectionKey
+  );
+  if (firstVisibleHeadingIndex > 0 && headingAnchors[0]!.topRatio > 0) {
+    segments.unshift({
+      sectionKey: documentCandidates.sections[firstVisibleHeadingIndex - 1]!.sectionKey,
+      startRatio: 0,
+      endRatio: headingAnchors[0]!.topRatio
+    });
+  }
+
+  return segments;
+}
+
 export function buildSvgDocumentCandidates(cvYaml: string): SvgDocumentCandidates | null {
   let parsed: unknown;
   try {
@@ -323,6 +405,68 @@ export function detectSvgSectionHit(
   }
 
   return selected ? { entryIndex: selected.entryIndex } : null;
+}
+
+export function buildSvgPageHitZones(
+  boxes: SvgTextBox[],
+  documentCandidates: SvgDocumentCandidates
+): SvgHitZone[] {
+  const segments = buildSvgPageSectionSegments(boxes, documentCandidates);
+
+  return segments.flatMap((segment) => {
+    const candidates =
+      documentCandidates.sections.find((section) => section.sectionKey === segment.sectionKey) ?? null;
+    if (!candidates) {
+      return [];
+    }
+
+    const headingIndex = findHeadingBoxIndex(boxes, candidates.title);
+    const hasVisibleHeading =
+      headingIndex >= 0 && Math.abs(boxes[headingIndex]!.topRatio - segment.startRatio) <= 0.0025;
+    const anchors = collectEntryAnchors(boxes, candidates, {
+      segmentStartRatio: segment.startRatio,
+      segmentEndRatio: segment.endRatio,
+      includeHeading: hasVisibleHeading
+    });
+
+    if (anchors.length === 0) {
+      return [
+        {
+          sectionKey: segment.sectionKey,
+          entryIndex: -1,
+          startRatio: segment.startRatio,
+          endRatio: segment.endRatio
+        }
+      ];
+    }
+
+    const zones: SvgHitZone[] = [];
+    if (anchors[0]!.topRatio > segment.startRatio) {
+      zones.push({
+        sectionKey: segment.sectionKey,
+        entryIndex: -1,
+        startRatio: segment.startRatio,
+        endRatio: anchors[0]!.topRatio
+      });
+    }
+
+    for (let index = 0; index < anchors.length; index += 1) {
+      const anchor = anchors[index]!;
+      const endRatio = anchors[index + 1]?.topRatio ?? segment.endRatio;
+      if (endRatio <= anchor.topRatio) {
+        continue;
+      }
+
+      zones.push({
+        sectionKey: segment.sectionKey,
+        entryIndex: anchor.entryIndex,
+        startRatio: anchor.topRatio,
+        endRatio
+      });
+    }
+
+    return zones;
+  });
 }
 
 export function detectSvgSectionSegment(

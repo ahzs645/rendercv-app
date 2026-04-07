@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import { AppWindow, Download, FileCode2, Minus, Plus } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
@@ -6,6 +6,7 @@ import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import {
   buildSvgDocumentCandidates,
+  buildSvgPageHitZones,
   buildSvgSectionCandidates,
   detectSvgSectionSegment,
   detectSvgSectionHit,
@@ -90,6 +91,81 @@ export interface PreviewPaneControls {
 interface SectionHit {
   sectionKey: string;
   entryIndex: number; // -1 = section heading / header area
+}
+
+const PREVIEW_HITBOX_DEBUG_PARAM = 'debugPreviewHits';
+const PREVIEW_HITBOX_DEBUG_STORAGE_KEY = 'rendercv_debug_preview_hits';
+
+function previewHitboxDebugEnabled() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const flag = new URLSearchParams(window.location.search).get(PREVIEW_HITBOX_DEBUG_PARAM);
+  if (flag !== null) {
+    return ['1', 'true', 'yes', 'on'].includes(flag.toLowerCase());
+  }
+
+  try {
+    return localStorage.getItem(PREVIEW_HITBOX_DEBUG_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function hitZoneColor(sectionKey: string) {
+  let hash = 0;
+  for (let index = 0; index < sectionKey.length; index += 1) {
+    hash = (hash * 31 + sectionKey.charCodeAt(index)) | 0;
+  }
+
+  const hue = Math.abs(hash) % 360;
+  return {
+    background: `hsla(${hue}, 78%, 52%, 0.18)`,
+    border: `hsla(${hue}, 78%, 38%, 0.55)`,
+    label: `hsla(${hue}, 78%, 28%, 0.95)`
+  };
+}
+
+function PreviewHitboxOverlay({
+  zones
+}: {
+  zones: Array<{ sectionKey: string; entryIndex: number; startRatio: number; endRatio: number }>;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10">
+      {zones.map((zone, index) => {
+        const color = hitZoneColor(zone.sectionKey);
+        const label = zone.entryIndex >= 0 ? `${zone.sectionKey}[${zone.entryIndex}]` : zone.sectionKey;
+        const showLabel = zone.endRatio - zone.startRatio >= 0.045 || zone.entryIndex < 0;
+
+        return (
+          <div
+            key={`${zone.sectionKey}-${zone.entryIndex}-${index}`}
+            className="absolute inset-x-0 border-y"
+            style={{
+              top: `${zone.startRatio * 100}%`,
+              height: `${Math.max((zone.endRatio - zone.startRatio) * 100, 0.1)}%`,
+              backgroundColor: color.background,
+              borderColor: color.border
+            }}
+          >
+            {showLabel ? (
+              <span
+                className="absolute left-2 top-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm"
+                style={{ backgroundColor: color.label }}
+              >
+                {label}
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
+      <div className="absolute right-2 top-2 rounded bg-black/75 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-white">
+        Hitbox Debug
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -256,9 +332,13 @@ function PreviewCanvas({
   const { sectionMap } = viewer;
   const totalPages = viewer.svgPages.length;
   const hasClickHandler = onSectionClick && sectionMap.sections.length > 0;
+  const showHitboxDebug = previewHitboxDebugEnabled();
   const pageBoxesPromiseCache = useRef(new Map<string, Promise<Awaited<ReturnType<typeof measureSvgTextBoxesFromUrl>>>>());
   const documentCandidateCache = useRef<ReturnType<typeof buildSvgDocumentCandidates> | null | undefined>(undefined);
   const sectionCandidateCache = useRef(new Map<string, ReturnType<typeof buildSvgSectionCandidates>>());
+  const [debugZonesByPage, setDebugZonesByPage] = useState<
+    Record<string, ReturnType<typeof buildSvgPageHitZones>>
+  >({});
 
   useEffect(() => {
     pageBoxesPromiseCache.current.clear();
@@ -268,6 +348,55 @@ function PreviewCanvas({
     sectionCandidateCache.current.clear();
     documentCandidateCache.current = undefined;
   }, [sections?.cv]);
+
+  useEffect(() => {
+    const cvYaml = sections?.cv;
+    if (!showHitboxDebug || !cvYaml || viewer.svgPages.length === 0) {
+      setDebugZonesByPage({});
+      return;
+    }
+    const resolvedCvYaml: string = cvYaml;
+
+    let cancelled = false;
+
+    async function loadDebugZones() {
+      let documentCandidates = documentCandidateCache.current;
+      if (documentCandidates === undefined) {
+        documentCandidates = buildSvgDocumentCandidates(resolvedCvYaml);
+        documentCandidateCache.current = documentCandidates;
+      }
+
+      if (!documentCandidates) {
+        if (!cancelled) {
+          setDebugZonesByPage({});
+        }
+        return;
+      }
+
+      const nextEntries = await Promise.all(
+        viewer.svgPages.map(async (pageUrl) => {
+          let pageBoxesPromise = pageBoxesPromiseCache.current.get(pageUrl);
+          if (!pageBoxesPromise) {
+            pageBoxesPromise = measureSvgTextBoxesFromUrl(pageUrl);
+            pageBoxesPromiseCache.current.set(pageUrl, pageBoxesPromise);
+          }
+
+          const pageBoxes = await pageBoxesPromise;
+          return [pageUrl, buildSvgPageHitZones(pageBoxes, documentCandidates)] as const;
+        })
+      );
+
+      if (!cancelled) {
+        setDebugZonesByPage(Object.fromEntries(nextEntries));
+      }
+    }
+
+    void loadDebugZones();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showHitboxDebug, sections?.cv, viewer.svgPages]);
 
 
   return (
@@ -286,7 +415,7 @@ function PreviewCanvas({
             {viewer.svgPages.map((page, pageIndex) => (
               <div
                 key={pageIndex}
-                className="overflow-hidden rounded-sm bg-white shadow-2xl"
+                className="relative overflow-hidden rounded-sm bg-white shadow-2xl"
                 onClick={
                   hasClickHandler
                     ? (event: MouseEvent<HTMLDivElement>) => {
@@ -322,6 +451,7 @@ function PreviewCanvas({
                   onDragStart={(e) => e.preventDefault()}
                   className="pointer-events-none block h-auto w-full select-none"
                 />
+                {showHitboxDebug ? <PreviewHitboxOverlay zones={debugZonesByPage[page] ?? []} /> : null}
               </div>
             ))}
           </div>
