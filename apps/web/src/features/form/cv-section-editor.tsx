@@ -51,6 +51,7 @@ export function CvSectionEditor({
         entriesExpanded={entriesExpanded}
         template={socialNetworkTemplate}
         onChange={(nextEntries) => updateCvField('social_networks', nextEntries)}
+        originPath={['social_networks']}
       />
       <EntryArrayEditor
         title="Custom Connections"
@@ -58,6 +59,7 @@ export function CvSectionEditor({
         entriesExpanded={entriesExpanded}
         template={customConnectionTemplate}
         onChange={(nextEntries) => updateCvField('custom_connections', nextEntries)}
+        originPath={['custom_connections']}
       />
       <SectionMapEditor entriesExpanded={entriesExpanded} sections={sections} onChange={updateSections} />
     </>
@@ -233,6 +235,7 @@ function SectionEditor({
           onChange={onChangeEntries}
           showHeader={false}
           sectionKey={sectionKey}
+          originPath={['sections', sectionKey]}
         />
       )}
     </article>

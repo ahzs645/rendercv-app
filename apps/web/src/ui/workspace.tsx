@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { GitCompareArrows } from 'lucide-react';
-import YAML from 'yaml';
 import { classicTheme, defaultDesigns, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
@@ -118,23 +117,6 @@ export function Workspace() {
     },
     [activeSection]
   );
-
-  const cvSectionWeights = useMemo(() => {
-    const cvYaml = rawSections?.cv;
-    if (!cvYaml) return [];
-    try {
-      const parsed = YAML.parse(cvYaml) as Record<string, unknown> | null;
-      const cv = parsed?.cv as Record<string, unknown> | undefined;
-      const sections = cv?.sections;
-      if (sections && typeof sections === 'object' && !Array.isArray(sections)) {
-        return Object.entries(sections as Record<string, unknown>).map(([key, value]) => ({
-          key,
-          weight: Array.isArray(value) ? Math.max(value.length, 1) : 1
-        }));
-      }
-    } catch { /* ignore parse errors */ }
-    return [];
-  }, [rawSections?.cv]);
 
   const handlePreviewSectionClick = useCallback(
     (sectionKey: string, entryIndex: number) => {
@@ -502,7 +484,6 @@ export function Workspace() {
       showHeader={false}
       viewer={viewer}
       onSectionClick={handlePreviewSectionClick}
-      sectionWeights={cvSectionWeights}
     />
   );
 

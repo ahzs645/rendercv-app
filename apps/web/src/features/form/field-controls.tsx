@@ -133,7 +133,7 @@ export function FieldControl({
       : String(diff.originalValue);
 
   return (
-    <div className="relative rounded-md border-l-2 border-l-amber-500 bg-amber-500/5 pl-2">
+    <div className="relative border-l-2 border-l-amber-500 bg-amber-500/5 pl-2">
       {control}
       <span
         className="absolute right-1 top-1/2 -translate-y-1/2 max-w-[40%] truncate rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-600"

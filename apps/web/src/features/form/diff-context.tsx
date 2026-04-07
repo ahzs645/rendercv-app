@@ -38,6 +38,38 @@ export function DiffProvider({
 }
 
 /**
+ * Narrow the diff origin context to a nested path (e.g., an array entry).
+ * Field paths inside this provider are resolved relative to the scoped root.
+ */
+export function DiffScopeProvider({
+  children,
+  path
+}: {
+  children: ReactNode;
+  path: (string | number)[];
+}) {
+  const { originRoot: parentRoot } = useContext(DiffContext);
+
+  const scopedRoot = useMemo(() => {
+    if (!parentRoot) return null;
+    let current: unknown = parentRoot;
+    for (const segment of path) {
+      if (current && typeof current === 'object') {
+        current = (current as Record<string | number, unknown>)[segment];
+      } else {
+        return null;
+      }
+    }
+    if (current && typeof current === 'object' && !Array.isArray(current)) {
+      return current as Record<string, unknown>;
+    }
+    return null;
+  }, [parentRoot, path]);
+
+  return <DiffContext.Provider value={{ originRoot: scopedRoot }}>{children}</DiffContext.Provider>;
+}
+
+/**
  * Hook to check if a field value differs from the shared origin.
  * Returns `{ changed: true, originalValue }` when the field was modified,
  * or `{ changed: false }` when unchanged or no origin is tracked.

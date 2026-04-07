@@ -1,0 +1,646 @@
+cv:
+  name: Ahmad Jalil
+  location: Prince George, BC
+  email: me@ahmadjalil.com
+  phone: +1-778-267-9144
+  website: https://ahmadjalil.com
+  sections:
+    experience:
+      - company: Northern Analytical Laboratory Services
+        position: Research Assistant
+        location: Prince George, BC
+        start_date: 2022-09
+        end_date: present
+        highlights:
+          - Work both independently and in a team in a laboratory environment,
+            performing tasks that involve collection and processing of samples
+            using various instruments while maintaining and calibrating them
+          - Revamped invoicing system to automate payment tracking processes,
+            reducing customer inquiries and improving overall customer
+            satisfaction
+          - Streamlined and optimized laboratory workflow by implementing new
+            methods and protocols, resulting in an increase in sample processing
+            efficiency
+          - Authored and disseminated scientific papers and reports,
+            contributing to the lab's knowledge base
+      - company: ""
+        position: Student Research Assistant
+        location: Prince George, BC
+        start_date: 2020-11
+        end_date: 2022-09
+        highlights:
+          - Organize, review, and correct research data, creating illustrative
+            graphs and charts for reports
+          - Process data using statistical software including Excel, Prism, and
+            Rstudio, to facilitate thorough data analysis
+          - Apply graphic design skills (Photoshop, Illustrator, InDesign) to
+            create various materials for the Northern Analytical Laboratory
+            Services
+      - company: Relentless Pursuit Ventures
+        position: Health Technology Research Analyst (Intern)
+        location: Remote
+        start_date: 2024-05
+        end_date: 2024-08
+        highlights:
+          - Conducted comprehensive research on health technology innovations
+            for seniors in rural and remote communities across Canada
+          - Identified and analyzed key stakeholders in the age-tech and
+            healthcare sectors, including government agencies, healthcare
+            providers, technology companies, and advocacy groups
+      - company: Northern Health
+        position: Clinical Informatics Specialist
+        location: Prince George, BC
+        start_date: 2024-12
+        end_date: present
+        highlights:
+          - Led the integration and optimization of health information
+            technologies, improving access to patient/client information and
+            enhancing evidence-based practices across Northern Health regions
+          - Collaborated with clinical leaders, HIM leaders, and physicians to
+            align healthcare systems with operational needs, while designing and
+            maintaining health information management content
+          - Directed change initiatives and provided leadership in recruiting,
+            coaching, and evaluating staff, fostering innovation and supporting
+            the adoption of international coding standards
+      - company: ""
+        position: PICS Intern
+        location: Prince George, BC
+        start_date: 2024-05
+        end_date: 2024-12
+        highlights:
+          - Utilize Geographic Information Systems (GIS) software to analyze and
+            map data relevant to public health concerns across Northern Health
+            regions
+          - Created and presented comprehensive GIS-based reports to high-level
+            decision-makers to support informed decision-making on public health
+            concerns
+          - Developed a standardized database to track and analyze
+            provincial-wide systems, enhancing data consistency and
+            accessibility across Northern Health regions
+      - company: University of Northern British Columbia
+        position: Teaching Assistant
+        location: Prince George, BC
+        start_date: 2024-01
+        end_date: 2024-12
+        highlights:
+          - Contributed to the creation of an online resource hub for nutrition
+            students, providing access to lecture notes, study guides, and
+            additional learning materials
+        summary: "Nutrition · Level: Undergraduate · Students: 32"
+    volunteer:
+      - company: St. Vincent De Paul
+        position: Service Volunteer
+        location: Prince George, BC
+        start_date: 2020-12
+        end_date: present
+        highlights:
+          - Prepared and served meals to those in need, promoted community
+            wellness, and efficiently managed the distribution of donated goods
+      - company: Rural eMentoring BC
+        position: Highschool Mentor
+        location: Remote
+        start_date: 2020-09
+        end_date: present
+        highlights:
+          - Cultivated a confidential, supportive mentorship with a high school
+            mentee, providing guidance on personal and academic challenges to
+            foster personal and educational development
+      - company: Over The Edge Newspaper Society
+        position: Acting Editor-in-Chief
+        location: Prince George, BC
+        start_date: 2024-03
+        end_date: present
+        highlights:
+          - Negotiated a printing deal with the main newsprint supplier in
+            Prince George, securing the production of 22,000 copies per issue
+          - Redesigned the newspaper's logo and brand image to modernize and
+            align with current media trends
+          - Conducted audience research to identify preferences and tailored
+            content to increase engagement
+          - Centralized information structures to streamline communication and
+            enhance workflow efficiency
+      - company: Sparklab
+        position: Technical Analyst
+        location: Prince George, BC
+        start_date: 2023-09
+        end_date: present
+        highlights:
+          - Engage with researchers to understand their specific needs and
+            challenges in laboratory and field environments
+          - Design customized solutions using CAD (Computer-Aided Design)
+            software to address the unique requirements of various research
+            projects
+      - company: University of Northern British Columbia
+        position: Research Ambassador
+        location: Prince George, BC
+        start_date: 2022-09
+        end_date: present
+        highlights:
+          - Act as a primary liaison between students and the research community
+            at UNBC, promoting engagement and participation in research
+            activities
+          - Organize and lead informational sessions and workshops to educate
+            students about the research process, opportunities, and the
+            significance of research contributions
+      - company: Northern Health
+        position: Activity Volunteer
+        location: Prince George, BC
+        start_date: 2023-04
+        end_date: present
+        highlights:
+          - Assist recreation therapists and engage in activities with residents
+            at Rainbow Lodge & Gateway, a long-term care home and facilities,
+            enhancing their daily lives and well-being
+          - Provide emotional support and reassurance to dementia patients,
+            helping them feel more secure and oriented in their environment
+          - Deepen my understanding of patient-centered medicine through direct
+            interactions, learning about residents' needs and perspectives
+    projects:
+      - name: Whisperdesk
+        date: "2024"
+        url: https://github.com/ahzs645/WhisperDesk
+        summary: A powerful desktop transcription application powered by native
+          whisper.cpp with persistent state management and real-time progress
+          feedback
+        highlights:
+          - Technologies - C++, Whisper.cpp, Desktop Development
+      - name: Aethalometer Analysis
+        date: "2024"
+        url: https://github.com/ahzs645/aethmodular
+        summary: Repository script kit to process aethalometer data from micro aeth for
+          air quality research and environmental monitoring
+        highlights:
+          - Technologies - Python, Data Processing, Environmental Analysis
+      - name: Whisperdesk Diarization
+        date: "2024"
+        url: https://github.com/ahzs645/whisperdesk-diarization
+        summary: Advanced Multi-Speaker Diarization Engine with cross-platform C++
+          implementation using PyAnnote 3.0 ONNX models
+        highlights:
+          - Technologies - C++, ONNX, Machine Learning, Audio Processing
+      - name: UNBC Door Sign Generator
+        date: "2024"
+        url: https://github.com/ahzs645/UNBCDoor
+        summary: A web-based tool for generating standardized door signs for the
+          University of Northern British Columbia (UNBC)
+        highlights:
+          - Technologies - Web Development, Design Tools
+      - name: Card Printer Calibration
+        date: "2024"
+        url: https://github.com/ahzs645/printercalibration
+        summary: Color management and calibration system specifically designed for ID
+          card printing workflows, ensuring consistent and accurate color
+          reproduction across different printing devices and conditions
+        highlights:
+          - Technologies - Color Management, Calibration Systems, Print
+            Technology
+      - name: Markdown Milker
+        date: "2024"
+        summary: Collaborative markdown editor enabling multiple users to edit markdown
+          files together in real-time, with drag-and-drop file organization and
+          integrated image management
+        highlights:
+          - Technologies - Real-time Collaboration, Markdown, Web Development
+    education:
+      - institution: University of Northern British Columbia
+        area: Natural Resources and Environmental Studies
+        degree: PhD
+        location: Prince George, BC
+        start_date: 2024-09
+        end_date: 2026-09
+        highlights:
+          - Focus on air quality and environmental health
+      - institution: University of Northern British Columbia
+        area: Natural Resources and Environmental Studies
+        degree: M.Sc.
+        location: Prince George, BC
+        start_date: 2023-09
+        end_date: 2024-08
+        highlights:
+          - Focus on air quality and environmental health
+          - Continued to PhD
+        summary: "Supervisor: Hossein Kazemian"
+      - institution: University of Northern British Columbia
+        area: Biomedical Studies (Honours)
+        degree: B.HSc.
+        location: Prince George, BC
+        start_date: 2018-09
+        end_date: 2023-05
+        highlights:
+          - "Minor: Natural Resource Planning and Operations (Forestry)"
+          - The Lieutenant Governor's Medal for Inclusion, Democracy and
+            Reconciliation
+    professional_development:
+      - name: DGT 170 AI Essentials - Building Fluency and Productivity with Modern AI
+          Tools
+        location: Remote
+        date: 2025-02
+        summary: University of Calgary
+      - name: Digital Twins - Fundamentals, Techniques & Approaches
+        location: Remote
+        date: 2024-03
+        summary: Mohawk College
+      - name: Applied Internet of Things (IoT)
+        location: Vancouver, BC
+        date: 2023-05
+        summary: British Columbia Institute of Technology
+      - name: Building Envelope Science
+        location: Remote
+        date: 2022-06
+        summary: Holland College
+      - name: Covid-19 Contact Tracer
+        location: Remote
+        date: 2021-12
+        summary: John Hopkins University
+    certifications_skills:
+      - label: Certifications
+        details: OFA Level 1; TCPS 2; Environmental Professional in Training (EPt);
+          Containment Level 2 Operational Practices; Serving It Right
+      - label: Skills
+        details: Power BI; Research Skills; GIS; R Studio; Brand Identity Maps;
+          Analytical Nature; Adobe Suite; Business Process Reengineering; SPSS;
+          Logistics; Fluent in Arabic; Powerful Decision-Making Expertise; Grant
+          Proposal
+    awards:
+      - name: Canada Graduate Scholarships – Michael Smith Foreign Study Supplements
+        date: 2025-01
+        summary: Canadian Institutes of Health Research
+        highlights:
+          - The Government of Canada launched this program in 2008 to support
+            high-calibre graduate students in building global linkages and
+            international networks through the pursuit of exceptional research
+            experiences at research institutions outside of Canada. By accessing
+            international scientific research and training, CGS-MSFSS recipients
+            will contribute to strengthening the potential for collaboration
+            between Canadian and international universities and affiliated
+            research institutions.
+      - name: Canada Graduate Scholarships
+        date: 2024-04
+        summary: "Canadian Institutes of Health Research · Amount: 17500"
+        highlights:
+          - The Canada Graduate Scholarships is designed to enhance the research
+            skills and training of highly qualified personnel in health, natural
+            sciences, engineering, and social sciences. This prestigious program
+            is jointly administered by Canada's three granting agencies CIHR,
+            NSERC, and SSHRC, supporting students annually across all
+            disciplines. The program selects scholars through a rigorous
+            evaluation of their academic excellence, research potential, and
+            personal competencies.
+      - name: British Columbia Graduate Scholarship
+        date: 2024-04
+        summary: "The Ministry of Advanced Education, Skills and Training · Amount:
+          17500"
+        highlights:
+          - The British Columbia Graduate Scholarship supports exceptional
+            students at public post-secondary institutions across the province,
+            with a focus on STEM and professional fields. Valued at $17,500 the
+            scholarships are merit-based and aim to attract top talent who
+            contribute significantly to their disciplines. This initiative helps
+            reduce financial barriers and promote educational innovation in
+            British Columbia.
+      - name: Lieutenant-Governor's Medal for Inclusion, Democracy and Reconciliation
+        date: 2023-05
+        summary: Lieutenant Governor of British Columbia
+        highlights:
+          - The Lieutenant-governor's Medal for Inclusion, Democracy and
+            Reconciliation recognizes outstanding contributions from UNBC's
+            graduating class of over 700 students to promoting inclusion,
+            democracy, and reconciliation within the UNBC community. The award
+            recognizes exceptional leadership, advocacy, and commitment to
+            creating a more inclusive and equitable campus environment.
+      - name: Undergraduate Student Research Award
+        date: 2023-04
+        summary: "Natural Sciences and Engineering Research Council of Canada · Amount:
+          12000"
+        highlights:
+          - Natural Sciences and Engineering Research Council of Canada
+            Undergraduate Student Research Award, awarded for outstanding
+            research contributions in the natural sciences and engineering
+            fields. The award recognizes exceptional research skills,
+            creativity, and potential for future contributions to the field.
+      - name: BC Northern Real Estate Board Award
+        date: 2021-08
+        summary: "BC Northern Real Estate Board · Amount: 1000"
+        highlights:
+          - The award is for recipients whose home town must be within the
+            geographical boundaries defined by the Yukon border to the north, 70
+            Mile House to the south, Haida Gwaii Islands to the west, and the
+            Alberta border to the east, including the communities of Dawson
+            Creek, Chetwynd, and Tumbler Ridge. Meeting the criteria for good
+            academic standing is the primary basis for selection.
+      - name: Governor General's Academic Medal
+        date: 2018-07
+        summary: h
+        highlights:
+          - hh
+        location: hjkhkj
+    presentations:
+      - name: "Black Carbon (BC) Measurements in Addis Ababa: Reconciling Aethalometer
+          BC with Filter Based BC and FTIR-EC Measurements"
+        summary: AAAR 43rd Annual Conference
+        location: Buffalo, NY
+        date: "2025"
+      - name: "Assessing the health impacts of particulate bound metals in downtown
+          Prince George: A health indexing study on the differential effects of
+          high and low dust days"
+        summary: Cascadia Symposium on Environmental, Occupational, and Population
+          Health 2024
+        location: Blaine, WA
+        date: "2024"
+      - name: Particulate Matter-Bound Metals as an Assessment of Air Pollution in the
+          City of Prince George
+        summary: UNBC Research Week
+        location: Prince George, BC
+        date: "2023"
+      - name: Heavy metals and polycyclic aromatic hydrocarbons in ambient air during
+          episodes of springtime road dust
+        summary: UNBC Research Week
+        location: Prince George, BC
+        date: "2021"
+    publications:
+      - title: "Assessing the Health Impacts of Particulate Bound Metals in Downtown
+          Prince George: A Health Indexing Study on Differential Effects of High
+          and Low Dust Days"
+        authors:
+          - Ahmad Jalil
+        journal: University of Northern British Columbia · Honours Thesis
+        date: "2023"
+        summary: "Pages: 33"
+      - title: "Air Quality and Climate Change in a Complex Airshed: Prince George Air
+          Improvement Roundtable, Prince George, BC"
+        authors:
+          - Ahmad Jalil
+          - Patience Rakochy
+        journal: Planning West, 66(4)
+        date: "2024"
+        summary: "Editor: Kristin Agnello · Planning Institute of British Columbia ·
+          Pages: 20-21"
+      - title: Characterization of the short-term temporal variability of road dust
+          chemical mixtures and meteorological profiles in a near-road urban
+          site in British Columbia
+        authors:
+          - Eric S. Coker
+          - Nikita Saha Turna
+          - Mya Schouwenburg
+          - Ahmad Jalil
+          - Charles Bradshaw
+          - Michael Kuo
+          - Molly Mastel
+          - Hossein Kazemian
+          - Meghan Roushorne
+          - Sarah B. Henderson
+        journal: Journal of the Air & Waste Management Association
+        date: "2023"
+        doi: 10.1080/10962247.2023.2197970
+    media:
+      - name: What the heck is black carbon?
+        date: 2025-04-23
+        url: https://www.cbc.ca/listen/live-radio/1-109-daybreak-north/clip/16141818-what-heck-black-carbon
+        summary: "Broadcast Interview · Daybreak North · CBC Listen · Interviewer:
+          Carolina de Ryk"
+        highlights:
+          - UNBC PhD student's research has been noticed by NASA
+      - name: Extra! Extra! UNBC students go 'Over the Edge' with the relaunch of campus
+          newspaper
+        date: 2024-10-02
+        url: https://www.cbc.ca/listen/live-radio/1-109-daybreak-north/clip/16098559-extra-extra-unbc-students-ov
+        summary: "Broadcast Interview · Daybreak North · CBC Listen · Interviewer:
+          Carolina de Ryk"
+      - name: Behind the scenes inside the UNBC Spark Lab at the WIDC
+        date: 2024-06-24
+        summary: Broadcast Interview · CKPG Today Fun Stuff · CKPG
+      - name: Research transforms learning experience
+        date: 2023-03-01
+        url: https://www2.unbc.ca/newsroom/unbc-stories/research-transforms-learning-experience
+        summary: "Text Interview · UNBC Stories · Interviewer: Michelle Cyr-Whiting"
+      - name: Lake City Secondary Governor General's Academic Medal awarded to Ahmad
+          Jalil
+        date: 2018-07-04
+        url: https://www.wltribune.com/community/lake-city-secondary-governor-generals-academic-medal-awarded-to-ahmad-jalil
+        summary: "Text Interview · The Williams Lake Tribune · Interviewer: Tara
+          Sprickerhoff"
+    memberships:
+      - name: Search Committee for the Dean FHHS
+        date: 2022-03
+        summary: Committee Member · University of Northern British Columbia
+      - name: Fraser Basin Council
+        date: 2023-01
+        summary: Youth Director
+      - name: PGAIR (Prince George Air Improvement Roundtable)
+        date: 2023-01
+        summary: Youth Representative
+    event_administration:
+      - name: Build Your Own Free Air Cleaner
+        date: 2024-08
+        summary: Workshop · Event Organizer
+        highlights:
+          - Collaborated with Elder Citizens Recreation Association, Northern
+            Health, BC Lung Foundation, and Prince George Air Improvement
+            Roundtable
+    supervisory_activities:
+      - label: Highly Qualified Personnel
+        details: "1"
+      - label: Employees
+        details: "2"
+      - label: Volunteers
+        details: "10"
+    research_keywords:
+      - label: Keyword
+        details: Exposure assessment
+      - label: Keyword
+        details: Particulate matter measurement
+      - label: Keyword
+        details: Air quality monitoring
+      - label: Keyword
+        details: Geospatial techniques
+      - label: Keyword
+        details: Statistical analysis
+  social_networks:
+    - network: LinkedIn
+      username: ahmad-jalil-b00669197
+    - network: GitHub
+      username: ahzs645
+    - network: Instagram
+      username: ahzs645
+  custom_connections:
+    - fontawesome_icon: facebook-f
+      placeholder: ahzs645
+      url: https://www.facebook.com/ahzs645
+
+
+design:
+  theme: classic
+  page:
+    size: us-letter
+    top_margin: 0.7in
+    bottom_margin: 0.7in
+    left_margin: 0.7in
+    right_margin: 0.7in
+    show_footer: true
+    show_top_note: true
+  colors:
+    body: rgb(0, 0, 0)
+    name: rgb(0, 79, 144)
+    headline: rgb(0, 79, 144)
+    connections: rgb(0, 79, 144)
+    section_titles: rgb(0, 79, 144)
+    links: rgb(0, 79, 144)
+    footer: rgb(128, 128, 128)
+    top_note: rgb(128, 128, 128)
+  typography:
+    line_spacing: 0.6em
+    alignment: justified
+    date_and_location_column_alignment: right
+    font_family:
+      body: Source Sans 3
+      name: Source Sans 3
+      headline: Source Sans 3
+      connections: Source Sans 3
+      section_titles: Source Sans 3
+    font_size:
+      body: 10pt
+      name: 30pt
+      headline: 10pt
+      connections: 10pt
+      section_titles: 1.4em
+    small_caps:
+      name: false
+      headline: false
+      connections: false
+      section_titles: false
+    bold:
+      name: true
+      headline: false
+      connections: false
+      section_titles: true
+  links:
+    underline: false
+    show_external_link_icon: false
+  header:
+    alignment: center
+    photo_width: 3.5cm
+    photo_position: left
+    photo_space_left: 0.4cm
+    photo_space_right: 0.4cm
+    space_below_name: 0.7cm
+    space_below_headline: 0.7cm
+    space_below_connections: 0.7cm
+    connections:
+      phone_number_format: national
+      hyperlink: true
+      show_icons: true
+      display_urls_instead_of_usernames: false
+      separator: ''
+      space_between_connections: 0.5cm
+  section_titles:
+    type: with_partial_line
+    line_thickness: 0.5pt
+    space_above: 0.5cm
+    space_below: 0.3cm
+  sections:
+    allow_page_break: true
+    space_between_regular_entries: 1.2em
+    space_between_text_based_entries: 0.3em
+    show_time_spans_in:
+      - experience
+  entries:
+    date_and_location_width: 4.15cm
+    side_space: 0.2cm
+    space_between_columns: 0.1cm
+    allow_page_break: false
+    short_second_row: true
+    degree_width: 1cm
+    summary:
+      space_above: 0cm
+      space_left: 0cm
+    highlights:
+      bullet: •
+      nested_bullet: •
+      space_left: 0.15cm
+      space_above: 0cm
+      space_between_items: 0cm
+      space_between_bullet_and_text: 0.5em
+  templates:
+    footer: '*NAME -- PAGE_NUMBER/TOTAL_PAGES*'
+    top_note: '*LAST_UPDATED CURRENT_DATE*'
+    single_date: MONTH_ABBREVIATION YEAR
+    date_range: START_DATE – END_DATE
+    time_span: HOW_MANY_YEARS YEARS HOW_MANY_MONTHS MONTHS
+    one_line_entry:
+      main_column: '**LABEL:** DETAILS'
+    education_entry:
+      main_column: |-
+        **INSTITUTION**, AREA
+        SUMMARY
+        HIGHLIGHTS
+      degree_column: '**DEGREE**'
+      date_and_location_column: |-
+        LOCATION
+        DATE
+    normal_entry:
+      main_column: |-
+        **NAME**
+        SUMMARY
+        HIGHLIGHTS
+      date_and_location_column: |-
+        LOCATION
+        DATE
+    experience_entry:
+      main_column: |-
+        **COMPANY**, POSITION
+        SUMMARY
+        HIGHLIGHTS
+      date_and_location_column: |-
+        LOCATION
+        DATE
+    publication_entry:
+      main_column: |-
+        **TITLE**
+        SUMMARY
+        AUTHORS
+        URL (JOURNAL)
+      date_and_location_column: DATE
+
+
+locale:
+  language: english
+  last_updated: Last updated in
+  month: month
+  months: months
+  year: year
+  years: years
+  present: present
+  phrases:
+    degree_with_area: DEGREE in AREA
+  month_abbreviations:
+    - Jan
+    - Feb
+    - Mar
+    - Apr
+    - May
+    - June
+    - July
+    - Aug
+    - Sept
+    - Oct
+    - Nov
+    - Dec
+  month_names:
+    - January
+    - February
+    - March
+    - April
+    - May
+    - June
+    - July
+    - August
+    - September
+    - October
+    - November
+    - December
+
+
+settings:
+  current_date: today
+  bold_keywords: []
+  pdf_title: NAME - CV

@@ -29,6 +29,7 @@ import {
 } from './schema/entry-templates';
 import type { EntryTemplate, FieldDef } from './schema/types';
 import { FieldControl } from './field-controls';
+import { DiffScopeProvider } from './diff-context';
 import { TextRow, Divider } from './primitives';
 import {
   asRecord,
@@ -50,7 +51,8 @@ export function EntryArrayEditor({
   onChange,
   showHeader = true,
   addLabel,
-  sectionKey
+  sectionKey,
+  originPath
 }: {
   title: string;
   entries: unknown[];
@@ -60,6 +62,7 @@ export function EntryArrayEditor({
   showHeader?: boolean;
   addLabel?: string;
   sectionKey?: string;
+  originPath?: (string | number)[];
 }) {
   const labelWidth = labelWidthForTemplate(template);
   const nextIdRef = useRef(0);
@@ -120,6 +123,7 @@ export function EntryArrayEditor({
       onRemove={removeEntry}
       template={template}
       sectionKey={sectionKey}
+      originPath={originPath}
     />
   ));
 
@@ -186,7 +190,8 @@ function SortableEntryArrayItem({
   template,
   onChange,
   onRemove,
-  sectionKey
+  sectionKey,
+  originPath
 }: {
   id: number;
   entry: unknown;
@@ -197,6 +202,7 @@ function SortableEntryArrayItem({
   onChange: (index: number, value: unknown) => void;
   onRemove: (index: number) => void;
   sectionKey?: string;
+  originPath?: (string | number)[];
 }) {
   const {
     attributes,
@@ -241,6 +247,17 @@ function SortableEntryArrayItem({
               onChange={(nextValue) => onChange(index, nextValue)}
               placeholder="Enter text..."
             />
+          ) : originPath ? (
+            <DiffScopeProvider path={[...originPath, index]}>
+              <TemplateEntryFields
+                entry={asRecord(entry)}
+                index={index}
+                entriesExpanded={entriesExpanded}
+                total={entriesLength}
+                template={template}
+                onChange={(nextValue) => onChange(index, nextValue)}
+              />
+            </DiffScopeProvider>
           ) : (
             <TemplateEntryFields
               entry={asRecord(entry)}
@@ -509,16 +526,17 @@ function NestedExperienceFields({
               </div>
               <div className="pl-2">
                 {positions.map((pos, posIndex) => (
-                  <PositionItem
-                    key={posIndex}
-                    position={asRecord(pos)}
-                    index={posIndex}
-                    total={positions.length}
-                    labelWidth={posLabelWidth}
-                    onChange={(nextValue) => updatePosition(posIndex, nextValue)}
-                    onRemove={() => removePosition(posIndex)}
-                    onMove={(direction) => movePosition(posIndex, direction)}
-                  />
+                  <DiffScopeProvider key={posIndex} path={['positions', posIndex]}>
+                    <PositionItem
+                      position={asRecord(pos)}
+                      index={posIndex}
+                      total={positions.length}
+                      labelWidth={posLabelWidth}
+                      onChange={(nextValue) => updatePosition(posIndex, nextValue)}
+                      onRemove={() => removePosition(posIndex)}
+                      onMove={(direction) => movePosition(posIndex, direction)}
+                    />
+                  </DiffScopeProvider>
                 ))}
               </div>
             </div>

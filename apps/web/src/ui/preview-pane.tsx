@@ -3,6 +3,7 @@ import { AppWindow, Download, FileCode2, Minus, Plus } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+import type { SectionMapEntry } from '../features/viewer/typst-section-map';
 
 export type ViewerRenderer = ReturnType<typeof useViewerRenderer>;
 
@@ -33,11 +34,6 @@ export function PreviewPane({
   );
 }
 
-export interface SectionWeight {
-  key: string;
-  weight: number;
-}
-
 export function PreviewPaneView({
   controls,
   fileName,
@@ -45,7 +41,6 @@ export function PreviewPaneView({
   viewer,
   onOpenPopup,
   onSectionClick,
-  sectionWeights,
   showHeader = true
 }: {
   controls?: PreviewPaneControls;
@@ -54,7 +49,6 @@ export function PreviewPaneView({
   viewer: ViewerRenderer;
   onOpenPopup?: () => void;
   onSectionClick?: (sectionKey: string, entryIndex: number) => void;
-  sectionWeights?: SectionWeight[];
   showHeader?: boolean;
 }) {
   return (
@@ -68,7 +62,7 @@ export function PreviewPaneView({
           viewer={viewer}
         />
       ) : null}
-      <PreviewCanvas fileName={fileName} viewer={viewer} workspaceInset={!showHeader} onSectionClick={onSectionClick} sectionWeights={sectionWeights} />
+      <PreviewCanvas fileName={fileName} viewer={viewer} workspaceInset={!showHeader} onSectionClick={onSectionClick} />
     </div>
   );
 }
@@ -87,29 +81,26 @@ interface SectionHit {
 /**
  * Map a click Y-position on a PDF page to a CV section and entry.
  *
- * Each section is assigned a vertical zone proportional to its entry count
- * (weight). The header gets a fixed share at the top, and each section heading
- * adds a small fixed overhead so single-entry sections still get a visible zone.
- * Within a section zone, the heading gets a small prefix and entries divide the
- * rest equally.
+ * Uses line-count weights parsed from the actual Typst source, which gives a
+ * much better approximation of rendered height than simple entry counts.
  */
 function detectClickedSection(
   event: MouseEvent<HTMLDivElement>,
-  sectionWeights: SectionWeight[],
+  sectionMap: SectionMapEntry[],
   pageIndex: number,
   totalPages: number
 ): SectionHit | null {
   const rect = event.currentTarget.getBoundingClientRect();
   const yRatio = (event.clientY - rect.top) / rect.height;
 
+  // Header (name, contact info) occupies the first ~8% of page 0.
   const HEADER_RATIO = 0.08;
-  const HEADING_OVERHEAD = 0.6;
 
-  const totalWeight = sectionWeights.reduce(
-    (sum, s) => sum + s.weight + HEADING_OVERHEAD,
-    0
-  );
+  // Total section source lines — used for proportional layout.
+  const totalLines = sectionMap.reduce((sum, s) => sum + s.totalLines, 0);
+  if (totalLines === 0) return null;
 
+  // absoluteY: 0..totalPages, where page 0 is [0,1), page 1 is [1,2), etc.
   const absoluteY = pageIndex + yRatio;
 
   if (absoluteY < HEADER_RATIO) {
@@ -120,49 +111,66 @@ function detectClickedSection(
   const contentLength = totalPages - HEADER_RATIO;
 
   let cursor = contentStart;
-  for (const section of sectionWeights) {
-    const sectionShare =
-      ((section.weight + HEADING_OVERHEAD) / totalWeight) * contentLength;
+  for (const section of sectionMap) {
+    const sectionShare = (section.totalLines / totalLines) * contentLength;
     if (absoluteY < cursor + sectionShare) {
       // Within this section — determine which entry
       const posInSection = absoluteY - cursor;
-      const headingShare = (HEADING_OVERHEAD / (section.weight + HEADING_OVERHEAD)) * sectionShare;
-      if (posInSection < headingShare) {
+      const headingShare =
+        section.entries.length > 0
+          ? (section.headingLines / section.totalLines) * sectionShare
+          : sectionShare;
+
+      if (posInSection < headingShare || section.entries.length === 0) {
         return { sectionKey: section.key, entryIndex: -1 };
       }
+
+      // Distribute remaining zone among entries by their line counts
       const entryZone = sectionShare - headingShare;
-      const entryIndex = Math.min(
-        Math.floor(((posInSection - headingShare) / entryZone) * section.weight),
-        section.weight - 1
-      );
-      return { sectionKey: section.key, entryIndex };
+      const entryTotalLines = section.entries.reduce((s, e) => s + e.lines, 0);
+      if (entryTotalLines === 0) {
+        return { sectionKey: section.key, entryIndex: 0 };
+      }
+
+      let entryCursor = 0;
+      for (let i = 0; i < section.entries.length; i++) {
+        const entryShare = (section.entries[i]!.lines / entryTotalLines) * entryZone;
+        if (posInSection - headingShare < entryCursor + entryShare) {
+          return { sectionKey: section.key, entryIndex: i };
+        }
+        entryCursor += entryShare;
+      }
+
+      return { sectionKey: section.key, entryIndex: section.entries.length - 1 };
     }
     cursor += sectionShare;
   }
 
-  const last = sectionWeights[sectionWeights.length - 1];
-  return last ? { sectionKey: last.key, entryIndex: last.weight - 1 } : null;
+  // Fallback: last entry of last section
+  const last = sectionMap[sectionMap.length - 1];
+  return last
+    ? { sectionKey: last.key, entryIndex: Math.max(last.entries.length - 1, 0) }
+    : null;
 }
 
 function PreviewCanvas({
   fileName,
   viewer,
   workspaceInset,
-  onSectionClick,
-  sectionWeights
+  onSectionClick
 }: {
   fileName: string;
   viewer: ViewerRenderer;
   workspaceInset: boolean;
   onSectionClick?: (sectionKey: string, entryIndex: number) => void;
-  sectionWeights?: SectionWeight[];
 }) {
   const shellClassName = workspaceInset
     ? 'min-h-0 flex-1 p-4 pt-3 sm:p-6 sm:pt-4'
     : 'min-h-0 flex-1';
 
+  const { sectionMap } = viewer;
   const totalPages = viewer.svgPages.length;
-  const hasClickHandler = onSectionClick && sectionWeights && sectionWeights.length > 0;
+  const hasClickHandler = onSectionClick && sectionMap.length > 0;
 
   return (
     <div className={shellClassName}>
@@ -180,11 +188,14 @@ function PreviewCanvas({
             {viewer.svgPages.map((page, pageIndex) => (
               <div
                 key={pageIndex}
-                className={`overflow-hidden rounded-sm bg-white shadow-2xl${hasClickHandler ? ' cursor-pointer' : ''}`}
+                className="overflow-hidden rounded-sm bg-white shadow-2xl"
                 onClick={
                   hasClickHandler
                     ? (event: MouseEvent<HTMLDivElement>) => {
-                        const hit = detectClickedSection(event, sectionWeights, pageIndex, totalPages);
+                        // Don't navigate if the user was selecting text
+                        const sel = window.getSelection();
+                        if (sel && sel.toString().length > 0) return;
+                        const hit = detectClickedSection(event, sectionMap, pageIndex, totalPages);
                         if (hit) onSectionClick(hit.sectionKey, hit.entryIndex);
                       }
                     : undefined
@@ -194,7 +205,8 @@ function PreviewCanvas({
                   src={page}
                   alt={`${fileName} page ${pageIndex + 1}`}
                   draggable={false}
-                  className="pointer-events-none block h-auto w-full"
+                  onDragStart={(e) => e.preventDefault()}
+                  className="pointer-events-none block h-auto w-full select-none"
                 />
               </div>
             ))}
