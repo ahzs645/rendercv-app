@@ -471,6 +471,7 @@ export function Workspace() {
             ref={monacoRef}
             value={currentValue}
             onChange={handleSectionChange}
+            readOnly={selectedFile?.isLocked}
           />
         ) : (
           <FormEditor
@@ -479,6 +480,7 @@ export function Workspace() {
             value={currentValue}
             onChange={handleSectionChange}
             sharedOrigin={selectedFile?.sharedOrigin}
+            readOnly={selectedFile?.isLocked}
             themeOptions={Array.from(
               new Set([
                 ...Object.keys(defaultDesigns),

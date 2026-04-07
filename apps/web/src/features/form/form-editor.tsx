@@ -30,7 +30,8 @@ export function FormEditor({
   sharedOrigin,
   themeOptions,
   currentTheme,
-  onThemeChange
+  onThemeChange,
+  readOnly
 }: {
   section: SectionKey;
   value: string;
@@ -39,6 +40,7 @@ export function FormEditor({
   themeOptions?: string[];
   currentTheme?: string;
   onThemeChange?: (theme: string) => void;
+  readOnly?: boolean;
 }) {
   const preferences = useStore(preferencesStore);
 
@@ -113,7 +115,7 @@ export function FormEditor({
 
   return (
     <DiffProvider section={section} origin={sharedOrigin}>
-      <div className="h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none]" data-form-editor>
+      <div className={`h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none] ${readOnly ? 'pointer-events-none opacity-60' : ''}`} data-form-editor>
         {section === 'design' && themeOptions && themeOptions.length > 0 && onThemeChange ? (
           <ThemeRow
             options={themeOptions}

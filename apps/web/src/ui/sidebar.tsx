@@ -271,11 +271,14 @@ function SidebarFileRow({
         >
           {mini ? (
             <>
-              <Monitor className="size-4 shrink-0" />
+              {file.isLocked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : <Monitor className="size-4 shrink-0" />}
               <span className="sr-only">{file.name}</span>
             </>
           ) : (
-            <span className="truncate">{file.name}</span>
+            <>
+              {file.isLocked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : null}
+              <span className="truncate">{file.name}</span>
+            </>
           )}
         </button>
       )}

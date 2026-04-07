@@ -11,11 +11,13 @@ export interface MonacoEditorHandle {
 type MonacoEditorProps = {
   value: string;
   onChange: (value: string) => void;
+  readOnly?: boolean;
 };
 
 export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(function MonacoEditor({
   value,
-  onChange
+  onChange,
+  readOnly
 }, ref) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -88,6 +90,7 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
       minimap: { enabled: false },
       wordWrap: 'on',
       fontSize: 14,
+      readOnly: readOnly ?? false,
       theme: document.documentElement.classList.contains('dark') ? 'vs-dark' : 'vs'
     });
 
@@ -115,5 +118,9 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
     }
   }, [value]);
 
-  return <div ref={hostRef} className="h-full min-h-[420px] w-full rounded-2xl border border-border" />;
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly: readOnly ?? false });
+  }, [readOnly]);
+
+  return <div ref={hostRef} className={`h-full min-h-[420px] w-full rounded-2xl border border-border ${readOnly ? 'opacity-60' : ''}`} />;
 });

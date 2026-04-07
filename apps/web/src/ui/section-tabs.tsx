@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import type { CvFile, CvFileSections, SectionKey } from '@rendercv/contracts';
 import { SECTION_LABELS } from '@rendercv/contracts';
 import {
@@ -188,21 +188,13 @@ export function SectionTabs({
                 >
                   <ChevronLeft className="size-3.5" />
                 </button>
-                <div className="relative shrink-0">
-                  <select
-                    aria-label={variant.label}
-                    className="h-6 appearance-none rounded-md bg-transparent px-2 pr-6 text-xs font-medium text-foreground outline-none transition-colors hover:bg-accent focus-visible:bg-accent"
-                    value={variant.value}
-                    onChange={(event) => variant.onChange(event.target.value)}
-                  >
-                    {variant.options.map((option) => (
-                      <option key={option} value={option}>
-                        {variant.renderLabel(option)}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
-                </div>
+                <VariantDropdown
+                  label={variant.label}
+                  options={variant.options}
+                  renderLabel={variant.renderLabel}
+                  value={variant.value}
+                  onChange={variant.onChange}
+                />
                 <button
                   aria-label={`Next ${variant.label.toLowerCase()}`}
                   className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
@@ -224,6 +216,100 @@ export function SectionTabs({
         ) : null}
       </div>
       <div className="pb-2" />
+    </div>
+  );
+}
+
+function VariantDropdown({
+  label,
+  options,
+  renderLabel,
+  value,
+  onChange
+}: {
+  label: string;
+  options: string[];
+  renderLabel: (key: string) => string;
+  value?: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickOutside(event: MouseEvent) {
+      if (
+        menuRef.current && !menuRef.current.contains(event.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(event.target as Node)
+      ) {
+        close();
+      }
+    }
+    function onEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') close();
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [open, close]);
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        ref={triggerRef}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+        onClick={() => setOpen((prev) => !prev)}
+        type="button"
+      >
+        <span className="inline-grid text-left">
+          {options.map((option) => (
+            <span
+              key={option}
+              className={`col-start-1 row-start-1${option !== value ? ' invisible' : ''}`}
+            >
+              {renderLabel(option)}
+            </span>
+          ))}
+        </span>
+        <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+      </button>
+      {open ? (
+        <div
+          ref={menuRef}
+          className="absolute left-0 top-full z-50 mt-1 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          role="menu"
+        >
+          {options.map((option) => (
+            <button
+              key={option}
+              className="relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-none select-none hover:bg-accent hover:text-accent-foreground"
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                onChange(option);
+                close();
+              }}
+            >
+              {option === value ? (
+                <Check className="size-3" />
+              ) : (
+                <span className="size-3" />
+              )}
+              {renderLabel(option)}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
