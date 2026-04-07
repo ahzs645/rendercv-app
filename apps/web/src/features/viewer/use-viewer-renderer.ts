@@ -3,7 +3,7 @@ import type { CvFileSections, SectionKey } from '@rendercv/contracts';
 import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP } from './zoom-config';
 import { DEFAULT_FONT_FAMILIES, FONT_VARIANTS, getDefaultFontUrls, getFontUrls } from './fonts';
 import { parseTypstSectionMap } from './typst-section-map';
-import type { SectionMapEntry } from './typst-section-map';
+import type { SectionMapResult } from './typst-section-map';
 
 export interface RenderError {
   message: string;
@@ -173,7 +173,7 @@ async function waitForSvgPages(urls: string[]) {
 export function useViewerRenderer(sections?: CvFileSections) {
   const [zoomFactor, setZoomFactor] = useState(1);
   const [svgPages, setSvgPages] = useState<string[]>([]);
-  const [sectionMap, setSectionMap] = useState<SectionMapEntry[]>([]);
+  const [sectionMap, setSectionMap] = useState<SectionMapResult>({ sections: [], preambleLines: 0 });
   const [renderErrors, setRenderErrors] = useState<RenderError[]>([]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | undefined>();
@@ -478,6 +478,9 @@ export function useViewerRenderer(sections?: CvFileSections) {
             continue;
           }
 
+          // Always update section map when we have typst content (cheap parse)
+          setSectionMap(parseTypstSectionMap(typst));
+
           if (result.usedFallbackTheme) {
             logViewerDebug('render used fallback theme', {
               effectiveDesign: result.effectiveDesign,
@@ -529,7 +532,6 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
           lastTypstContent.current = typst;
           lastTypstSvgPages.current = svg;
-          setSectionMap(parseTypstSectionMap(typst));
 
           const urls = createSvgPageUrls(svg);
           try {

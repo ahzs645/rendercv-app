@@ -1,9 +1,17 @@
 /**
  * Parse generated Typst source to extract section/entry structure.
  *
- * The Typst source uses known markers:
- * - `#section_heading("Title")` for section headings
- * - `#entry_content({` for entry blocks (brace-balanced)
+ * Supports two rendering formats:
+ *
+ * 1. **ahmadstyle** (Jinja2 direct):
+ *    - Sections: `#section_heading("Title")`
+ *    - Entries:  `#entry_content({...})`
+ *
+ * 2. **rendercv package** (classic, sb2nov, moderncv, engineeringresumes):
+ *    - Sections: `== Title` (Typst level-2 heading)
+ *    - Entries:  `#regular-entry(...)`, `#education-entry(...)`,
+ *               `#one-line-entry(...)`, `#reversed-numbered-entries(...)`,
+ *               or plain bullet/text lines between sections
  *
  * We measure each section's and entry's share of the document by counting
  * source lines, which correlates well with rendered height.
@@ -37,104 +45,140 @@ function titleToKey(title: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
-export function parseTypstSectionMap(typstContent: string): SectionMapEntry[] {
+// Patterns that start a new entry in the rendercv-package format.
+const RENDERCV_ENTRY_START =
+  /^#(?:regular-entry|education-entry|one-line-entry|reversed-numbered-entries)\s*\(/;
+
+// Section heading: either `#section_heading("Title")` or `== Title`
+const SECTION_HEADING =
+  /(?:#section_heading\("([^"]+)"\)|^==\s+(.+)$)/;
+
+export interface SectionMapResult {
+  sections: SectionMapEntry[];
+  /** Lines before the first section heading (imports, variables — no visual output). */
+  preambleLines: number;
+}
+
+export function parseTypstSectionMap(typstContent: string): SectionMapResult {
   const lines = typstContent.split('\n');
   const sections: SectionMapEntry[] = [];
 
   let current: SectionMapEntry | null = null;
+  let preambleLineCount = 0;
   let entryLines = 0;
   let inEntry = false;
-  let braceDepth = 0;
-  let headerLineCount = 0; // lines before first section_heading
+  let parenDepth = 0; // for rendercv-package entries which use parens
+  let braceDepth = 0; // for ahmadstyle entry_content which uses braces
+  let entryStyle: 'brace' | 'paren' | null = null;
+
+  function flushEntry() {
+    if (inEntry && current && entryLines > 0) {
+      current.entries.push({ lines: entryLines });
+    }
+    inEntry = false;
+    entryLines = 0;
+    parenDepth = 0;
+    braceDepth = 0;
+    entryStyle = null;
+  }
+
+  function flushSection() {
+    flushEntry();
+    if (current) {
+      sections.push(current);
+    }
+  }
 
   for (const line of lines) {
-    // Detect section heading
-    const headingMatch = line.match(/#section_heading\("([^"]+)"\)/);
+    const trimmed = line.trimStart();
+
+    // ── Detect section heading ──────────────────────────────────────
+    const headingMatch = SECTION_HEADING.exec(trimmed);
     if (headingMatch) {
-      // Flush previous entry
-      if (inEntry && current) {
-        current.entries.push({ lines: entryLines });
-        inEntry = false;
+      const title = (headingMatch[1] ?? headingMatch[2] ?? '').trim();
+      if (title) {
+        flushSection();
+        current = {
+          key: titleToKey(title),
+          title,
+          totalLines: 0,
+          headingLines: 0,
+          entries: []
+        };
+        continue;
       }
-      // Flush previous section
-      if (current) {
-        sections.push(current);
-      }
-      current = {
-        key: titleToKey(headingMatch[1]!),
-        title: headingMatch[1]!,
-        totalLines: 0,
-        headingLines: 0,
-        entries: []
-      };
-      entryLines = 0;
-      braceDepth = 0;
-      continue;
     }
 
-    // Detect entry_content start
-    if (line.includes('#entry_content(')) {
-      // Flush previous entry within same section
-      if (inEntry && current) {
-        current.entries.push({ lines: entryLines });
-      }
+    // ── ahmadstyle: entry_content({ ... }) ──────────────────────────
+    if (trimmed.includes('#entry_content(')) {
+      flushEntry();
       inEntry = true;
-      entryLines = 0;
-      // Count opening braces on this line
+      entryStyle = 'brace';
       braceDepth = 0;
       for (const ch of line) {
         if (ch === '{') braceDepth++;
         if (ch === '}') braceDepth--;
       }
-      entryLines++;
+      entryLines = 1;
       if (current) current.totalLines++;
       continue;
     }
 
-    // Track brace depth inside entry_content
-    if (inEntry) {
+    // ── rendercv-package: #regular-entry(...), #education-entry(...) etc.
+    if (RENDERCV_ENTRY_START.test(trimmed)) {
+      flushEntry();
+      inEntry = true;
+      entryStyle = 'paren';
+      parenDepth = 0;
       for (const ch of line) {
-        if (ch === '{') braceDepth++;
-        if (ch === '}') braceDepth--;
+        if (ch === '(') parenDepth++;
+        if (ch === ')') parenDepth--;
       }
+      entryLines = 1;
+      if (current) current.totalLines++;
+      if (parenDepth <= 0) flushEntry(); // single-line entry
+      continue;
+    }
+
+    // ── Inside a tracked entry ──────────────────────────────────────
+    if (inEntry) {
       entryLines++;
       if (current) current.totalLines++;
-      if (braceDepth <= 0) {
-        // Entry block closed
-        if (current) {
-          current.entries.push({ lines: entryLines });
+
+      if (entryStyle === 'brace') {
+        for (const ch of line) {
+          if (ch === '{') braceDepth++;
+          if (ch === '}') braceDepth--;
         }
-        inEntry = false;
-        entryLines = 0;
+        if (braceDepth <= 0) flushEntry();
+      } else if (entryStyle === 'paren') {
+        for (const ch of line) {
+          if (ch === '(') parenDepth++;
+          if (ch === ')') parenDepth--;
+        }
+        if (parenDepth <= 0) flushEntry();
       }
       continue;
     }
 
-    // Regular line
+    // ── Regular line (not in an entry) ──────────────────────────────
     if (current) {
       current.totalLines++;
       if (current.entries.length === 0) {
         current.headingLines++;
       }
     } else {
-      headerLineCount++;
+      preambleLineCount++;
     }
   }
 
-  // Flush last entry / section
-  if (inEntry && current) {
-    current.entries.push({ lines: entryLines });
-  }
-  if (current) {
-    sections.push(current);
-  }
-
-  return sections;
+  flushSection();
+  return { sections, preambleLines: preambleLineCount };
 }
 
 /**
  * Total source lines across all sections (used to scale proportionally).
  */
-export function totalSectionLines(map: SectionMapEntry[]): number {
-  return map.reduce((sum, s) => sum + s.totalLines, 0);
+export function totalSectionLines(sections: SectionMapEntry[]): number {
+  return sections.reduce((sum, s) => sum + s.totalLines, 0);
 }

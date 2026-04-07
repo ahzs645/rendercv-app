@@ -3,7 +3,7 @@ import { AppWindow, Download, FileCode2, Minus, Plus } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
-import type { SectionMapEntry } from '../features/viewer/typst-section-map';
+import type { SectionMapEntry, SectionMapResult } from '../features/viewer/typst-section-map';
 
 export type ViewerRenderer = ReturnType<typeof useViewerRenderer>;
 
@@ -81,38 +81,45 @@ interface SectionHit {
 /**
  * Map a click Y-position on a PDF page to a CV section and entry.
  *
- * Uses line-count weights parsed from the actual Typst source, which gives a
- * much better approximation of rendered height than simple entry counts.
+ * Uses line-count weights parsed from the actual Typst source. The preamble
+ * (imports, variable definitions) produces zero visual output, so we discount
+ * it to estimate the real content extent across pages.
  */
 function detectClickedSection(
   event: MouseEvent<HTMLDivElement>,
-  sectionMap: SectionMapEntry[],
+  sectionMap: SectionMapResult,
   pageIndex: number,
   totalPages: number
 ): SectionHit | null {
+  const { sections, preambleLines } = sectionMap;
   const rect = event.currentTarget.getBoundingClientRect();
   const yRatio = (event.clientY - rect.top) / rect.height;
 
-  // Header (name, contact info) occupies the first ~8% of page 0.
+  // Header (name, contact info) occupies the first ~8 % of page 0.
   const HEADER_RATIO = 0.08;
 
-  // Total section source lines — used for proportional layout.
-  const totalLines = sectionMap.reduce((sum, s) => sum + s.totalLines, 0);
-  if (totalLines === 0) return null;
+  const totalSectionLines = sections.reduce((sum, s) => sum + s.totalLines, 0);
+  if (totalSectionLines === 0) return null;
 
-  // absoluteY: 0..totalPages, where page 0 is [0,1), page 1 is [1,2), etc.
+  // absoluteY: 0..totalPages  (page 0 → [0,1), page 1 → [1,2), …)
   const absoluteY = pageIndex + yRatio;
 
   if (absoluteY < HEADER_RATIO) {
     return { sectionKey: '__header__', entryIndex: -1 };
   }
 
-  const contentStart = HEADER_RATIO;
-  const contentLength = totalPages - HEADER_RATIO;
+  // The preamble (imports, #let, #set, …) renders to zero visual space.
+  // Discount it to estimate where content actually ends on the pages.
+  const totalSourceLines = preambleLines + totalSectionLines;
+  const contentPages =
+    totalSourceLines > 0
+      ? (totalSectionLines / totalSourceLines) * totalPages
+      : totalPages;
+  const contentLength = Math.max(contentPages - HEADER_RATIO, 0.1);
 
-  let cursor = contentStart;
-  for (const section of sectionMap) {
-    const sectionShare = (section.totalLines / totalLines) * contentLength;
+  let cursor = HEADER_RATIO;
+  for (const section of sections) {
+    const sectionShare = (section.totalLines / totalSectionLines) * contentLength;
     if (absoluteY < cursor + sectionShare) {
       // Within this section — determine which entry
       const posInSection = absoluteY - cursor;
@@ -125,7 +132,6 @@ function detectClickedSection(
         return { sectionKey: section.key, entryIndex: -1 };
       }
 
-      // Distribute remaining zone among entries by their line counts
       const entryZone = sectionShare - headingShare;
       const entryTotalLines = section.entries.reduce((s, e) => s + e.lines, 0);
       if (entryTotalLines === 0) {
@@ -146,8 +152,8 @@ function detectClickedSection(
     cursor += sectionShare;
   }
 
-  // Fallback: last entry of last section
-  const last = sectionMap[sectionMap.length - 1];
+  // Click is past the content area (blank space at bottom of last page)
+  const last = sections[sections.length - 1];
   return last
     ? { sectionKey: last.key, entryIndex: Math.max(last.entries.length - 1, 0) }
     : null;
@@ -170,7 +176,8 @@ function PreviewCanvas({
 
   const { sectionMap } = viewer;
   const totalPages = viewer.svgPages.length;
-  const hasClickHandler = onSectionClick && sectionMap.length > 0;
+  const hasClickHandler = onSectionClick && sectionMap.sections.length > 0;
+
 
   return (
     <div className={shellClassName}>
