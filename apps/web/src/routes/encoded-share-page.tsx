@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, GitCompareArrows, Pencil, Upload } from 'lucide-react';
-import { fileStore, readThemeName, readLocaleName } from '@rendercv/core';
+import { Download, Eye, EyeOff, GitCompareArrows, Minus, Pencil, Plus, Upload } from 'lucide-react';
+import { fileStore, preferencesStore, readThemeName, readLocaleName } from '@rendercv/core';
 import { toast } from 'sonner';
 import type { EncodedSharePayload } from '../features/share/encoded-share';
 import { decodeSharePayload } from '../features/share/encoded-share';
@@ -11,7 +11,9 @@ import { hasChanges } from '../features/share/diff-utils';
 import { DiffViewer } from '../features/share/diff-viewer';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
-import { PreviewPane } from '../ui/preview-pane';
+import { useStore } from '../lib/use-store';
+import { PreviewPaneView } from '../ui/preview-pane';
+import { StyledTooltip } from '../ui/styled-tooltip';
 
 type ViewMode = 'preview' | 'diff';
 
@@ -23,6 +25,15 @@ export function EncodedSharePage() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const isPdfDownload = searchParams.get('dl') === 'pdf';
+
+  const preferences = useStore(preferencesStore);
+  const prefersDark =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark =
+    preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
+
+  const viewer = useViewerRenderer(payload?.sections);
+  const fileName = payload?.fileName ?? 'Shared Resume';
 
   const showDiffToggle =
     payload?.origin != null &&
@@ -121,7 +132,7 @@ export function EncodedSharePage() {
       ) : (
         <>
           {/* Action bar */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2 sm:px-6 sm:py-3">
             <div className="flex items-center gap-3">
               {showDiffToggle ? (
                 <div className="inline-flex items-center rounded-xl border border-border bg-background p-1">
@@ -148,6 +159,45 @@ export function EncodedSharePage() {
                     <GitCompareArrows className="size-3.5" />
                     Changes
                   </button>
+                </div>
+              ) : null}
+              {viewMode === 'preview' ? (
+                <div className="flex items-center gap-2">
+                  <ShareToolbarButton label="Zoom out" onClick={viewer.zoomOut}>
+                    <Minus className="size-4" />
+                  </ShareToolbarButton>
+                  <button
+                    className="rounded-xl border border-border px-3 py-2 text-sm"
+                    onClick={viewer.zoomReset}
+                    type="button"
+                  >
+                    {viewer.zoomPercent}%
+                  </button>
+                  <ShareToolbarButton label="Zoom in" onClick={viewer.zoomIn}>
+                    <Plus className="size-4" />
+                  </ShareToolbarButton>
+                  <ShareToolbarButton
+                    label="Download PDF"
+                    onClick={async () => {
+                      if (!payload?.sections) return;
+                      const bytes = await viewer.renderToPdf(payload.sections);
+                      if (!bytes) return;
+                      await downloadBlob(
+                        new Blob([bytes as BlobPart], { type: 'application/pdf' }),
+                        `${fileName}.pdf`
+                      );
+                    }}
+                  >
+                    <Download className="size-4" />
+                  </ShareToolbarButton>
+                  {isDark ? (
+                    <ShareToolbarButton
+                      label={preferences.previewDarkMode ? 'Show original colors' : 'Adapt preview to dark mode'}
+                      onClick={() => preferencesStore.patch({ previewDarkMode: !preferences.previewDarkMode })}
+                    >
+                      {preferences.previewDarkMode ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </ShareToolbarButton>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -184,10 +234,11 @@ export function EncodedSharePage() {
               <DiffViewer origin={payload.origin} modified={payload.sections} />
             </div>
           ) : (
-            <PreviewPane
-              controls={{ downloadPdf: true, downloadTypst: false, popup: false }}
-              fileName={payload?.fileName ?? 'Shared Resume'}
+            <PreviewPaneView
+              fileName={fileName}
               sections={payload?.sections}
+              viewer={viewer}
+              showHeader={false}
             />
           )}
         </>
@@ -254,5 +305,28 @@ function PdfAutoDownload({ payload }: { payload: EncodedSharePayload | null }) {
         )}
       </div>
     </div>
+  );
+}
+
+function ShareToolbarButton({
+  children,
+  label,
+  onClick
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick: () => void | Promise<void>;
+}) {
+  return (
+    <StyledTooltip label={label} side="bottom">
+      <button
+        className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        onClick={() => void onClick()}
+        aria-label={label}
+        type="button"
+      >
+        {children}
+      </button>
+    </StyledTooltip>
   );
 }

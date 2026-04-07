@@ -751,17 +751,17 @@
     "aiEditorOpen": false,
     "linksCollapsed": false,
     "selectedFileId": "8ef5623a-a8c8-402b-96b2-c993c8c73d41",
-    "colorMode": "dark",
+    "colorMode": "light",
     "showArchive": false,
     "showTrash": false,
-    "activeSection": "design",
+    "activeSection": "cv",
     "wordWrap": true,
     "entriesExpanded": false,
     "selectedModel": "gpt-5-mini",
     "themeLibrary": {
       "ahmadstyle": "design:\n  theme: ahmadstyle\n  page:\n    size: us-letter\n    top_margin: 0.7in\n    bottom_margin: 0.7in\n    left_margin: 0.7in\n    right_margin: 0.7in\n    show_footer: true\n    show_top_note: true\n  colors:\n    body: rgb(0, 0, 0)\n    name: rgb(0, 79, 144)\n    headline: rgb(0, 79, 144)\n    connections: rgb(0, 79, 144)\n    section_titles: rgb(0, 79, 144)\n    links: rgb(0, 79, 144)\n    footer: rgb(128, 128, 128)\n    top_note: rgb(128, 128, 128)\n  typography:\n    line_spacing: 0.6em\n    alignment: justified\n    date_and_location_column_alignment: right\n    font_family:\n      body: Source Sans 3\n      name: Source Sans 3\n      headline: Source Sans 3\n      connections: Source Sans 3\n      section_titles: Source Sans 3\n    font_size:\n      body: 10pt\n      name: 30pt\n      headline: 10pt\n      connections: 10pt\n      section_titles: 1.4em\n    small_caps:\n      name: false\n      headline: false\n      connections: false\n      section_titles: false\n    bold:\n      name: true\n      headline: false\n      connections: false\n      section_titles: true\n  links:\n    underline: false\n    show_external_link_icon: false\n  header:\n    alignment: center\n    photo_width: 3.5cm\n    photo_position: left\n    photo_space_left: 0.4cm\n    photo_space_right: 0.4cm\n    space_below_name: 0.7cm\n    space_below_headline: 0.7cm\n    space_below_connections: 0.7cm\n    connections:\n      phone_number_format: national\n      hyperlink: true\n      show_icons: true\n      display_urls_instead_of_usernames: false\n      separator: ''\n      space_between_connections: 0.5cm\n  section_titles:\n    type: with_partial_line\n    line_thickness: 0.5pt\n    space_above: 0.5cm\n    space_below: 0.3cm\n  sections:\n    allow_page_break: true\n    space_between_regular_entries: 1.2em\n    space_between_text_based_entries: 0.3em\n    show_time_spans_in:\n      - experience\n  entries:\n    date_and_location_width: 4.15cm\n    side_space: 0.2cm\n    space_between_columns: 0.1cm\n    allow_page_break: false\n    short_second_row: true\n    degree_width: 1cm\n    summary:\n      space_above: 0cm\n      space_left: 0cm\n    highlights:\n      bullet: •\n      nested_bullet: •\n      space_left: 0.15cm\n      space_above: 0cm\n      space_between_items: 0cm\n      space_between_bullet_and_text: 0.5em\n  templates:\n    footer: '*NAME -- PAGE_NUMBER/TOTAL_PAGES*'\n    top_note: '*LAST_UPDATED CURRENT_DATE*'\n    single_date: MONTH_ABBREVIATION YEAR\n    date_range: START_DATE – END_DATE\n    time_span: HOW_MANY_YEARS YEARS HOW_MANY_MONTHS MONTHS\n    one_line_entry:\n      main_column: '**LABEL:** DETAILS'\n    education_entry:\n      main_column: |-\n        **INSTITUTION**, AREA\n        SUMMARY\n        HIGHLIGHTS\n      degree_column: '**DEGREE**'\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    normal_entry:\n      main_column: |-\n        **NAME**\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    experience_entry:\n      main_column: |-\n        **COMPANY**, POSITION\n        SUMMARY\n        HIGHLIGHTS\n      date_and_location_column: |-\n        LOCATION\n        DATE\n    publication_entry:\n      main_column: |-\n        **TITLE**\n        SUMMARY\n        AUTHORS\n        URL (JOURNAL)\n      date_and_location_column: DATE\n"
     },
-    "previewDarkMode": true
+    "previewDarkMode": false
   },
   "aiUsage": {
     "used": 6,
