@@ -108,8 +108,8 @@ export function FormEditor({
     <DiffProvider section={section} origin={sharedOrigin}>
       <div className="h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none]" data-form-editor>
         {schema ? (
-          schema.groups.map((group) => (
-            <section key={group.title || group.fields.map((field) => field.path.join('.')).join('|')}>
+          schema.groups.map((group, groupIndex) => (
+            <section key={group.title || group.fields.map((field) => field.path.join('.')).join('|')} {...(section === 'cv' && groupIndex === 0 ? { 'data-section-key': '__header__' } : {})}>
               {group.title ? (
                 <h3 className="mt-6 mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
                   {group.title}

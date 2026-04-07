@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { GitCompareArrows } from 'lucide-react';
+import YAML from 'yaml';
 import { classicTheme, defaultDesigns, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
@@ -116,6 +117,59 @@ export function Workspace() {
       fileStore.updateSection(activeSection, nextValue);
     },
     [activeSection]
+  );
+
+  const cvSectionKeys = useMemo(() => {
+    const cvYaml = rawSections?.cv;
+    if (!cvYaml) return [];
+    try {
+      const parsed = YAML.parse(cvYaml) as Record<string, unknown> | null;
+      const cv = parsed?.cv as Record<string, unknown> | undefined;
+      const sections = cv?.sections;
+      if (sections && typeof sections === 'object' && !Array.isArray(sections)) {
+        return Object.keys(sections as Record<string, unknown>);
+      }
+    } catch { /* ignore parse errors */ }
+    return [];
+  }, [rawSections?.cv]);
+
+  const handlePreviewSectionClick = useCallback(
+    (sectionKey: string) => {
+      // Switch to the CV tab if needed
+      if (preferences.activeSection !== 'cv') {
+        preferencesStore.patch({ activeSection: 'cv' });
+      }
+      if (mobileWorkspace) {
+        setMobilePane('editor');
+      }
+
+      // Small delay to let the editor render after tab switch
+      requestAnimationFrame(() => {
+        if (preferences.yamlEditor) {
+          // YAML mode: reveal the section in Monaco
+          if (sectionKey === '__header__') {
+            monacoRef.current?.revealText('name:');
+          } else {
+            monacoRef.current?.revealText(`  ${sectionKey}:`);
+          }
+        } else {
+          // Form mode: scroll to the section element
+          if (sectionKey === '__header__') {
+            const editor = document.querySelector('[data-form-editor]');
+            editor?.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            const el = document.querySelector(`[data-section-key="${sectionKey}"]`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              el.classList.remove('section-highlight');
+              void (el as HTMLElement).offsetWidth; // force reflow for re-trigger
+              el.classList.add('section-highlight');
+            }
+          }
+        }
+      });
+    },
+    [preferences.activeSection, preferences.yamlEditor, mobileWorkspace]
   );
 
   // Keyboard shortcuts
@@ -434,6 +488,8 @@ export function Workspace() {
       sections={viewerSections}
       showHeader={false}
       viewer={viewer}
+      onSectionClick={handlePreviewSectionClick}
+      sectionKeys={cvSectionKeys}
     />
   );
 

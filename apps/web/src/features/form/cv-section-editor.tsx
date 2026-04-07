@@ -181,7 +181,7 @@ function SectionEditor({
   }
 
   return (
-    <article className="form-section">
+    <article className="form-section" data-section-key={sectionKey}>
       <div className="group/section relative -mx-7 mt-3 mb-1 flex items-center px-7">
         <div className="absolute top-1/2 left-1 flex -translate-y-1/2 flex-col opacity-100 transition-opacity md:opacity-0 md:group-hover/section:opacity-100">
           <button

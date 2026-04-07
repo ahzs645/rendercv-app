@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { AppWindow, Download, FileCode2, Minus, Plus } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { downloadBlob } from '../features/viewer/download';
@@ -39,6 +39,8 @@ export function PreviewPaneView({
   sections,
   viewer,
   onOpenPopup,
+  onSectionClick,
+  sectionKeys,
   showHeader = true
 }: {
   controls?: PreviewPaneControls;
@@ -46,6 +48,8 @@ export function PreviewPaneView({
   sections?: CvFileSections;
   viewer: ViewerRenderer;
   onOpenPopup?: () => void;
+  onSectionClick?: (sectionKey: string) => void;
+  sectionKeys?: string[];
   showHeader?: boolean;
 }) {
   return (
@@ -59,7 +63,7 @@ export function PreviewPaneView({
           viewer={viewer}
         />
       ) : null}
-      <PreviewCanvas fileName={fileName} viewer={viewer} workspaceInset={!showHeader} />
+      <PreviewCanvas fileName={fileName} viewer={viewer} workspaceInset={!showHeader} onSectionClick={onSectionClick} sectionKeys={sectionKeys} />
     </div>
   );
 }
@@ -70,18 +74,50 @@ export interface PreviewPaneControls {
   popup?: boolean;
 }
 
+function detectClickedSection(
+  event: MouseEvent<HTMLDivElement>,
+  sectionKeys: string[]
+): string | null {
+  const target = event.currentTarget;
+  const rect = target.getBoundingClientRect();
+  const yRatio = (event.clientY - rect.top) / rect.height;
+
+  const headerRatio = 0.10;
+  const allKeys = ['__header__', ...sectionKeys];
+
+  if (yRatio < headerRatio) return '__header__';
+
+  const remaining = 1 - headerRatio;
+  const index = Math.min(
+    Math.floor((yRatio - headerRatio) / (remaining / sectionKeys.length)),
+    sectionKeys.length - 1
+  );
+  return allKeys[index + 1] ?? null;
+}
+
 function PreviewCanvas({
   fileName,
   viewer,
-  workspaceInset
+  workspaceInset,
+  onSectionClick,
+  sectionKeys
 }: {
   fileName: string;
   viewer: ViewerRenderer;
   workspaceInset: boolean;
+  onSectionClick?: (sectionKey: string) => void;
+  sectionKeys?: string[];
 }) {
   const shellClassName = workspaceInset
     ? 'min-h-0 flex-1 p-4 pt-3 sm:p-6 sm:pt-4'
     : 'min-h-0 flex-1';
+
+  const handlePageClick = onSectionClick && sectionKeys?.length
+    ? (event: MouseEvent<HTMLDivElement>) => {
+        const section = detectClickedSection(event, sectionKeys);
+        if (section) onSectionClick(section);
+      }
+    : undefined;
 
   return (
     <div className={shellClassName}>
@@ -97,12 +133,16 @@ function PreviewCanvas({
         ) : viewer.svgPages.length > 0 ? (
           <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:gap-6" style={{ width: `${viewer.zoomFactor * 100}%` }}>
             {viewer.svgPages.map((page, index) => (
-              <div key={index} className="overflow-hidden rounded-sm bg-white shadow-2xl">
+              <div
+                key={index}
+                className={`overflow-hidden rounded-sm bg-white shadow-2xl${handlePageClick ? ' cursor-pointer' : ''}`}
+                onClick={handlePageClick}
+              >
                 <img
                   src={page}
                   alt={`${fileName} page ${index + 1}`}
                   draggable={false}
-                  className="block h-auto w-full"
+                  className="pointer-events-none block h-auto w-full"
                 />
               </div>
             ))}
