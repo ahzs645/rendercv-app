@@ -7,6 +7,8 @@ import {
   ChevronsDownUp,
   Copy,
   Download,
+  Eye,
+  EyeOff,
   FileCode2,
   FileDown,
   FileUp,
@@ -400,6 +402,16 @@ export function WorkspaceToolbar({
                       >
                         {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
                       </MobileSheetButton>
+                      {isDark ? (
+                        <MobileSheetButton
+                          label={preferences.previewDarkMode ? 'Original preview' : 'Dark preview'}
+                          onClick={() =>
+                            preferencesStore.patch({ previewDarkMode: !preferences.previewDarkMode })
+                          }
+                        >
+                          {preferences.previewDarkMode ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </MobileSheetButton>
+                      ) : null}
                     </div>
                   </section>
                 </div>
@@ -605,6 +617,15 @@ export function WorkspaceToolbar({
           ) : null}
         </ToolbarControlGroup>
         <ToolbarControlGroup>
+          {isDark ? (
+            <ToolbarIconButton
+              ariaLabel={preferences.previewDarkMode ? 'Show original preview colors' : 'Adapt preview to dark mode'}
+              onClick={() => preferencesStore.patch({ previewDarkMode: !preferences.previewDarkMode })}
+              variant="ghost"
+            >
+              {preferences.previewDarkMode ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </ToolbarIconButton>
+          ) : null}
           <ToolbarIconButton
             ariaLabel="Toggle color mode"
             onClick={() => preferencesStore.patch({ colorMode: isDark ? 'light' : 'dark' })}
