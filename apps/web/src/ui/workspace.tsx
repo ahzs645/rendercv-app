@@ -456,7 +456,7 @@ export function Workspace() {
   const editorPane = (
     <div className="flex min-h-0 flex-1 flex-col">
       {selectedFile?.sharedOrigin ? (
-        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+        <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/5 px-4 py-2 text-xs text-amber-600 dark:text-amber-400">
           <GitCompareArrows className="size-3.5 shrink-0" />
           <span>
             Reviewing shared CV — edits are tracked against the original.
