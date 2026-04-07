@@ -961,7 +961,7 @@ function ToolbarIconButton({
   variant?: 'default' | 'ghost';
 }) {
   return (
-    <StyledTooltip label={ariaLabel}>
+    <StyledTooltip label={ariaLabel} side="bottom">
       <button
         type="button"
         aria-label={ariaLabel}
