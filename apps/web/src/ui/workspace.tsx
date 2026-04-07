@@ -119,7 +119,7 @@ export function Workspace() {
     [activeSection]
   );
 
-  const cvSectionKeys = useMemo(() => {
+  const cvSectionWeights = useMemo(() => {
     const cvYaml = rawSections?.cv;
     if (!cvYaml) return [];
     try {
@@ -127,14 +127,17 @@ export function Workspace() {
       const cv = parsed?.cv as Record<string, unknown> | undefined;
       const sections = cv?.sections;
       if (sections && typeof sections === 'object' && !Array.isArray(sections)) {
-        return Object.keys(sections as Record<string, unknown>);
+        return Object.entries(sections as Record<string, unknown>).map(([key, value]) => ({
+          key,
+          weight: Array.isArray(value) ? Math.max(value.length, 1) : 1
+        }));
       }
     } catch { /* ignore parse errors */ }
     return [];
   }, [rawSections?.cv]);
 
   const handlePreviewSectionClick = useCallback(
-    (sectionKey: string) => {
+    (sectionKey: string, entryIndex: number) => {
       // Switch to the CV tab if needed
       if (preferences.activeSection !== 'cv') {
         preferencesStore.patch({ activeSection: 'cv' });
@@ -153,18 +156,28 @@ export function Workspace() {
             monacoRef.current?.revealText(`  ${sectionKey}:`);
           }
         } else {
-          // Form mode: scroll to the section element
+          // Form mode: scroll to the specific entry or section heading
           if (sectionKey === '__header__') {
             const editor = document.querySelector('[data-form-editor]');
             editor?.scrollTo({ top: 0, behavior: 'smooth' });
-          } else {
-            const el = document.querySelector(`[data-section-key="${sectionKey}"]`);
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              el.classList.remove('section-highlight');
-              void (el as HTMLElement).offsetWidth; // force reflow for re-trigger
-              el.classList.add('section-highlight');
-            }
+            return;
+          }
+
+          // Try to find the specific entry within the section
+          const target =
+            entryIndex >= 0
+              ? document.querySelector(
+                  `[data-section-key="${sectionKey}"][data-entry-index="${entryIndex}"]`
+                )
+              : null;
+
+          // Fall back to the section article itself
+          const el = target ?? document.querySelector(`article[data-section-key="${sectionKey}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            el.classList.remove('section-highlight');
+            void (el as HTMLElement).offsetWidth;
+            el.classList.add('section-highlight');
           }
         }
       });
@@ -489,7 +502,7 @@ export function Workspace() {
       showHeader={false}
       viewer={viewer}
       onSectionClick={handlePreviewSectionClick}
-      sectionKeys={cvSectionKeys}
+      sectionWeights={cvSectionWeights}
     />
   );
 

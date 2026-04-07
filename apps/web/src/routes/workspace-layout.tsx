@@ -1,6 +1,5 @@
 import { Helmet } from 'react-helmet-async';
 import { Outlet, useLocation } from 'react-router-dom';
-import { WorkspaceBootstrap } from '../lib/bootstrap';
 import { Workspace } from '../ui/workspace';
 
 export function WorkspaceLayout() {
@@ -9,7 +8,6 @@ export function WorkspaceLayout() {
 
   return (
     <>
-      <WorkspaceBootstrap />
       <Helmet>
         <meta property="og:image" content="https://rendercv.com/og-image.png" />
       </Helmet>

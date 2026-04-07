@@ -49,7 +49,8 @@ export function EntryArrayEditor({
   template,
   onChange,
   showHeader = true,
-  addLabel
+  addLabel,
+  sectionKey
 }: {
   title: string;
   entries: unknown[];
@@ -58,6 +59,7 @@ export function EntryArrayEditor({
   onChange: (entries: unknown[]) => void;
   showHeader?: boolean;
   addLabel?: string;
+  sectionKey?: string;
 }) {
   const labelWidth = labelWidthForTemplate(template);
   const nextIdRef = useRef(0);
@@ -117,6 +119,7 @@ export function EntryArrayEditor({
       onChange={updateEntry}
       onRemove={removeEntry}
       template={template}
+      sectionKey={sectionKey}
     />
   ));
 
@@ -182,7 +185,8 @@ function SortableEntryArrayItem({
   entriesExpanded,
   template,
   onChange,
-  onRemove
+  onRemove,
+  sectionKey
 }: {
   id: number;
   entry: unknown;
@@ -192,6 +196,7 @@ function SortableEntryArrayItem({
   template: EntryTemplate | 'text';
   onChange: (index: number, value: unknown) => void;
   onRemove: (index: number) => void;
+  sectionKey?: string;
 }) {
   const {
     attributes,
@@ -212,7 +217,7 @@ function SortableEntryArrayItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
+    <div ref={setNodeRef} style={style} {...attributes} data-section-key={sectionKey} data-entry-index={index}>
       <div className="form-item-wrapper relative -mx-7 px-7">
         <div
           ref={setActivatorNodeRef}

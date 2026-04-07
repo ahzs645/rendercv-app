@@ -33,6 +33,11 @@ export function PreviewPane({
   );
 }
 
+export interface SectionWeight {
+  key: string;
+  weight: number;
+}
+
 export function PreviewPaneView({
   controls,
   fileName,
@@ -40,7 +45,7 @@ export function PreviewPaneView({
   viewer,
   onOpenPopup,
   onSectionClick,
-  sectionKeys,
+  sectionWeights,
   showHeader = true
 }: {
   controls?: PreviewPaneControls;
@@ -48,8 +53,8 @@ export function PreviewPaneView({
   sections?: CvFileSections;
   viewer: ViewerRenderer;
   onOpenPopup?: () => void;
-  onSectionClick?: (sectionKey: string) => void;
-  sectionKeys?: string[];
+  onSectionClick?: (sectionKey: string, entryIndex: number) => void;
+  sectionWeights?: SectionWeight[];
   showHeader?: boolean;
 }) {
   return (
@@ -63,7 +68,7 @@ export function PreviewPaneView({
           viewer={viewer}
         />
       ) : null}
-      <PreviewCanvas fileName={fileName} viewer={viewer} workspaceInset={!showHeader} onSectionClick={onSectionClick} sectionKeys={sectionKeys} />
+      <PreviewCanvas fileName={fileName} viewer={viewer} workspaceInset={!showHeader} onSectionClick={onSectionClick} sectionWeights={sectionWeights} />
     </div>
   );
 }
@@ -74,25 +79,69 @@ export interface PreviewPaneControls {
   popup?: boolean;
 }
 
+interface SectionHit {
+  sectionKey: string;
+  entryIndex: number; // -1 = section heading / header area
+}
+
+/**
+ * Map a click Y-position on a PDF page to a CV section and entry.
+ *
+ * Each section is assigned a vertical zone proportional to its entry count
+ * (weight). The header gets a fixed share at the top, and each section heading
+ * adds a small fixed overhead so single-entry sections still get a visible zone.
+ * Within a section zone, the heading gets a small prefix and entries divide the
+ * rest equally.
+ */
 function detectClickedSection(
   event: MouseEvent<HTMLDivElement>,
-  sectionKeys: string[]
-): string | null {
-  const target = event.currentTarget;
-  const rect = target.getBoundingClientRect();
+  sectionWeights: SectionWeight[],
+  pageIndex: number,
+  totalPages: number
+): SectionHit | null {
+  const rect = event.currentTarget.getBoundingClientRect();
   const yRatio = (event.clientY - rect.top) / rect.height;
 
-  const headerRatio = 0.10;
-  const allKeys = ['__header__', ...sectionKeys];
+  const HEADER_RATIO = 0.08;
+  const HEADING_OVERHEAD = 0.6;
 
-  if (yRatio < headerRatio) return '__header__';
-
-  const remaining = 1 - headerRatio;
-  const index = Math.min(
-    Math.floor((yRatio - headerRatio) / (remaining / sectionKeys.length)),
-    sectionKeys.length - 1
+  const totalWeight = sectionWeights.reduce(
+    (sum, s) => sum + s.weight + HEADING_OVERHEAD,
+    0
   );
-  return allKeys[index + 1] ?? null;
+
+  const absoluteY = pageIndex + yRatio;
+
+  if (absoluteY < HEADER_RATIO) {
+    return { sectionKey: '__header__', entryIndex: -1 };
+  }
+
+  const contentStart = HEADER_RATIO;
+  const contentLength = totalPages - HEADER_RATIO;
+
+  let cursor = contentStart;
+  for (const section of sectionWeights) {
+    const sectionShare =
+      ((section.weight + HEADING_OVERHEAD) / totalWeight) * contentLength;
+    if (absoluteY < cursor + sectionShare) {
+      // Within this section — determine which entry
+      const posInSection = absoluteY - cursor;
+      const headingShare = (HEADING_OVERHEAD / (section.weight + HEADING_OVERHEAD)) * sectionShare;
+      if (posInSection < headingShare) {
+        return { sectionKey: section.key, entryIndex: -1 };
+      }
+      const entryZone = sectionShare - headingShare;
+      const entryIndex = Math.min(
+        Math.floor(((posInSection - headingShare) / entryZone) * section.weight),
+        section.weight - 1
+      );
+      return { sectionKey: section.key, entryIndex };
+    }
+    cursor += sectionShare;
+  }
+
+  const last = sectionWeights[sectionWeights.length - 1];
+  return last ? { sectionKey: last.key, entryIndex: last.weight - 1 } : null;
 }
 
 function PreviewCanvas({
@@ -100,24 +149,20 @@ function PreviewCanvas({
   viewer,
   workspaceInset,
   onSectionClick,
-  sectionKeys
+  sectionWeights
 }: {
   fileName: string;
   viewer: ViewerRenderer;
   workspaceInset: boolean;
-  onSectionClick?: (sectionKey: string) => void;
-  sectionKeys?: string[];
+  onSectionClick?: (sectionKey: string, entryIndex: number) => void;
+  sectionWeights?: SectionWeight[];
 }) {
   const shellClassName = workspaceInset
     ? 'min-h-0 flex-1 p-4 pt-3 sm:p-6 sm:pt-4'
     : 'min-h-0 flex-1';
 
-  const handlePageClick = onSectionClick && sectionKeys?.length
-    ? (event: MouseEvent<HTMLDivElement>) => {
-        const section = detectClickedSection(event, sectionKeys);
-        if (section) onSectionClick(section);
-      }
-    : undefined;
+  const totalPages = viewer.svgPages.length;
+  const hasClickHandler = onSectionClick && sectionWeights && sectionWeights.length > 0;
 
   return (
     <div className={shellClassName}>
@@ -132,15 +177,22 @@ function PreviewCanvas({
           </div>
         ) : viewer.svgPages.length > 0 ? (
           <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:gap-6" style={{ width: `${viewer.zoomFactor * 100}%` }}>
-            {viewer.svgPages.map((page, index) => (
+            {viewer.svgPages.map((page, pageIndex) => (
               <div
-                key={index}
-                className={`overflow-hidden rounded-sm bg-white shadow-2xl${handlePageClick ? ' cursor-pointer' : ''}`}
-                onClick={handlePageClick}
+                key={pageIndex}
+                className={`overflow-hidden rounded-sm bg-white shadow-2xl${hasClickHandler ? ' cursor-pointer' : ''}`}
+                onClick={
+                  hasClickHandler
+                    ? (event: MouseEvent<HTMLDivElement>) => {
+                        const hit = detectClickedSection(event, sectionWeights, pageIndex, totalPages);
+                        if (hit) onSectionClick(hit.sectionKey, hit.entryIndex);
+                      }
+                    : undefined
+                }
               >
                 <img
                   src={page}
-                  alt={`${fileName} page ${index + 1}`}
+                  alt={`${fileName} page ${pageIndex + 1}`}
                   draggable={false}
                   className="pointer-events-none block h-auto w-full"
                 />

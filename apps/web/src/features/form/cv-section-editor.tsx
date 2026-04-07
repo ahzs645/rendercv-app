@@ -232,6 +232,7 @@ function SectionEditor({
           template={detectedTemplate}
           onChange={onChangeEntries}
           showHeader={false}
+          sectionKey={sectionKey}
         />
       )}
     </article>

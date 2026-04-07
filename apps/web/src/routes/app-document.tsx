@@ -1,9 +1,11 @@
 import { Helmet } from 'react-helmet-async';
 import { Outlet } from 'react-router-dom';
+import { WorkspaceBootstrap } from '../lib/bootstrap';
 
 export function AppDocument() {
   return (
     <>
+      <WorkspaceBootstrap />
       <Helmet>
         <title>RenderCV: Resume Builder for Academics and Engineers</title>
         <meta
