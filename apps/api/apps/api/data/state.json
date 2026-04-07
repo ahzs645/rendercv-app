@@ -714,7 +714,7 @@
       "locales": {
         "english": "locale:\n  language: english\n  last_updated: Last updated in\n  month: month\n  months: months\n  year: year\n  years: years\n  present: present\n  phrases:\n    degree_with_area: DEGREE in AREA\n  month_abbreviations:\n    - Jan\n    - Feb\n    - Mar\n    - Apr\n    - May\n    - June\n    - July\n    - Aug\n    - Sept\n    - Oct\n    - Nov\n    - Dec\n  month_names:\n    - January\n    - February\n    - March\n    - April\n    - May\n    - June\n    - July\n    - August\n    - September\n    - October\n    - November\n    - December\n"
       },
-      "selectedTheme": "opal",
+      "selectedTheme": "ahmadstyle",
       "selectedLocale": "english",
       "isLocked": false,
       "isArchived": false,

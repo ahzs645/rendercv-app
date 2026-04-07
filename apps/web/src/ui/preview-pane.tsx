@@ -4,6 +4,7 @@ import { AppWindow, Download, FileCode2, Minus, Plus } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+import { StyledTooltip } from './styled-tooltip';
 import {
   buildSvgDocumentCandidates,
   buildSvgPageHitZones,
@@ -561,14 +562,15 @@ function PreviewButton({
   onClick: () => void | Promise<void>;
 }) {
   return (
-    <button
-      className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm"
-      onClick={() => void onClick()}
-      aria-label={label}
-      title={label}
-      type="button"
-    >
-      {children}
-    </button>
+    <StyledTooltip label={label}>
+      <button
+        className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        onClick={() => void onClick()}
+        aria-label={label}
+        type="button"
+      >
+        {children}
+      </button>
+    </StyledTooltip>
   );
 }

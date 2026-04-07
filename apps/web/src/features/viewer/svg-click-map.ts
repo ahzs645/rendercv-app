@@ -3,6 +3,7 @@ import YAML from 'yaml';
 export interface SvgTextBox {
   text: string;
   topRatio: number;
+  bottomRatio?: number;
 }
 
 export interface SvgSectionHit {
@@ -45,6 +46,14 @@ function normalizeText(value: string) {
     .replace(/\u00A0/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function normalizeMatchText(value: string) {
+  return normalizeText(value).toLowerCase();
+}
+
+function compactMatchText(value: string) {
+  return normalizeMatchText(value).replace(/[^a-z0-9]+/g, '');
 }
 
 function sectionKeyToTitle(value: string) {
@@ -97,6 +106,24 @@ function entryAnchorTexts(entry: unknown): string[] {
   );
 }
 
+function preferDistinctEntryTexts(entries: SvgEntryCandidate[]) {
+  const textCounts = new Map<string, number>();
+  for (const entry of entries) {
+    for (const text of entry.texts) {
+      const key = normalizeMatchText(text);
+      textCounts.set(key, (textCounts.get(key) ?? 0) + 1);
+    }
+  }
+
+  return entries.map((entry) => {
+    const distinctTexts = entry.texts.filter((text) => (textCounts.get(normalizeMatchText(text)) ?? 0) === 1);
+    return {
+      ...entry,
+      texts: distinctTexts.length > 0 ? distinctTexts : entry.texts
+    };
+  });
+}
+
 function entryYamlSearchTerms(entry: unknown): string[] {
   if (typeof entry === 'string') {
     return uniqueTexts([entry]);
@@ -134,7 +161,7 @@ function matchesCandidate(boxText: string, candidateTexts: string[]) {
 }
 
 function matchesHeading(boxText: string, headingText: string) {
-  return normalizeText(boxText) === normalizeText(headingText);
+  return normalizeMatchText(boxText) === normalizeMatchText(headingText);
 }
 
 function isPunctuationLike(value: string) {
@@ -177,19 +204,117 @@ function findHeadingAnchors(boxes: SvgTextBox[], documentCandidates: SvgDocument
     .sort((a, b) => a.topRatio - b.topRatio);
 }
 
+function maxFuzzyDistance(leftLength: number, rightLength: number) {
+  return Math.max(2, Math.min(5, Math.floor(Math.max(leftLength, rightLength) * 0.15)));
+}
+
+function boundedLevenshteinDistance(left: string, right: string, maxDistance: number) {
+  if (left === right) {
+    return 0;
+  }
+
+  if (Math.abs(left.length - right.length) > maxDistance) {
+    return maxDistance + 1;
+  }
+
+  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  const current = new Array<number>(right.length + 1);
+
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    current[0] = leftIndex;
+    let rowMin = current[0];
+
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      const cost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+      current[rightIndex] = Math.min(
+        previous[rightIndex]! + 1,
+        current[rightIndex - 1]! + 1,
+        previous[rightIndex - 1]! + cost
+      );
+      rowMin = Math.min(rowMin, current[rightIndex]!);
+    }
+
+    if (rowMin > maxDistance) {
+      return maxDistance + 1;
+    }
+
+    for (let index = 0; index < current.length; index += 1) {
+      previous[index] = current[index]!;
+    }
+  }
+
+  return previous[right.length]!;
+}
+
+function fuzzyEquivalentMatch(boxText: string, candidateText: string) {
+  const compactBox = compactMatchText(boxText);
+  const compactCandidate = compactMatchText(candidateText);
+  if (compactBox.length < 8 || compactCandidate.length < 8) {
+    return false;
+  }
+
+  const maxDistance = maxFuzzyDistance(compactBox.length, compactCandidate.length);
+  return boundedLevenshteinDistance(compactBox, compactCandidate, maxDistance) <= maxDistance;
+}
+
+function fuzzyPrefixMatch(boxText: string, candidateText: string) {
+  const compactBox = compactMatchText(boxText);
+  const compactCandidate = compactMatchText(candidateText);
+  if (compactBox.length < 16 || compactCandidate.length <= compactBox.length) {
+    return false;
+  }
+
+  const maxDistance = maxFuzzyDistance(compactBox.length, compactCandidate.length);
+  const candidatePrefix = compactCandidate.slice(0, compactBox.length + maxDistance);
+  return boundedLevenshteinDistance(compactBox, candidatePrefix, maxDistance) <= maxDistance;
+}
+
 function matchesSingleCandidate(boxText: string, candidateText: string) {
-  const normalizedBox = normalizeText(boxText);
-  const normalizedText = normalizeText(candidateText);
+  const normalizedBox = normalizeMatchText(boxText);
+  const normalizedText = normalizeMatchText(candidateText);
   if (normalizedBox === normalizedText) {
     return true;
   }
 
+  const boxWordCount = normalizedBox.split(' ').filter(Boolean).length;
   const wordCount = normalizedText.split(' ').filter(Boolean).length;
+  if (
+    normalizedText.length >= 24 &&
+    wordCount >= 4 &&
+    normalizedBox.length >= 24 &&
+    boxWordCount >= 4 &&
+    normalizedText.startsWith(normalizedBox)
+  ) {
+    return true;
+  }
+
+  if (
+    normalizedText.length >= 24 &&
+    wordCount >= 4 &&
+    normalizedBox.length >= 24 &&
+    boxWordCount >= 4 &&
+    fuzzyPrefixMatch(boxText, candidateText)
+  ) {
+    return true;
+  }
+
+  if (normalizedBox.includes(normalizedText)) {
+    return true;
+  }
+
+  if (fuzzyEquivalentMatch(boxText, candidateText)) {
+    return true;
+  }
+
   if (normalizedText.length < 16 || wordCount < 3) {
     return false;
   }
 
-  return normalizedBox.includes(normalizedText);
+  return compactMatchText(boxText).includes(compactMatchText(candidateText));
+}
+
+function getBoxBottomRatio(box: SvgTextBox) {
+  return box.bottomRatio ?? box.topRatio;
 }
 
 function collectEntryAnchors(
@@ -248,6 +373,91 @@ function collectEntryAnchors(
   }
 
   return anchors;
+}
+
+function resolveSegmentVisualEnd(
+  boxes: SvgTextBox[],
+  segmentStartRatio: number,
+  segmentEndRatio: number
+) {
+  const hasMeasuredBottoms = boxes.some((box) => typeof box.bottomRatio === 'number');
+  if (!hasMeasuredBottoms) {
+    return segmentEndRatio;
+  }
+
+  const visibleBottoms = boxes
+    .filter((box) => box.topRatio >= segmentStartRatio && box.topRatio < segmentEndRatio)
+    .map(getBoxBottomRatio)
+    .filter((bottomRatio) => Number.isFinite(bottomRatio));
+
+  if (visibleBottoms.length === 0) {
+    return segmentEndRatio;
+  }
+
+  return Math.min(Math.max(...visibleBottoms), segmentEndRatio);
+}
+
+function buildSvgSectionHitZones(
+  boxes: SvgTextBox[],
+  candidates: SvgSectionCandidates,
+  options?: {
+    segmentStartRatio?: number;
+    segmentEndRatio?: number;
+  }
+) {
+  const segmentStartRatio = options?.segmentStartRatio ?? 0;
+  const segmentEndRatio = options?.segmentEndRatio ?? 1.001;
+  const segmentVisualEnd = resolveSegmentVisualEnd(boxes, segmentStartRatio, segmentEndRatio);
+  const headingIndex = findHeadingBoxIndex(boxes, candidates.title);
+  const hasVisibleHeading =
+    headingIndex >= 0 &&
+    boxes[headingIndex]!.topRatio >= segmentStartRatio &&
+    boxes[headingIndex]!.topRatio < segmentEndRatio;
+  const anchors = collectEntryAnchors(boxes, candidates, {
+    segmentStartRatio,
+    segmentEndRatio,
+    includeHeading: hasVisibleHeading
+  });
+
+  if (anchors.length === 0) {
+    return segmentVisualEnd > segmentStartRatio
+      ? [
+          {
+            sectionKey: candidates.sectionKey,
+            entryIndex: -1,
+            startRatio: segmentStartRatio,
+            endRatio: segmentVisualEnd
+          }
+        ]
+      : [];
+  }
+
+  const zones: SvgHitZone[] = [];
+  if (anchors[0]!.topRatio > segmentStartRatio) {
+    zones.push({
+      sectionKey: candidates.sectionKey,
+      entryIndex: -1,
+      startRatio: segmentStartRatio,
+      endRatio: Math.min(anchors[0]!.topRatio, segmentVisualEnd)
+    });
+  }
+
+  for (let index = 0; index < anchors.length; index += 1) {
+    const anchor = anchors[index]!;
+    const endRatio = Math.min(anchors[index + 1]?.topRatio ?? segmentVisualEnd, segmentVisualEnd);
+    if (endRatio <= anchor.topRatio) {
+      continue;
+    }
+
+    zones.push({
+      sectionKey: candidates.sectionKey,
+      entryIndex: anchor.entryIndex,
+      startRatio: anchor.topRatio,
+      endRatio
+    });
+  }
+
+  return zones;
 }
 
 function findHeadinglessSectionForPage(
@@ -336,14 +546,20 @@ export function buildSvgDocumentCandidates(cvYaml: string): SvgDocumentCandidate
   const cvRoot = asRecord(asRecord(parsed).cv);
   const sections = asRecord(cvRoot.sections);
   return {
-    sections: Object.entries(sections).map(([sectionKey, sectionValue]) => ({
-      sectionKey,
-      title: sectionKeyToTitle(sectionKey),
-      entries: asArray(sectionValue).map((entry, entryIndex) => ({
-        entryIndex,
-        texts: entryAnchorTexts(entry)
-      }))
-    }))
+    sections: Object.entries(sections).map(([sectionKey, sectionValue]) => {
+      const entries = preferDistinctEntryTexts(
+        asArray(sectionValue).map((entry, entryIndex) => ({
+          entryIndex,
+          texts: entryAnchorTexts(entry)
+        }))
+      );
+
+      return {
+        sectionKey,
+        title: sectionKeyToTitle(sectionKey),
+        entries
+      };
+    })
   };
 }
 
@@ -387,24 +603,9 @@ export function detectSvgSectionHit(
     return null;
   }
 
-  const anchors = collectEntryAnchors(boxes, candidates, {
-    ...options,
-    includeHeading: true
-  });
-
-  if (anchors.length === 0) {
-    return null;
-  }
-
-  let selected: { entryIndex: number; topRatio: number } | null = null;
-  for (const anchor of anchors) {
-    if (anchor.topRatio > clickYRatio) {
-      break;
-    }
-    selected = anchor;
-  }
-
-  return selected ? { entryIndex: selected.entryIndex } : null;
+  const zones = buildSvgSectionHitZones(boxes, candidates, options);
+  const zone = zones.find((candidate) => clickYRatio >= candidate.startRatio && clickYRatio < candidate.endRatio);
+  return zone ? { entryIndex: zone.entryIndex } : null;
 }
 
 export function buildSvgPageHitZones(
@@ -420,52 +621,10 @@ export function buildSvgPageHitZones(
       return [];
     }
 
-    const headingIndex = findHeadingBoxIndex(boxes, candidates.title);
-    const hasVisibleHeading =
-      headingIndex >= 0 && Math.abs(boxes[headingIndex]!.topRatio - segment.startRatio) <= 0.0025;
-    const anchors = collectEntryAnchors(boxes, candidates, {
+    return buildSvgSectionHitZones(boxes, candidates, {
       segmentStartRatio: segment.startRatio,
-      segmentEndRatio: segment.endRatio,
-      includeHeading: hasVisibleHeading
+      segmentEndRatio: segment.endRatio
     });
-
-    if (anchors.length === 0) {
-      return [
-        {
-          sectionKey: segment.sectionKey,
-          entryIndex: -1,
-          startRatio: segment.startRatio,
-          endRatio: segment.endRatio
-        }
-      ];
-    }
-
-    const zones: SvgHitZone[] = [];
-    if (anchors[0]!.topRatio > segment.startRatio) {
-      zones.push({
-        sectionKey: segment.sectionKey,
-        entryIndex: -1,
-        startRatio: segment.startRatio,
-        endRatio: anchors[0]!.topRatio
-      });
-    }
-
-    for (let index = 0; index < anchors.length; index += 1) {
-      const anchor = anchors[index]!;
-      const endRatio = anchors[index + 1]?.topRatio ?? segment.endRatio;
-      if (endRatio <= anchor.topRatio) {
-        continue;
-      }
-
-      zones.push({
-        sectionKey: segment.sectionKey,
-        entryIndex: anchor.entryIndex,
-        startRatio: anchor.topRatio,
-        endRatio
-      });
-    }
-
-    return zones;
   });
 }
 
@@ -612,7 +771,8 @@ export async function measureSvgTextBoxesFromUrl(pageUrl: string): Promise<SvgTe
         const rect = node.getBoundingClientRect();
         return {
           text,
-          topRatio: (rect.top - svgRect.top) / svgRect.height
+          topRatio: (rect.top - svgRect.top) / svgRect.height,
+          bottomRatio: (rect.bottom - svgRect.top) / svgRect.height
         };
       })
       .filter((box) => box.text.length > 0 && Number.isFinite(box.topRatio))

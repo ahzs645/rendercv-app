@@ -21,7 +21,8 @@ import {
   Share2,
   SlidersHorizontal,
   Sun,
-  Undo2
+  Undo2,
+  X
 } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { fileStore, preferencesStore, readThemeName, readLocaleName } from '@rendercv/core';
@@ -33,6 +34,7 @@ import { ChangesDialog } from '../features/share/changes-dialog';
 import { useStore } from '../lib/use-store';
 import type { MonacoEditorHandle } from './monaco-editor';
 import type { ViewerRenderer } from './preview-pane';
+import { StyledTooltip } from './styled-tooltip';
 import { WorkspaceAiEditor } from './workspace-ai-editor';
 
 export function WorkspaceToolbar({
@@ -67,8 +69,10 @@ export function WorkspaceToolbar({
 
   const canFormat = preferences.yamlEditor;
   const canPreviewActions = Boolean(sections);
+  const canLinkActions = Boolean(selectedFile && sections);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const showMobileEditorControls = mobilePane === 'editor';
   const hasSharedOrigin = Boolean(selectedFile?.sharedOrigin);
 
@@ -141,6 +145,38 @@ export function WorkspaceToolbar({
     }
 
     await downloadBlob(blob, `${selectedFile?.name ?? 'RenderCV'}.pdf`);
+  }
+
+  async function downloadPdf() {
+    if (!sections) {
+      return;
+    }
+
+    const bytes = await viewer.renderToPdf(sections);
+    if (!bytes) {
+      return;
+    }
+
+    await downloadBlob(
+      new Blob([bytes as BlobPart], { type: 'application/pdf' }),
+      `${selectedFile?.name ?? 'RenderCV'}.pdf`
+    );
+  }
+
+  async function downloadTypst() {
+    if (!sections) {
+      return;
+    }
+
+    const typst = await viewer.renderToTypst(sections);
+    if (!typst) {
+      return;
+    }
+
+    await downloadBlob(
+      new Blob([typst], { type: 'application/octet-stream' }),
+      `${selectedFile?.name ?? 'RenderCV'}.typ`
+    );
   }
 
   async function exportJson() {
@@ -302,7 +338,8 @@ export function WorkspaceToolbar({
                         </ToolbarIconButton>
                         <button
                           type="button"
-                          className="min-w-12 rounded-md px-2 py-1 text-sm text-foreground disabled:pointer-events-none disabled:opacity-40"
+                          aria-label="Reset zoom"
+                          className="min-w-12 rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                           disabled={!canPreviewActions}
                           onClick={viewer.zoomReset}
                         >
@@ -327,71 +364,17 @@ export function WorkspaceToolbar({
                         <AppWindow className="size-4" />
                       </MobileSheetButton>
                       <MobileSheetButton
-                        disabled={!canPreviewActions}
-                        label="Download PDF"
-                        onClick={async () => {
-                          if (!sections) return;
-                          const bytes = await viewer.renderToPdf(sections);
-                          if (!bytes) return;
-                          await downloadBlob(
-                            new Blob([bytes as BlobPart], { type: 'application/pdf' }),
-                            `${selectedFile?.name ?? 'RenderCV'}.pdf`
-                          );
+                        label="Download & share"
+                        onClick={() => {
+                          setMobileActionsOpen(false);
+                          setDownloadDialogOpen(true);
                         }}
                       >
                         <Download className="size-4" />
                       </MobileSheetButton>
-                      <MobileSheetButton
-                        disabled={!canPreviewActions}
-                        label="Download Typst"
-                        onClick={async () => {
-                          if (!sections) return;
-                          const typst = await viewer.renderToTypst(sections);
-                          if (!typst) return;
-                          await downloadBlob(
-                            new Blob([typst], { type: 'application/octet-stream' }),
-                            `${selectedFile?.name ?? 'RenderCV'}.typ`
-                          );
-                        }}
-                      >
-                        <FileCode2 className="size-4" />
-                      </MobileSheetButton>
-                      <MobileSheetButton
-                        disabled={!canPreviewActions}
-                        label="Share PDF"
-                        onClick={sharePdf}
-                      >
-                        <Share2 className="size-4" />
-                      </MobileSheetButton>
-                      <MobileSheetButton
-                        disabled={!selectedFile || !sections}
-                        label="Copy share link"
-                        onClick={() => void copyShareLink()}
-                      >
-                        <Copy className="size-4" />
-                      </MobileSheetButton>
-                      <MobileSheetButton
-                        disabled={!selectedFile || !sections}
-                        label="Copy PDF link"
-                        onClick={() => void copyPdfLink()}
-                      >
-                        <FileDown className="size-4" />
-                      </MobileSheetButton>
-                      <MobileSheetButton
-                        disabled={!selectedFile || !sections}
-                        label="Export JSON"
-                        onClick={() => void exportJson()}
-                      >
-                        <FileDown className="size-4" />
-                      </MobileSheetButton>
-                      <MobileSheetButton
-                        label="Import JSON"
-                        onClick={() => void importJson()}
-                      >
-                        <FileUp className="size-4" />
-                      </MobileSheetButton>
                       {hasSharedOrigin ? (
                         <MobileSheetButton
+                          className="col-span-2"
                           label="View changes"
                           onClick={() => {
                             setMobileActionsOpen(false);
@@ -454,7 +437,8 @@ export function WorkspaceToolbar({
               </ToolbarIconButton>
               <button
                 type="button"
-                className="min-w-12 rounded-md px-2 py-1 text-sm text-foreground disabled:pointer-events-none disabled:opacity-40"
+                aria-label="Reset zoom"
+                className="min-w-12 rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                 disabled={!canPreviewActions}
                 onClick={viewer.zoomReset}
               >
@@ -470,6 +454,28 @@ export function WorkspaceToolbar({
               </ToolbarIconButton>
             </div>
           </div>
+        ) : null}
+        <DownloadShareDialog
+          canLinkActions={canLinkActions}
+          canPreviewActions={canPreviewActions}
+          fileName={selectedFile?.name}
+          onCopyPdfLink={() => void copyPdfLink()}
+          onCopyShareLink={() => void copyShareLink()}
+          onDownloadPdf={() => void downloadPdf()}
+          onDownloadTypst={() => void downloadTypst()}
+          onExportJson={() => void exportJson()}
+          onImportJson={() => void importJson()}
+          onOpenChange={setDownloadDialogOpen}
+          onSharePdf={() => void sharePdf()}
+          open={downloadDialogOpen}
+        />
+        {hasSharedOrigin && sections && selectedFile?.sharedOrigin ? (
+          <ChangesDialog
+            open={changesOpen}
+            onOpenChange={setChangesOpen}
+            origin={selectedFile.sharedOrigin}
+            modified={sections}
+          />
         ) : null}
       </div>
     );
@@ -544,7 +550,7 @@ export function WorkspaceToolbar({
         <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1">
+        <ToolbarControlGroup>
           <ToolbarIconButton
             ariaLabel="Zoom out"
             disabled={!canPreviewActions}
@@ -555,7 +561,8 @@ export function WorkspaceToolbar({
           </ToolbarIconButton>
           <button
             type="button"
-            className="min-w-12 rounded-md px-2 py-1 text-sm text-foreground disabled:pointer-events-none disabled:opacity-40"
+            aria-label="Reset zoom"
+            className="min-w-12 rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
             disabled={!canPreviewActions}
             onClick={viewer.zoomReset}
           >
@@ -569,94 +576,58 @@ export function WorkspaceToolbar({
           >
             <Plus className="size-4" />
           </ToolbarIconButton>
-        </div>
-        <ToolbarIconButton
-          ariaLabel="Popup preview"
-          disabled={!canPreviewActions || !onOpenPopup}
-          onClick={() => onOpenPopup?.()}
-        >
-          <AppWindow className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Download PDF"
-          disabled={!canPreviewActions}
-          onClick={async () => {
-            if (!sections) return;
-            const bytes = await viewer.renderToPdf(sections);
-            if (!bytes) return;
-            await downloadBlob(
-              new Blob([bytes as BlobPart], { type: 'application/pdf' }),
-              `${selectedFile?.name ?? 'RenderCV'}.pdf`
-            );
-          }}
-        >
-          <Download className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Download Typst"
-          disabled={!canPreviewActions}
-          onClick={async () => {
-            if (!sections) return;
-            const typst = await viewer.renderToTypst(sections);
-            if (!typst) return;
-            await downloadBlob(
-              new Blob([typst], { type: 'application/octet-stream' }),
-              `${selectedFile?.name ?? 'RenderCV'}.typ`
-            );
-          }}
-        >
-          <FileCode2 className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Share PDF"
-          disabled={!canPreviewActions}
-          onClick={sharePdf}
-        >
-          <Share2 className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Copy share link"
-          disabled={!selectedFile || !sections}
-          onClick={() => void copyShareLink()}
-        >
-          <Copy className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Copy PDF download link"
-          disabled={!selectedFile || !sections}
-          onClick={() => void copyPdfLink()}
-        >
-          <FileDown className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Export .rendercv.json"
-          disabled={!selectedFile || !sections}
-          onClick={() => void exportJson()}
-        >
-          <FileDown className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Import .rendercv.json"
-          onClick={() => void importJson()}
-        >
-          <FileUp className="size-4" />
-        </ToolbarIconButton>
-        {hasSharedOrigin && sections ? (
+        </ToolbarControlGroup>
+        <ToolbarControlGroup>
           <ToolbarIconButton
-            ariaLabel="View changes from original"
-            active={changesOpen}
-            onClick={() => setChangesOpen(true)}
+            ariaLabel="Popup preview"
+            disabled={!canPreviewActions || !onOpenPopup}
+            onClick={() => onOpenPopup?.()}
+            variant="ghost"
           >
-            <GitCompareArrows className="size-4" />
+            <AppWindow className="size-4" />
           </ToolbarIconButton>
-        ) : null}
-        <ToolbarIconButton
-          ariaLabel="Toggle color mode"
-          onClick={() => preferencesStore.patch({ colorMode: isDark ? 'light' : 'dark' })}
-        >
-          {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-        </ToolbarIconButton>
+          <ToolbarActionButton
+            ariaLabel="Open download and share actions"
+            onClick={() => setDownloadDialogOpen(true)}
+          >
+            <Download className="size-4" />
+            <span className="whitespace-nowrap">Download &amp; share</span>
+          </ToolbarActionButton>
+          {hasSharedOrigin && sections ? (
+            <ToolbarIconButton
+              ariaLabel="View changes from original"
+              active={changesOpen}
+              onClick={() => setChangesOpen(true)}
+              variant="ghost"
+            >
+              <GitCompareArrows className="size-4" />
+            </ToolbarIconButton>
+          ) : null}
+        </ToolbarControlGroup>
+        <ToolbarControlGroup>
+          <ToolbarIconButton
+            ariaLabel="Toggle color mode"
+            onClick={() => preferencesStore.patch({ colorMode: isDark ? 'light' : 'dark' })}
+            variant="ghost"
+          >
+            {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          </ToolbarIconButton>
+        </ToolbarControlGroup>
       </div>
+      <DownloadShareDialog
+        canLinkActions={canLinkActions}
+        canPreviewActions={canPreviewActions}
+        fileName={selectedFile?.name}
+        onCopyPdfLink={() => void copyPdfLink()}
+        onCopyShareLink={() => void copyShareLink()}
+        onDownloadPdf={() => void downloadPdf()}
+        onDownloadTypst={() => void downloadTypst()}
+        onExportJson={() => void exportJson()}
+        onImportJson={() => void importJson()}
+        onOpenChange={setDownloadDialogOpen}
+        onSharePdf={() => void sharePdf()}
+        open={downloadDialogOpen}
+      />
       {hasSharedOrigin && sections && selectedFile?.sharedOrigin ? (
         <ChangesDialog
           open={changesOpen}
@@ -738,11 +709,13 @@ function YamlToggle({
 
 function MobileSheetButton({
   children,
+  className = '',
   disabled = false,
   label,
   onClick
 }: {
   children: ReactNode;
+  className?: string;
   disabled?: boolean;
   label: string;
   onClick: () => void | Promise<void>;
@@ -752,10 +725,222 @@ function MobileSheetButton({
       type="button"
       disabled={disabled}
       onClick={() => void onClick()}
-      className="inline-flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card px-3 py-4 text-center text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+      className={`inline-flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card px-3 py-4 text-center text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40 ${className}`}
     >
       {children}
       <span>{label}</span>
+    </button>
+  );
+}
+
+function ToolbarControlGroup({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-1 rounded-xl border border-border bg-background p-1 shadow-sm">
+      {children}
+    </div>
+  );
+}
+
+function ToolbarActionButton({
+  ariaLabel,
+  children,
+  disabled = false,
+  onClick
+}: {
+  ariaLabel: string;
+  children: ReactNode;
+  disabled?: boolean;
+  onClick: () => void | Promise<void>;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-haspopup="dialog"
+      disabled={disabled}
+      onClick={() => void onClick()}
+      className="inline-flex h-8 items-center gap-2 rounded-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+    >
+      {children}
+    </button>
+  );
+}
+
+function DownloadShareDialog({
+  canLinkActions,
+  canPreviewActions,
+  fileName,
+  onCopyPdfLink,
+  onCopyShareLink,
+  onDownloadPdf,
+  onDownloadTypst,
+  onExportJson,
+  onImportJson,
+  onOpenChange,
+  onSharePdf,
+  open
+}: {
+  canLinkActions: boolean;
+  canPreviewActions: boolean;
+  fileName?: string;
+  onCopyPdfLink: () => void | Promise<void>;
+  onCopyShareLink: () => void | Promise<void>;
+  onDownloadPdf: () => void | Promise<void>;
+  onDownloadTypst: () => void | Promise<void>;
+  onExportJson: () => void | Promise<void>;
+  onImportJson: () => void | Promise<void>;
+  onOpenChange: (open: boolean) => void;
+  onSharePdf: () => void | Promise<void>;
+  open: boolean;
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
+        <Dialog.Content className="fixed inset-x-4 top-1/2 z-50 max-h-[85vh] -translate-y-1/2 overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none md:left-1/2 md:w-[min(860px,calc(100vw-3rem))] md:-translate-x-1/2">
+          <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
+            <div className="min-w-0">
+              <Dialog.Title className="text-lg font-semibold text-foreground">
+                Download &amp; share
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+                Save {fileName ?? 'this resume'} as rendered output, generate share links, or move
+                it between workspaces with RenderCV JSON.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                aria-label="Close download and share dialog"
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                type="button"
+              >
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="max-h-[calc(85vh-5.5rem)] overflow-auto px-6 py-5">
+            <div className="grid gap-4 xl:grid-cols-3">
+              <DialogActionSection
+                description="Rendered files for sending or editing outside the app."
+                title="Downloads"
+              >
+                <DialogActionButton
+                  description="Export the current preview as a PDF file."
+                  disabled={!canPreviewActions}
+                  icon={<Download className="size-4" />}
+                  onClick={onDownloadPdf}
+                  title="Download PDF"
+                />
+                <DialogActionButton
+                  description="Save the generated Typst source for further edits."
+                  disabled={!canPreviewActions}
+                  icon={<FileCode2 className="size-4" />}
+                  onClick={onDownloadTypst}
+                  title="Download Typst"
+                />
+              </DialogActionSection>
+
+              <DialogActionSection
+                description="Quick sharing actions for collaborators and devices."
+                title="Sharing"
+              >
+                <DialogActionButton
+                  description="Open the native share sheet with the rendered PDF when available."
+                  disabled={!canPreviewActions}
+                  icon={<Share2 className="size-4" />}
+                  onClick={onSharePdf}
+                  title="Share PDF"
+                />
+                <DialogActionButton
+                  description="Copy a link that opens this resume in the app."
+                  disabled={!canLinkActions}
+                  icon={<Copy className="size-4" />}
+                  onClick={onCopyShareLink}
+                  title="Copy share link"
+                />
+                <DialogActionButton
+                  description="Copy a direct PDF download link for this resume."
+                  disabled={!canLinkActions}
+                  icon={<FileDown className="size-4" />}
+                  onClick={onCopyPdfLink}
+                  title="Copy PDF link"
+                />
+              </DialogActionSection>
+
+              <DialogActionSection
+                description="Move resumes in and out with RenderCV-specific JSON files."
+                title="RenderCV JSON"
+              >
+                <DialogActionButton
+                  description="Export a .rendercv.json file with the current resume data."
+                  disabled={!canLinkActions}
+                  icon={<FileDown className="size-4" />}
+                  onClick={onExportJson}
+                  title="Export .rendercv.json"
+                />
+                <DialogActionButton
+                  description="Import a .rendercv.json file into this workspace."
+                  icon={<FileUp className="size-4" />}
+                  onClick={onImportJson}
+                  title="Import .rendercv.json"
+                />
+              </DialogActionSection>
+            </div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function DialogActionSection({
+  children,
+  description,
+  title
+}: {
+  children: ReactNode;
+  description: string;
+  title: string;
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+      </div>
+      <div className="space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function DialogActionButton({
+  description,
+  disabled = false,
+  icon,
+  onClick,
+  title
+}: {
+  description: string;
+  disabled?: boolean;
+  icon: ReactNode;
+  onClick: () => void | Promise<void>;
+  title: string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => void onClick()}
+      className="flex w-full items-start gap-3 rounded-2xl border border-border bg-background p-4 text-left transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+    >
+      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-foreground">{title}</span>
+        <span className="mt-1 block text-xs leading-5 text-muted-foreground">{description}</span>
+      </span>
     </button>
   );
 }
@@ -776,21 +961,24 @@ function ToolbarIconButton({
   variant?: 'default' | 'ghost';
 }) {
   return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      title={ariaLabel}
-      disabled={disabled}
-      onClick={() => void onClick()}
-      className={`inline-flex size-8 items-center justify-center rounded-md text-sm transition-colors ${
-        variant === 'ghost'
-          ? 'hover:bg-accent hover:text-accent-foreground'
-          : active
-            ? 'border border-primary/30 bg-primary/10 text-primary'
-            : 'border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground'
-      } disabled:pointer-events-none disabled:opacity-40`}
-    >
-      {children}
-    </button>
+    <StyledTooltip label={ariaLabel}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => void onClick()}
+        className={`inline-flex size-8 items-center justify-center rounded-md text-sm transition-colors ${
+          active
+            ? variant === 'ghost'
+              ? 'bg-primary/10 text-primary hover:bg-primary/15'
+              : 'border border-primary/30 bg-primary/10 text-primary'
+            : variant === 'ghost'
+              ? 'text-foreground hover:bg-accent hover:text-accent-foreground'
+              : 'border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground'
+        } disabled:pointer-events-none disabled:opacity-40`}
+      >
+        {children}
+      </button>
+    </StyledTooltip>
   );
 }
