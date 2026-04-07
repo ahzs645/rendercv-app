@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { CvFileSections, SectionKey } from '@rendercv/contracts';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import YAML from 'yaml';
-import { preferencesStore } from '@rendercv/core';
+import { preferencesStore, themeLabel } from '@rendercv/core';
 import {
   cvPersonalInfoGroup
 } from './schema/cv-schema';
@@ -26,12 +27,18 @@ export function FormEditor({
   section,
   value,
   onChange,
-  sharedOrigin
+  sharedOrigin,
+  themeOptions,
+  currentTheme,
+  onThemeChange
 }: {
   section: SectionKey;
   value: string;
   onChange: (value: string) => void;
   sharedOrigin?: CvFileSections;
+  themeOptions?: string[];
+  currentTheme?: string;
+  onThemeChange?: (theme: string) => void;
 }) {
   const preferences = useStore(preferencesStore);
 
@@ -107,6 +114,13 @@ export function FormEditor({
   return (
     <DiffProvider section={section} origin={sharedOrigin}>
       <div className="h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none]" data-form-editor>
+        {section === 'design' && themeOptions && themeOptions.length > 0 && onThemeChange ? (
+          <ThemeRow
+            options={themeOptions}
+            value={currentTheme}
+            onChange={onThemeChange}
+          />
+        ) : null}
         {schema ? (
           schema.groups.map((group, groupIndex) => (
             <section key={group.title || group.fields.map((field) => field.path.join('.')).join('|')} {...(section === 'cv' && groupIndex === 0 ? { 'data-section-key': '__header__' } : {})}>
@@ -168,4 +182,77 @@ function readDesignThemeName(designSection: unknown) {
 
   const theme = (designSection as Record<string, unknown>).theme;
   return typeof theme === 'string' ? theme : undefined;
+}
+
+function ThemeRow({
+  options,
+  value,
+  onChange
+}: {
+  options: string[];
+  value?: string;
+  onChange: (theme: string) => void;
+}) {
+  const currentIndex = value ? options.indexOf(value) : -1;
+  const canCycle = options.length > 1 && currentIndex >= 0;
+
+  function goPrev() {
+    if (canCycle && currentIndex > 0) {
+      onChange(options[currentIndex - 1]!);
+    }
+  }
+
+  function goNext() {
+    if (canCycle && currentIndex < options.length - 1) {
+      onChange(options[currentIndex + 1]!);
+    }
+  }
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center py-1.5">
+        <span className="shrink-0 text-xs text-muted-foreground" style={{ width: '5rem' }}>
+          Theme
+        </span>
+        <div className="flex min-w-0 items-center gap-1">
+          <button
+            type="button"
+            aria-label="Previous"
+            className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            disabled={!canCycle || currentIndex <= 0}
+            onClick={goPrev}
+          >
+            <ChevronLeft className="size-3.5" />
+          </button>
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              className="inline-grid cursor-pointer text-sm text-foreground hover:text-primary"
+              data-value={value}
+              onClick={goNext}
+            >
+              {options.map((option) => (
+                <span
+                  key={option}
+                  className={`col-start-1 row-start-1 flex h-6 items-center${option !== value ? ' invisible' : ''}`}
+                >
+                  {themeLabel(option)}
+                </span>
+              ))}
+            </button>
+          </div>
+          <button
+            type="button"
+            aria-label="Next"
+            className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            disabled={!canCycle || currentIndex >= options.length - 1}
+            onClick={goNext}
+          >
+            <ChevronRight className="size-3.5" />
+          </button>
+        </div>
+      </div>
+      <div className="h-px bg-border/40" />
+    </div>
+  );
 }

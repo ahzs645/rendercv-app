@@ -416,7 +416,7 @@ function PreviewCanvas({
             {viewer.svgPages.map((page, pageIndex) => (
               <div
                 key={pageIndex}
-                className="relative overflow-hidden rounded-sm bg-white shadow-2xl"
+                className="relative overflow-hidden rounded-sm bg-white shadow-2xl dark:bg-background"
                 onClick={
                   hasClickHandler
                     ? (event: MouseEvent<HTMLDivElement>) => {
@@ -450,14 +450,14 @@ function PreviewCanvas({
                   alt={`${fileName} page ${pageIndex + 1}`}
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
-                  className="pointer-events-none block h-auto w-full select-none"
+                  className="pointer-events-none block h-auto w-full select-none dark:invert dark:hue-rotate-180"
                 />
                 {showHitboxDebug ? <PreviewHitboxOverlay zones={debugZonesByPage[page] ?? []} /> : null}
               </div>
             ))}
           </div>
         ) : (
-          <div className="mx-auto flex aspect-[8.5/11] max-w-3xl items-center justify-center rounded-sm bg-white shadow-2xl">
+          <div className="mx-auto flex aspect-[8.5/11] max-w-3xl items-center justify-center rounded-sm bg-white shadow-2xl dark:bg-background">
             <p className="text-sm text-muted-foreground">
               {viewer.isInitializing ? 'Initializing render pipeline…' : 'Rendering preview…'}
             </p>

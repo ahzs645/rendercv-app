@@ -1,21 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
+  Archive,
   Copy,
   EllipsisVertical,
   FilePlus2,
   FileText,
-  Files,
-  FolderArchive,
+  Link as LinkIcon,
   Lock,
-  LockOpen,
   Monitor,
+  Pencil,
   Shield,
   Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { CvFile } from '@rendercv/contracts';
-import { fileStore, localeLabel, themeLabel } from '@rendercv/core';
+import { fileStore } from '@rendercv/core';
 import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { PdfImportButton } from './pdf-import-button';
@@ -195,112 +195,223 @@ function SidebarFileRow({
   mini: boolean;
   selected: boolean;
 }) {
-  const [actionsOpen, setActionsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameDraft, setRenameDraft] = useState(file.name);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const renameRef = useRef<HTMLInputElement>(null);
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(event.target as Node)
+      ) {
+        closeMenu();
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') closeMenu();
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [menuOpen, closeMenu]);
+
+  useEffect(() => {
+    if (isRenaming && renameRef.current) {
+      renameRef.current.focus();
+      renameRef.current.select();
+    }
+  }, [isRenaming]);
+
+  function commitRename() {
+    const trimmed = renameDraft.trim();
+    if (trimmed && trimmed !== file.name) {
+      fileStore.renameFile(file.id, trimmed);
+    }
+    setIsRenaming(false);
+  }
 
   return (
-    <div className="group">
-      <div
-        className={`flex items-center rounded-md transition-colors ${
-          selected
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-            : 'text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground'
-        }`}
-      >
+    <div className="group/menu-item relative">
+      {isRenaming ? (
+        <div className="flex h-8 items-center px-2">
+          <input
+            ref={renameRef}
+            className="h-6 w-full rounded border border-sidebar-border bg-sidebar px-1.5 text-sm text-sidebar-foreground outline-none focus:border-sidebar-ring"
+            value={renameDraft}
+            onChange={(event) => setRenameDraft(event.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') commitRename();
+              if (event.key === 'Escape') setIsRenaming(false);
+            }}
+          />
+        </div>
+      ) : (
         <button
-          className={`min-w-0 flex-1 text-left ${mini ? 'flex h-10 items-center justify-center px-0' : 'flex items-center gap-2 px-2 py-2'}`}
+          className={`flex h-8 w-full items-center gap-2 overflow-hidden rounded-md px-2 text-left text-sm transition-colors ${
+            selected
+              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+              : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+          } ${mini ? 'justify-center' : ''}`}
           onClick={() => fileStore.selectFile(file.id)}
           title={mini ? file.name : undefined}
           type="button"
         >
-          {file.isLocked ? (
-            <Lock className={`shrink-0 text-sidebar-foreground/70 ${mini ? 'size-4' : 'size-4'}`} />
+          {mini ? (
+            <>
+              <Monitor className="size-4 shrink-0" />
+              <span className="sr-only">{file.name}</span>
+            </>
           ) : (
-            <Monitor className={`shrink-0 text-sidebar-foreground/70 ${mini ? 'size-4' : 'size-4'}`} />
-          )}
-          {mini ? <span className="sr-only">{file.name}</span> : null}
-          {mini ? null : (
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{file.name}</span>
-              {!compact ? (
-                <span className="block truncate text-xs text-sidebar-foreground/60">
-                  {themeLabel(file.selectedTheme)} · {localeLabel(file.selectedLocale)}
-                </span>
-              ) : (
-                <span className="block truncate text-[11px] text-sidebar-foreground/55">
-                  {themeLabel(file.selectedTheme)}
-                </span>
-              )}
-            </span>
+            <span className="truncate">{file.name}</span>
           )}
         </button>
-        {mini ? null : (
+      )}
+      {!mini && !isRenaming ? (
+        <>
           <button
-            className={`mr-1 flex size-7 shrink-0 items-center justify-center rounded-md transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-              actionsOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+            ref={triggerRef}
+            className={`absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+              menuOpen
+                ? 'opacity-100'
+                : 'opacity-0 group-hover/menu-item:opacity-100 focus-visible:opacity-100'
             }`}
-            onClick={() => setActionsOpen((open) => !open)}
-            title="File actions"
+            onClick={() => setMenuOpen((open) => !open)}
             type="button"
           >
             <EllipsisVertical className="size-4" />
-            <span className="sr-only">File actions</span>
+            <span className="sr-only">More</span>
           </button>
-        )}
-      </div>
-      {actionsOpen && !mini ? (
-        <div className={`ml-8 mt-1 flex flex-wrap gap-1 ${compact ? '' : 'pr-2'}`}>
-          <SidebarActionChip
-            icon={<Files className="size-3.5" />}
-            label="Duplicate"
-            onClick={() => {
-              fileStore.duplicateFile(file.id);
-            }}
-          />
-          <SidebarActionChip icon={<FolderArchive className="size-3.5" />} label="Archive" onClick={() => fileStore.archiveFile(file.id)} />
-          <SidebarActionChip icon={<Trash2 className="size-3.5" />} label="Trash" onClick={() => fileStore.trashFile(file.id)} />
-          {file.isLocked ? (
-            <SidebarActionChip icon={<LockOpen className="size-3.5" />} label="Unlock" onClick={() => fileStore.unlockFile(file.id)} />
-          ) : (
-            <SidebarActionChip icon={<Lock className="size-3.5" />} label="Lock" onClick={() => fileStore.lockFile(file.id)} />
-          )}
-          <SidebarActionChip
-            icon={<Copy className="size-3.5" />}
-            label="Public link"
-            onClick={async () => {
-              fileStore.makePublic(file.id);
-              await navigator.clipboard.writeText(
-                new URL(`${import.meta.env.BASE_URL}${file.id}`, window.location.origin).toString()
-              );
-            }}
-          />
-        </div>
+          {menuOpen ? (
+            <div
+              ref={menuRef}
+              className="absolute right-0 top-full z-50 mt-1 min-w-[15rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+              role="menu"
+            >
+              <FileMenuItem
+                icon={<Lock className="size-4" />}
+                label={file.isLocked ? 'Unlock' : 'Lock'}
+                shortcut="⌘K"
+                onClick={() => {
+                  if (file.isLocked) fileStore.unlockFile(file.id);
+                  else fileStore.lockFile(file.id);
+                  closeMenu();
+                }}
+              />
+              <FileMenuItem
+                icon={<LinkIcon className="size-4" />}
+                label="Make public and copy link"
+                onClick={async () => {
+                  fileStore.makePublic(file.id);
+                  await navigator.clipboard.writeText(
+                    new URL(`${import.meta.env.BASE_URL}${file.id}`, window.location.origin).toString()
+                  );
+                  closeMenu();
+                }}
+              />
+              <FileMenuItem
+                icon={<Copy className="size-4" />}
+                label="Duplicate"
+                shortcut="⌘D"
+                onClick={() => {
+                  fileStore.duplicateFile(file.id);
+                  closeMenu();
+                }}
+              />
+              <FileMenuItem
+                icon={<Pencil className="size-4" />}
+                label="Rename"
+                onClick={() => {
+                  setRenameDraft(file.name);
+                  setIsRenaming(true);
+                  closeMenu();
+                }}
+              />
+              <div className="-mx-1 my-1 h-px bg-border" role="separator" />
+              <FileMenuItem
+                icon={<Archive className="size-4" />}
+                label="Move to archive"
+                onClick={() => {
+                  fileStore.archiveFile(file.id);
+                  closeMenu();
+                }}
+              />
+              <FileMenuItem
+                destructive
+                icon={<Trash2 className="size-4" />}
+                label="Move to trash"
+                shortcut="⌘⌫"
+                onClick={() => {
+                  fileStore.trashFile(file.id);
+                  closeMenu();
+                }}
+              />
+            </div>
+          ) : null}
+        </>
       ) : null}
     </div>
   );
 }
 
-function SidebarActionChip({
+function FileMenuItem({
+  destructive,
   icon,
   label,
+  shortcut,
   onClick
 }: {
+  destructive?: boolean;
   icon: ReactNode;
   label: string;
+  shortcut?: string;
   onClick: () => void | Promise<void>;
 }) {
   return (
     <button
-      className="inline-flex items-center gap-1 rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      className={`relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none ${
+        destructive
+          ? 'text-destructive hover:bg-destructive/10'
+          : 'hover:bg-accent hover:text-accent-foreground'
+      } [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${
+        destructive ? '[&_svg]:text-destructive' : '[&_svg:not([class*="text-"])]:text-muted-foreground'
+      }`}
+      role="menuitem"
+      type="button"
       onClick={() => {
         void onClick();
       }}
-      type="button"
     >
       {icon}
       {label}
+      {shortcut ? (
+        <span className="ml-auto inline-flex items-center gap-1">
+          {shortcut.split('').filter((c) => c !== ' ').map((key, index) => (
+            <kbd
+              key={index}
+              className="pointer-events-none inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-muted px-1 font-sans text-xs font-medium text-muted-foreground select-none"
+            >
+              {key}
+            </kbd>
+          ))}
+        </span>
+      ) : null}
     </button>
   );
 }
+
 
 function SidebarLinkButton({
   children,

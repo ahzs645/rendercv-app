@@ -479,6 +479,19 @@ export function Workspace() {
             value={currentValue}
             onChange={handleSectionChange}
             sharedOrigin={selectedFile?.sharedOrigin}
+            themeOptions={Array.from(
+              new Set([
+                ...Object.keys(defaultDesigns),
+                ...Object.keys(preferences.themeLibrary),
+                ...Object.keys(selectedFile?.designs ?? {})
+              ])
+            )}
+            currentTheme={selectedFile?.selectedTheme}
+            onThemeChange={
+              selectedFile
+                ? (theme: string) => fileStore.setTheme(selectedFile.id, theme)
+                : undefined
+            }
           />
         )}
       </div>

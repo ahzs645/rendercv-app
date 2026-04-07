@@ -63,18 +63,6 @@ export function SectionTabs({
             }
           }
         }
-      : active === 'design'
-      ? {
-          label: 'Theme',
-          options: themeOptions,
-          renderLabel: themeLabel,
-          value: selectedFile?.selectedTheme,
-          onChange: (value: string) => {
-            if (selectedFile) {
-              fileStore.setTheme(selectedFile.id, value);
-            }
-          }
-        }
       : active === 'locale'
         ? {
             label: 'Locale',
@@ -93,7 +81,6 @@ export function SectionTabs({
   const canCycle = Boolean(variant && variant.options.length > 1 && currentIndex >= 0);
   const showVariantControls = Boolean(
     (variant && variant.options.length > 0) ||
-      (active === 'design' && onImportDesignTheme) ||
       (active === 'cv' && onImportVariants)
   );
 
@@ -125,56 +112,7 @@ export function SectionTabs({
             className="-mx-1 flex items-center gap-0.5 overflow-x-auto px-1 sm:ml-3 sm:shrink-0 sm:px-0"
             data-testid="variant-selector"
           >
-            {active === 'design' && onImportDesignTheme ? (
-              <>
-                <input
-                  ref={themeInputRef}
-                  accept=".zip,application/zip"
-                  className="hidden"
-                  type="file"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) {
-                      return;
-                    }
-
-                    setIsImportingTheme(true);
-                    void onImportDesignTheme(file)
-                      .then((themeName) => {
-                        if (themeName) {
-                          toast.success(`Imported theme "${themeName}".`);
-                        }
-                      })
-                      .catch((error) => {
-                        toast.error(error instanceof Error ? error.message : 'Failed to import theme.');
-                      })
-                      .finally(() => {
-                        setIsImportingTheme(false);
-                        if (themeInputRef.current) {
-                          themeInputRef.current.value = '';
-                        }
-                      });
-                  }}
-                />
-                <button
-                  aria-label="Import theme zip"
-                  className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
-                  disabled={isImportingTheme || themeImportDisabled}
-                  onClick={() => themeInputRef.current?.click()}
-                  type="button"
-                >
-                  <Upload className="size-3.5" />
-                  {isImportingTheme ? 'Importing…' : 'Import zip'}
-                </button>
-                <ThemeLibraryDialog
-                  disabled={themeImportDisabled}
-                  sections={viewerSections}
-                  selectedFile={selectedFile}
-                  themeKeys={themeOptions}
-                  viewer={viewer}
-                />
-              </>
-            ) : null}
+            {null}
             {active === 'cv' && onImportVariants ? (
               <>
                 <input
