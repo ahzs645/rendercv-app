@@ -63,6 +63,18 @@ export function SectionTabs({
             }
           }
         }
+      : active === 'cv'
+        ? {
+            label: 'Theme',
+            options: themeOptions,
+            renderLabel: themeLabel,
+            value: selectedFile?.selectedTheme,
+            onChange: (value: string) => {
+              if (selectedFile) {
+                fileStore.setTheme(selectedFile.id, value);
+              }
+            }
+          }
       : active === 'locale'
         ? {
             label: 'Locale',

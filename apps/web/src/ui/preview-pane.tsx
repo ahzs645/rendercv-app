@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import { AppWindow, Download, FileCode2, Minus, Plus } from 'lucide-react';
+import { AppWindow, Download, Eye, EyeOff, FileCode2, Minus, Plus } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
+import { preferencesStore } from '@rendercv/core';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+import { useStore } from '../lib/use-store';
 import { StyledTooltip } from './styled-tooltip';
 import {
   buildSvgDocumentCandidates,
@@ -400,6 +402,13 @@ function PreviewCanvas({
   }, [showHitboxDebug, sections?.cv, viewer.svgPages]);
 
 
+  const preferences = useStore(preferencesStore);
+  const prefersDark =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark =
+    preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
+  const invertPreview = isDark && preferences.previewDarkMode;
+
   return (
     <div className={shellClassName}>
       <div className="h-full overflow-auto rounded-2xl border border-border bg-sidebar p-3 sm:p-6">
@@ -416,7 +425,7 @@ function PreviewCanvas({
             {viewer.svgPages.map((page, pageIndex) => (
               <div
                 key={pageIndex}
-                className="relative overflow-hidden rounded-sm bg-white shadow-2xl dark:bg-background"
+                className={`relative overflow-hidden rounded-sm shadow-2xl ${invertPreview ? 'bg-background' : 'bg-white'}`}
                 onClick={
                   hasClickHandler
                     ? (event: MouseEvent<HTMLDivElement>) => {
@@ -450,14 +459,15 @@ function PreviewCanvas({
                   alt={`${fileName} page ${pageIndex + 1}`}
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
-                  className="pointer-events-none block h-auto w-full select-none dark:invert dark:hue-rotate-180"
+                  className="pointer-events-none block h-auto w-full select-none"
+                  style={invertPreview ? { filter: 'invert(1) hue-rotate(180deg)' } : undefined}
                 />
                 {showHitboxDebug ? <PreviewHitboxOverlay zones={debugZonesByPage[page] ?? []} /> : null}
               </div>
             ))}
           </div>
         ) : (
-          <div className="mx-auto flex aspect-[8.5/11] max-w-3xl items-center justify-center rounded-sm bg-white shadow-2xl dark:bg-background">
+          <div className={`mx-auto flex aspect-[8.5/11] max-w-3xl items-center justify-center rounded-sm shadow-2xl ${invertPreview ? 'bg-background' : 'bg-white'}`}>
             <p className="text-sm text-muted-foreground">
               {viewer.isInitializing ? 'Initializing render pipeline…' : 'Rendering preview…'}
             </p>
@@ -547,6 +557,7 @@ function PreviewPaneHeader({
             <AppWindow className="size-4" />
           </PreviewButton>
         ) : null}
+        <PreviewDarkModeToggle />
       </div>
     </header>
   );
@@ -570,6 +581,31 @@ function PreviewButton({
         type="button"
       >
         {children}
+      </button>
+    </StyledTooltip>
+  );
+}
+
+function PreviewDarkModeToggle() {
+  const preferences = useStore(preferencesStore);
+  const prefersDark =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark =
+    preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
+
+  if (!isDark) return null;
+
+  const active = preferences.previewDarkMode;
+
+  return (
+    <StyledTooltip label={active ? 'Show original colors' : 'Adapt preview to dark mode'} side="bottom">
+      <button
+        className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        onClick={() => preferencesStore.patch({ previewDarkMode: !active })}
+        aria-label={active ? 'Show original colors' : 'Adapt preview to dark mode'}
+        type="button"
+      >
+        {active ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>
     </StyledTooltip>
   );

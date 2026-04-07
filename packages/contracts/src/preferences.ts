@@ -9,6 +9,7 @@ export interface UserPreferences {
   themeLibrary: Record<string, string>;
   selectedFileId?: string;
   colorMode: ColorMode;
+  previewDarkMode: boolean;
   showArchive: boolean;
   showTrash: boolean;
   activeSection: SectionKey;

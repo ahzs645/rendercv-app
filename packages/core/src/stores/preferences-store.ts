@@ -10,6 +10,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   themeLibrary: {},
   selectedFileId: undefined,
   colorMode: 'system',
+  previewDarkMode: true,
   showArchive: false,
   showTrash: false,
   activeSection: 'cv',
