@@ -9,18 +9,35 @@ export interface SvgSectionHit {
   entryIndex: number;
 }
 
+export interface SvgSectionSegment {
+  sectionKey: string;
+  startRatio: number;
+  endRatio: number;
+}
+
 interface SvgEntryCandidate {
   entryIndex: number;
   texts: string[];
 }
 
-interface SvgSectionCandidates {
+export interface SvgSectionCandidates {
+  sectionKey: string;
   title: string;
   entries: SvgEntryCandidate[];
 }
 
+export interface SvgDocumentCandidates {
+  sections: SvgSectionCandidates[];
+}
+
 function normalizeText(value: string) {
-  return value.replace(/\s+/g, ' ').trim();
+  return value
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function sectionKeyToTitle(value: string) {
@@ -57,10 +74,13 @@ function entryAnchorTexts(entry: unknown): string[] {
     'name',
     'title',
     'label',
+    'details',
     'position',
     'degree',
     'area',
-    'summary'
+    'summary',
+    'journal',
+    'doi'
   ];
 
   return uniqueTexts(
@@ -82,10 +102,13 @@ function entryYamlSearchTerms(entry: unknown): string[] {
     ['name', 'name'],
     ['title', 'title'],
     ['label', 'label'],
+    ['details', 'details'],
     ['position', 'position'],
     ['degree', 'degree'],
     ['area', 'area'],
-    ['summary', 'summary']
+    ['summary', 'summary'],
+    ['journal', 'journal'],
+    ['doi', 'doi']
   ] as const;
 
   return uniqueTexts(
@@ -100,11 +123,127 @@ function entryYamlSearchTerms(entry: unknown): string[] {
 }
 
 function matchesCandidate(boxText: string, candidateTexts: string[]) {
-  const normalizedBox = normalizeText(boxText);
-  return candidateTexts.some((text) => normalizedBox.includes(normalizeText(text)));
+  return candidateTexts.some((text) => matchesSingleCandidate(boxText, text));
 }
 
-export function buildSvgSectionCandidates(cvYaml: string, sectionKey: string): SvgSectionCandidates | null {
+function matchesHeading(boxText: string, headingText: string) {
+  return normalizeText(boxText) === normalizeText(headingText);
+}
+
+function isPunctuationLike(value: string) {
+  return /^[,.;:!?()[\]{}\-–—/\\|]+$/.test(normalizeText(value));
+}
+
+function isIsolatedHeadingRow(boxes: SvgTextBox[], headingIndex: number) {
+  const headingBox = boxes[headingIndex];
+  if (!headingBox) {
+    return false;
+  }
+
+  const ROW_TOLERANCE = 0.0025;
+  const rowTexts = boxes
+    .filter((box) => Math.abs(box.topRatio - headingBox.topRatio) <= ROW_TOLERANCE)
+    .map((box) => normalizeText(box.text))
+    .filter((text) => text.length > 0 && !isPunctuationLike(text));
+
+  return rowTexts.length === 1;
+}
+
+function findHeadingBoxIndex(boxes: SvgTextBox[], headingText: string) {
+  return boxes.findIndex(
+    (box, index) => matchesHeading(box.text, headingText) && isIsolatedHeadingRow(boxes, index)
+  );
+}
+
+function findHeadingAnchors(boxes: SvgTextBox[], documentCandidates: SvgDocumentCandidates) {
+  return documentCandidates.sections
+    .map((section) => {
+      const boxIndex = findHeadingBoxIndex(boxes, section.title);
+      return boxIndex >= 0
+        ? {
+            sectionKey: section.sectionKey,
+            topRatio: boxes[boxIndex]!.topRatio
+          }
+        : null;
+    })
+    .filter((anchor): anchor is { sectionKey: string; topRatio: number } => anchor !== null)
+    .sort((a, b) => a.topRatio - b.topRatio);
+}
+
+function matchesSingleCandidate(boxText: string, candidateText: string) {
+  const normalizedBox = normalizeText(boxText);
+  const normalizedText = normalizeText(candidateText);
+  if (normalizedBox === normalizedText) {
+    return true;
+  }
+
+  const wordCount = normalizedText.split(' ').filter(Boolean).length;
+  if (normalizedText.length < 16 || wordCount < 3) {
+    return false;
+  }
+
+  return normalizedBox.includes(normalizedText);
+}
+
+function collectEntryAnchors(
+  boxes: SvgTextBox[],
+  candidates: SvgSectionCandidates,
+  options?: {
+    segmentStartRatio?: number;
+    segmentEndRatio?: number;
+    includeHeading?: boolean;
+  }
+) {
+  const anchors: Array<{ entryIndex: number; topRatio: number }> = [];
+  const segmentStartRatio = options?.segmentStartRatio ?? 0;
+  const segmentEndRatio = options?.segmentEndRatio ?? 1.001;
+  let cursor = boxes.findIndex((box) => box.topRatio >= segmentStartRatio);
+  if (cursor === -1) {
+    cursor = boxes.length;
+  }
+
+  const headingIndex = options?.includeHeading ? findHeadingBoxIndex(boxes, candidates.title) : -1;
+  if (
+    headingIndex >= 0 &&
+    boxes[headingIndex]!.topRatio >= segmentStartRatio &&
+    boxes[headingIndex]!.topRatio < segmentEndRatio
+  ) {
+    anchors.push({ entryIndex: -1, topRatio: boxes[headingIndex]!.topRatio });
+    cursor = headingIndex + 1;
+  }
+
+  for (const entry of candidates.entries) {
+    if (entry.texts.length === 0) {
+      continue;
+    }
+
+    const boxIndex = entry.texts.reduce<number>((foundIndex, text) => {
+      if (foundIndex >= 0) {
+        return foundIndex;
+      }
+
+      return boxes.findIndex((box, index) =>
+        index >= cursor &&
+        box.topRatio >= segmentStartRatio &&
+        box.topRatio < segmentEndRatio &&
+        matchesSingleCandidate(box.text, text)
+      );
+    }, -1);
+    if (boxIndex === -1) {
+      continue;
+    }
+
+    anchors.push({
+      entryIndex: entry.entryIndex,
+      topRatio: boxes[boxIndex]!.topRatio
+    });
+    cursor = boxIndex + 1;
+  }
+
+  return anchors;
+}
+
+export function buildSvgDocumentCandidates(cvYaml: string): SvgDocumentCandidates | null {
   let parsed: unknown;
   try {
     parsed = YAML.parse(cvYaml);
@@ -114,21 +253,25 @@ export function buildSvgSectionCandidates(cvYaml: string, sectionKey: string): S
 
   const cvRoot = asRecord(asRecord(parsed).cv);
   const sections = asRecord(cvRoot.sections);
-  const entries = asArray(sections[sectionKey]);
-  if (entries.length === 0) {
-    return {
-      title: sectionKeyToTitle(sectionKey),
-      entries: []
-    };
-  }
-
   return {
-    title: sectionKeyToTitle(sectionKey),
-    entries: entries.map((entry, entryIndex) => ({
-      entryIndex,
-      texts: entryAnchorTexts(entry)
+    sections: Object.entries(sections).map(([sectionKey, sectionValue]) => ({
+      sectionKey,
+      title: sectionKeyToTitle(sectionKey),
+      entries: asArray(sectionValue).map((entry, entryIndex) => ({
+        entryIndex,
+        texts: entryAnchorTexts(entry)
+      }))
     }))
   };
+}
+
+export function buildSvgSectionCandidates(cvYaml: string, sectionKey: string): SvgSectionCandidates | null {
+  const documentCandidates = buildSvgDocumentCandidates(cvYaml);
+  if (!documentCandidates) {
+    return null;
+  }
+
+  return documentCandidates.sections.find((section) => section.sectionKey === sectionKey) ?? null;
 }
 
 export function buildYamlEntrySearchTerms(
@@ -152,41 +295,20 @@ export function buildYamlEntrySearchTerms(
 export function detectSvgSectionHit(
   boxes: SvgTextBox[],
   candidates: SvgSectionCandidates,
-  clickYRatio: number
+  clickYRatio: number,
+  options?: {
+    segmentStartRatio?: number;
+    segmentEndRatio?: number;
+  }
 ): SvgSectionHit | null {
   if (boxes.length === 0) {
     return null;
   }
 
-  const anchors: Array<{ entryIndex: number; topRatio: number }> = [];
-  let cursor = 0;
-
-  const headingIndex = boxes.findIndex((box) =>
-    matchesCandidate(box.text, [candidates.title])
-  );
-  if (headingIndex >= 0) {
-    anchors.push({ entryIndex: -1, topRatio: boxes[headingIndex]!.topRatio });
-    cursor = headingIndex + 1;
-  }
-
-  for (const entry of candidates.entries) {
-    if (entry.texts.length === 0) {
-      continue;
-    }
-
-    const boxIndex = boxes.findIndex((box, index) =>
-      index >= cursor && matchesCandidate(box.text, entry.texts)
-    );
-    if (boxIndex === -1) {
-      continue;
-    }
-
-    anchors.push({
-      entryIndex: entry.entryIndex,
-      topRatio: boxes[boxIndex]!.topRatio
-    });
-    cursor = boxIndex + 1;
-  }
+  const anchors = collectEntryAnchors(boxes, candidates, {
+    ...options,
+    includeHeading: true
+  });
 
   if (anchors.length === 0) {
     return null;
@@ -201,6 +323,121 @@ export function detectSvgSectionHit(
   }
 
   return selected ? { entryIndex: selected.entryIndex } : null;
+}
+
+export function detectSvgSectionSegment(
+  boxes: SvgTextBox[],
+  documentCandidates: SvgDocumentCandidates,
+  clickYRatio: number
+): SvgSectionSegment | null {
+  const headingAnchors = findHeadingAnchors(boxes, documentCandidates);
+  if (headingAnchors.length === 0) {
+    const sectionMatches = documentCandidates.sections
+      .map((section) => {
+        const anchors = collectEntryAnchors(boxes, section);
+        const entryAnchors = anchors.filter((anchor) => anchor.entryIndex >= 0);
+        if (entryAnchors.length === 0) {
+          return null;
+        }
+
+        let lastAnchorBeforeClick: number | null = null;
+        for (const anchor of entryAnchors) {
+          if (anchor.topRatio > clickYRatio) {
+            break;
+          }
+          lastAnchorBeforeClick = anchor.topRatio;
+        }
+
+        return {
+          sectionKey: section.sectionKey,
+          firstTopRatio: entryAnchors[0]!.topRatio,
+          lastAnchorBeforeClick,
+          matchedCount: entryAnchors.length
+        };
+      })
+      .filter(
+        (
+          match
+        ): match is {
+          sectionKey: string;
+          firstTopRatio: number;
+          lastAnchorBeforeClick: number | null;
+          matchedCount: number;
+        } => match !== null
+      );
+
+    if (sectionMatches.length === 0) {
+      return null;
+    }
+
+    const sectionBeforeClick = sectionMatches
+      .filter((match) => match.lastAnchorBeforeClick !== null)
+      .sort((a, b) => {
+        if (a.lastAnchorBeforeClick !== b.lastAnchorBeforeClick) {
+          return (b.lastAnchorBeforeClick ?? -1) - (a.lastAnchorBeforeClick ?? -1);
+        }
+        if (a.matchedCount !== b.matchedCount) {
+          return b.matchedCount - a.matchedCount;
+        }
+        return a.firstTopRatio - b.firstTopRatio;
+      })[0];
+
+    if (sectionBeforeClick) {
+      return {
+        sectionKey: sectionBeforeClick.sectionKey,
+        startRatio: 0,
+        endRatio: 1.001
+      };
+    }
+
+    const firstSectionOnPage = sectionMatches.sort((a, b) => a.firstTopRatio - b.firstTopRatio)[0];
+    return firstSectionOnPage
+      ? {
+          sectionKey: firstSectionOnPage.sectionKey,
+          startRatio: 0,
+          endRatio: 1.001
+        }
+      : null;
+  }
+
+  const anchors = headingAnchors;
+
+  let selectedIndex = -1;
+  for (let index = 0; index < anchors.length; index += 1) {
+    if (anchors[index]!.topRatio > clickYRatio) {
+      break;
+    }
+    selectedIndex = index;
+  }
+
+  if (selectedIndex >= 0) {
+    return {
+      sectionKey: anchors[selectedIndex]!.sectionKey,
+      startRatio: anchors[selectedIndex]!.topRatio,
+      endRatio: anchors[selectedIndex + 1]?.topRatio ?? 1.001
+    };
+  }
+
+  const firstVisibleHeadingIndex = documentCandidates.sections.findIndex(
+    (section) => section.sectionKey === headingAnchors[0]!.sectionKey
+  );
+  if (firstVisibleHeadingIndex > 0) {
+    return {
+      sectionKey: documentCandidates.sections[firstVisibleHeadingIndex - 1]!.sectionKey,
+      startRatio: 0,
+      endRatio: headingAnchors[0]!.topRatio
+    };
+  }
+
+  return null;
+}
+
+export function detectSvgSectionKey(
+  boxes: SvgTextBox[],
+  documentCandidates: SvgDocumentCandidates,
+  clickYRatio: number
+): string | null {
+  return detectSvgSectionSegment(boxes, documentCandidates, clickYRatio)?.sectionKey ?? null;
 }
 
 export async function measureSvgTextBoxesFromUrl(pageUrl: string): Promise<SvgTextBox[]> {

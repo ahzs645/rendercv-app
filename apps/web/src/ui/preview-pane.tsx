@@ -5,7 +5,9 @@ import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import {
+  buildSvgDocumentCandidates,
   buildSvgSectionCandidates,
+  detectSvgSectionSegment,
   detectSvgSectionHit,
   measureSvgTextBoxesFromUrl
 } from '../features/viewer/svg-click-map';
@@ -177,6 +179,7 @@ async function refineClickedSectionFromSvg({
   fallbackHit,
   pageUrl,
   pageBoxesPromiseCache,
+  documentCandidateCache,
   sectionCandidateCache
 }: {
   clickYRatio: number;
@@ -184,19 +187,20 @@ async function refineClickedSectionFromSvg({
   fallbackHit: SectionHit;
   pageUrl: string;
   pageBoxesPromiseCache: Map<string, Promise<Awaited<ReturnType<typeof measureSvgTextBoxesFromUrl>>>>;
+  documentCandidateCache: { current: ReturnType<typeof buildSvgDocumentCandidates> | null | undefined };
   sectionCandidateCache: Map<string, ReturnType<typeof buildSvgSectionCandidates>>;
 }): Promise<SectionHit | null> {
   if (!cvYaml || fallbackHit.sectionKey === '__header__') {
     return null;
   }
 
-  let candidates = sectionCandidateCache.get(fallbackHit.sectionKey);
-  if (candidates === undefined) {
-    candidates = buildSvgSectionCandidates(cvYaml, fallbackHit.sectionKey);
-    sectionCandidateCache.set(fallbackHit.sectionKey, candidates);
+  let documentCandidates = documentCandidateCache.current;
+  if (documentCandidates === undefined) {
+    documentCandidates = buildSvgDocumentCandidates(cvYaml);
+    documentCandidateCache.current = documentCandidates;
   }
 
-  if (!candidates) {
+  if (!documentCandidates) {
     return null;
   }
 
@@ -207,10 +211,26 @@ async function refineClickedSectionFromSvg({
   }
 
   const pageBoxes = await pageBoxesPromise;
-  const svgHit = detectSvgSectionHit(pageBoxes, candidates, clickYRatio);
+  const sectionSegment = detectSvgSectionSegment(pageBoxes, documentCandidates, clickYRatio);
+  const sectionKey = sectionSegment?.sectionKey ?? fallbackHit.sectionKey;
+
+  let candidates = sectionCandidateCache.get(sectionKey);
+  if (candidates === undefined) {
+    candidates = documentCandidates.sections.find((section) => section.sectionKey === sectionKey) ?? null;
+    sectionCandidateCache.set(sectionKey, candidates);
+  }
+
+  if (!candidates) {
+    return null;
+  }
+
+  const svgHit = detectSvgSectionHit(pageBoxes, candidates, clickYRatio, {
+    segmentStartRatio: sectionSegment?.sectionKey === sectionKey ? sectionSegment.startRatio : undefined,
+    segmentEndRatio: sectionSegment?.sectionKey === sectionKey ? sectionSegment.endRatio : undefined
+  });
   return svgHit
     ? {
-        sectionKey: fallbackHit.sectionKey,
+        sectionKey,
         entryIndex: svgHit.entryIndex
       }
     : null;
@@ -237,6 +257,7 @@ function PreviewCanvas({
   const totalPages = viewer.svgPages.length;
   const hasClickHandler = onSectionClick && sectionMap.sections.length > 0;
   const pageBoxesPromiseCache = useRef(new Map<string, Promise<Awaited<ReturnType<typeof measureSvgTextBoxesFromUrl>>>>());
+  const documentCandidateCache = useRef<ReturnType<typeof buildSvgDocumentCandidates> | null | undefined>(undefined);
   const sectionCandidateCache = useRef(new Map<string, ReturnType<typeof buildSvgSectionCandidates>>());
 
   useEffect(() => {
@@ -245,6 +266,7 @@ function PreviewCanvas({
 
   useEffect(() => {
     sectionCandidateCache.current.clear();
+    documentCandidateCache.current = undefined;
   }, [sections?.cv]);
 
 
@@ -283,6 +305,7 @@ function PreviewCanvas({
                           fallbackHit,
                           pageUrl: page,
                           pageBoxesPromiseCache: pageBoxesPromiseCache.current,
+                          documentCandidateCache,
                           sectionCandidateCache: sectionCandidateCache.current
                         }).then((refinedHit) => {
                           const hit = refinedHit ?? fallbackHit;
