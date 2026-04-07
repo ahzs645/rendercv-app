@@ -5,7 +5,7 @@ export interface MonacoEditorHandle {
   focus: () => void;
   insertMarkdownLink: () => void;
   surroundSelection: (prefix: string, suffix: string, placeholder?: string) => void;
-  revealText: (text: string) => void;
+  revealText: (text: string) => boolean;
 }
 
 type MonacoEditorProps = {
@@ -63,14 +63,16 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
     revealText(text: string) {
       const editor = editorRef.current;
       const model = editor?.getModel();
-      if (!editor || !model) return;
+      if (!editor || !model) return false;
       const matches = model.findMatches(text, false, false, false, null, false);
       if (matches.length > 0) {
         const line = matches[0]!.range.startLineNumber;
         editor.revealLineInCenter(line);
         editor.setPosition({ lineNumber: line, column: 1 });
         editor.focus();
+        return true;
       }
+      return false;
     }
   }));
 

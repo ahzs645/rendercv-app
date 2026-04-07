@@ -1,8 +1,14 @@
+import { useEffect, useRef } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import { AppWindow, Download, FileCode2, Minus, Plus } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+import {
+  buildSvgSectionCandidates,
+  detectSvgSectionHit,
+  measureSvgTextBoxesFromUrl
+} from '../features/viewer/svg-click-map';
 import type { SectionMapEntry, SectionMapResult } from '../features/viewer/typst-section-map';
 
 export type ViewerRenderer = ReturnType<typeof useViewerRenderer>;
@@ -62,7 +68,13 @@ export function PreviewPaneView({
           viewer={viewer}
         />
       ) : null}
-      <PreviewCanvas fileName={fileName} viewer={viewer} workspaceInset={!showHeader} onSectionClick={onSectionClick} />
+      <PreviewCanvas
+        fileName={fileName}
+        sections={sections}
+        viewer={viewer}
+        workspaceInset={!showHeader}
+        onSectionClick={onSectionClick}
+      />
     </div>
   );
 }
@@ -159,13 +171,60 @@ function detectClickedSection(
     : null;
 }
 
+async function refineClickedSectionFromSvg({
+  clickYRatio,
+  cvYaml,
+  fallbackHit,
+  pageUrl,
+  pageBoxesPromiseCache,
+  sectionCandidateCache
+}: {
+  clickYRatio: number;
+  cvYaml: string | undefined;
+  fallbackHit: SectionHit;
+  pageUrl: string;
+  pageBoxesPromiseCache: Map<string, Promise<Awaited<ReturnType<typeof measureSvgTextBoxesFromUrl>>>>;
+  sectionCandidateCache: Map<string, ReturnType<typeof buildSvgSectionCandidates>>;
+}): Promise<SectionHit | null> {
+  if (!cvYaml || fallbackHit.sectionKey === '__header__') {
+    return null;
+  }
+
+  let candidates = sectionCandidateCache.get(fallbackHit.sectionKey);
+  if (candidates === undefined) {
+    candidates = buildSvgSectionCandidates(cvYaml, fallbackHit.sectionKey);
+    sectionCandidateCache.set(fallbackHit.sectionKey, candidates);
+  }
+
+  if (!candidates) {
+    return null;
+  }
+
+  let pageBoxesPromise = pageBoxesPromiseCache.get(pageUrl);
+  if (!pageBoxesPromise) {
+    pageBoxesPromise = measureSvgTextBoxesFromUrl(pageUrl);
+    pageBoxesPromiseCache.set(pageUrl, pageBoxesPromise);
+  }
+
+  const pageBoxes = await pageBoxesPromise;
+  const svgHit = detectSvgSectionHit(pageBoxes, candidates, clickYRatio);
+  return svgHit
+    ? {
+        sectionKey: fallbackHit.sectionKey,
+        entryIndex: svgHit.entryIndex
+      }
+    : null;
+}
+
 function PreviewCanvas({
   fileName,
+  sections,
   viewer,
   workspaceInset,
   onSectionClick
 }: {
   fileName: string;
+  sections?: CvFileSections;
   viewer: ViewerRenderer;
   workspaceInset: boolean;
   onSectionClick?: (sectionKey: string, entryIndex: number) => void;
@@ -177,6 +236,16 @@ function PreviewCanvas({
   const { sectionMap } = viewer;
   const totalPages = viewer.svgPages.length;
   const hasClickHandler = onSectionClick && sectionMap.sections.length > 0;
+  const pageBoxesPromiseCache = useRef(new Map<string, Promise<Awaited<ReturnType<typeof measureSvgTextBoxesFromUrl>>>>());
+  const sectionCandidateCache = useRef(new Map<string, ReturnType<typeof buildSvgSectionCandidates>>());
+
+  useEffect(() => {
+    pageBoxesPromiseCache.current.clear();
+  }, [viewer.svgPages]);
+
+  useEffect(() => {
+    sectionCandidateCache.current.clear();
+  }, [sections?.cv]);
 
 
   return (
@@ -202,8 +271,23 @@ function PreviewCanvas({
                         // Don't navigate if the user was selecting text
                         const sel = window.getSelection();
                         if (sel && sel.toString().length > 0) return;
-                        const hit = detectClickedSection(event, sectionMap, pageIndex, totalPages);
-                        if (hit) onSectionClick(hit.sectionKey, hit.entryIndex);
+                        const clickYRatio =
+                          (event.clientY - event.currentTarget.getBoundingClientRect().top) /
+                          event.currentTarget.getBoundingClientRect().height;
+                        const fallbackHit = detectClickedSection(event, sectionMap, pageIndex, totalPages);
+                        if (!fallbackHit) return;
+
+                        void refineClickedSectionFromSvg({
+                          clickYRatio,
+                          cvYaml: sections?.cv,
+                          fallbackHit,
+                          pageUrl: page,
+                          pageBoxesPromiseCache: pageBoxesPromiseCache.current,
+                          sectionCandidateCache: sectionCandidateCache.current
+                        }).then((refinedHit) => {
+                          const hit = refinedHit ?? fallbackHit;
+                          onSectionClick(hit.sectionKey, hit.entryIndex);
+                        });
                       }
                     : undefined
                 }

@@ -17,6 +17,7 @@ import {
   prepareViewerSections,
   resolveViewerSections
 } from '../features/viewer/viewer-sections';
+import { buildYamlEntrySearchTerms } from '../features/viewer/svg-click-map';
 import { MonacoEditor } from './monaco-editor';
 import type { MonacoEditorHandle } from './monaco-editor';
 import { PreviewPaneView } from './preview-pane';
@@ -135,7 +136,14 @@ export function Workspace() {
           if (sectionKey === '__header__') {
             monacoRef.current?.revealText('name:');
           } else {
-            monacoRef.current?.revealText(`  ${sectionKey}:`);
+            const yamlSearchTerms =
+              entryIndex >= 0 && rawSections?.cv
+                ? buildYamlEntrySearchTerms(rawSections.cv, sectionKey, entryIndex)
+                : [];
+            const revealedEntry = yamlSearchTerms.some((term) => monacoRef.current?.revealText(term));
+            if (!revealedEntry) {
+              monacoRef.current?.revealText(`  ${sectionKey}:`);
+            }
           }
         } else {
           // Form mode: scroll to the specific entry or section heading
@@ -164,7 +172,7 @@ export function Workspace() {
         }
       });
     },
-    [preferences.activeSection, preferences.yamlEditor, mobileWorkspace]
+    [preferences.activeSection, preferences.yamlEditor, mobileWorkspace, rawSections?.cv]
   );
 
   // Keyboard shortcuts
