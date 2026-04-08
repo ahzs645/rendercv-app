@@ -121,7 +121,7 @@ export function SectionTabs({
 
         {showVariantControls ? (
           <div
-            className="-mx-1 flex items-center gap-0.5 overflow-x-auto px-1 sm:ml-3 sm:shrink-0 sm:px-0"
+            className="-mx-1 flex items-center gap-0.5 px-1 sm:ml-3 sm:shrink-0 sm:px-0"
             data-testid="variant-selector"
           >
             {null}
@@ -286,13 +286,13 @@ function VariantDropdown({
       {open ? (
         <div
           ref={menuRef}
-          className="absolute left-0 top-full z-50 mt-1 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          className="absolute right-0 top-full z-50 mt-1 min-w-[8rem] max-h-[min(300px,50vh)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
           role="menu"
         >
           {options.map((option) => (
             <button
               key={option}
-              className="relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-none select-none hover:bg-accent hover:text-accent-foreground"
+              className="relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap text-left outline-none select-none hover:bg-accent hover:text-accent-foreground"
               role="menuitem"
               type="button"
               onClick={() => {
