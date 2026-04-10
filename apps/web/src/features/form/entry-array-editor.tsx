@@ -74,11 +74,10 @@ export function EntryArrayEditor({
     useSensor(PointerSensor, { activationConstraint: { distance: 3 } })
   );
 
-  useEffect(() => {
-    if (itemIds.length !== entries.length) {
-      setItemIds(entries.map(() => nextIdRef.current++));
-    }
-  }, [entries.length]);
+  // Synchronously sync IDs when entries length changes (avoids a render with undefined keys)
+  if (itemIds.length !== entries.length) {
+    setItemIds(entries.map(() => nextIdRef.current++));
+  }
 
   function addEntry() {
     setItemIds(prev => [...prev, nextIdRef.current++]);

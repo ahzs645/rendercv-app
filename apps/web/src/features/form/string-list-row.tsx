@@ -141,12 +141,10 @@ export function StringListRow({
     useSensor(PointerSensor, { activationConstraint: { distance: 3 } })
   );
 
-  // Sync IDs when items length changes externally
-  useEffect(() => {
-    if (itemIds.length !== items.length) {
-      setItemIds(items.map(() => nextIdRef.current++));
-    }
-  }, [items.length]);
+  // Synchronously sync IDs when items length changes (avoids a render with undefined keys)
+  if (itemIds.length !== items.length) {
+    setItemIds(items.map(() => nextIdRef.current++));
+  }
 
   // Reset IDs when active flavor changes
   useEffect(() => {
