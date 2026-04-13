@@ -16,6 +16,7 @@ import {
   measureSvgTextBoxesFromUrl
 } from '../features/viewer/svg-click-map';
 import type { SectionMapEntry, SectionMapResult } from '../features/viewer/typst-section-map';
+import { formatRenderErrorMessage } from '../features/viewer/render-error-format';
 
 export type ViewerRenderer = ReturnType<typeof useViewerRenderer>;
 
@@ -417,7 +418,7 @@ function PreviewCanvas({
         ) : viewer.renderErrors.length > 0 ? (
           <div className="space-y-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
             {viewer.renderErrors.map((error, index) => (
-              <p key={`${error.message}-${index}`}>{error.message}</p>
+              <p key={`${error.message}-${index}`}>{formatRenderErrorMessage(error)}</p>
             ))}
           </div>
         ) : viewer.svgPages.length > 0 ? (

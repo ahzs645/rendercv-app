@@ -21,6 +21,24 @@ const SUPPORTED_SOCIAL_NETWORKS = new Set([
 const CUSTOM_CONNECTION_ICONS: Record<string, string> = {
   Facebook: 'facebook-f'
 };
+const TOP_LEVEL_SOCIAL_FIELD_MAP: Record<string, string> = {
+  linkedin: 'LinkedIn',
+  github: 'GitHub',
+  gitlab: 'GitLab',
+  instagram: 'Instagram',
+  orcid: 'ORCID',
+  mastodon: 'Mastodon',
+  stackoverflow: 'StackOverflow',
+  researchgate: 'ResearchGate',
+  youtube: 'YouTube',
+  telegram: 'Telegram',
+  whatsapp: 'WhatsApp',
+  x: 'X',
+  bluesky: 'Bluesky',
+  leetcode: 'Leetcode',
+  imdb: 'IMDB',
+  google_scholar: 'Google Scholar'
+};
 const POSITION_SPACING_SAME_MARKER = 'RCVSPACINGSAME:';
 const POSITION_SPACING_DIFF_MARKER = 'RCVSPACINGDIFF:';
 const ARCHIVED_TAG = 'archived';
@@ -86,6 +104,54 @@ function cleanMapping(mapping: UnknownRecord) {
   }
 
   return cleaned;
+}
+
+function asCustomConnections(cvData: UnknownRecord) {
+  return Array.isArray(cvData.custom_connections)
+    ? [...(cvData.custom_connections as unknown[]).filter(isRecord)]
+    : [];
+}
+
+function asSocialNetworks(cvData: UnknownRecord) {
+  return Array.isArray(cvData.social_networks)
+    ? [...(cvData.social_networks as unknown[]).filter(isRecord)]
+    : [];
+}
+
+function tryParseUrlLike(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const withProtocol = /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  try {
+    return new URL(withProtocol);
+  } catch {
+    return undefined;
+  }
+}
+
+function extractSocialUsername(value: unknown) {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const parsed = tryParseUrlLike(trimmed);
+  if (parsed) {
+    const segments = parsed.pathname
+      .split('/')
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+    const lastSegment = segments.at(-1);
+    if (lastSegment) {
+      return decodeURIComponent(lastSegment).replace(/^@/, '');
+    }
+  }
+
+  return trimmed.replace(/^@/, '');
 }
 
 function stringifyNumbers(value: unknown): unknown {
@@ -518,52 +584,106 @@ function normalizeSupervisoryActivities(
 }
 
 function normalizeSocialConnections(cvData: UnknownRecord) {
-  if (cvData.social_networks !== undefined) {
-    return;
-  }
+  const socialNetworks = asSocialNetworks(cvData);
+  const customConnections = asCustomConnections(cvData);
 
   const socialEntries = cvData.social;
-  if (!Array.isArray(socialEntries)) {
-    return;
+  if (Array.isArray(socialEntries)) {
+    delete cvData.social;
   }
 
-  delete cvData.social;
+  if (Array.isArray(socialEntries)) {
+    for (const entry of socialEntries) {
+      if (!isRecord(entry)) {
+        continue;
+      }
 
-  const socialNetworks: UnknownRecord[] = [];
-  const customConnections = Array.isArray(cvData.custom_connections)
-    ? [...(cvData.custom_connections as unknown[]).filter(isRecord)]
-    : [];
+      const network = entry.network;
+      const username = entry.username;
+      const url = entry.url;
 
-  for (const entry of socialEntries) {
-    if (!isRecord(entry)) {
+      if (typeof network === 'string' && SUPPORTED_SOCIAL_NETWORKS.has(network) && username) {
+        socialNetworks.push({
+          network,
+          username: String(username)
+        });
+        continue;
+      }
+
+      if (network && (username || url)) {
+        customConnections.push({
+          fontawesome_icon:
+            typeof network === 'string' ? (CUSTOM_CONNECTION_ICONS[network] ?? 'link') : 'link',
+          placeholder: String(username ?? network),
+          url
+        });
+      }
+    }
+  }
+
+  for (const [fieldName, network] of Object.entries(TOP_LEVEL_SOCIAL_FIELD_MAP)) {
+    const rawValue = cvData[fieldName];
+    if (rawValue == null || rawValue === '') {
       continue;
     }
 
-    const network = entry.network;
-    const username = entry.username;
-    const url = entry.url;
+    delete cvData[fieldName];
 
-    if (typeof network === 'string' && SUPPORTED_SOCIAL_NETWORKS.has(network) && username) {
-      socialNetworks.push({
-        network,
-        username: String(username)
-      });
+    const username = extractSocialUsername(rawValue);
+    if (!username) {
       continue;
     }
 
-    if (network && (username || url)) {
-      customConnections.push({
-        fontawesome_icon:
-          typeof network === 'string' ? (CUSTOM_CONNECTION_ICONS[network] ?? 'link') : 'link',
-        placeholder: String(username ?? network),
-        url
-      });
+    const alreadyPresent = socialNetworks.some(
+      (entry) => entry.network === network && String(entry.username ?? '') === username
+    );
+
+    if (!alreadyPresent) {
+      socialNetworks.push({ network, username });
     }
   }
 
   if (socialNetworks.length > 0) {
     cvData.social_networks = socialNetworks;
   }
+  if (customConnections.length > 0) {
+    cvData.custom_connections = customConnections;
+  }
+}
+
+function normalizeAddressConnection(cvData: UnknownRecord) {
+  const rawAddress = cvData.address;
+  if (rawAddress == null || rawAddress === '') {
+    return;
+  }
+
+  delete cvData.address;
+
+  const address = String(rawAddress).trim();
+  if (!address) {
+    return;
+  }
+
+  if (typeof cvData.location !== 'string' || !cvData.location.trim()) {
+    cvData.location = address;
+    return;
+  }
+
+  const customConnections = asCustomConnections(cvData);
+  const alreadyPresent = customConnections.some(
+    (entry) =>
+      String(entry.fontawesome_icon ?? '') === 'location-dot' &&
+      String(entry.placeholder ?? '') === address
+  );
+
+  if (!alreadyPresent) {
+    customConnections.push({
+      fontawesome_icon: 'location-dot',
+      placeholder: address,
+      url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+    });
+  }
+
   if (customConnections.length > 0) {
     cvData.custom_connections = customConnections;
   }
@@ -962,6 +1082,7 @@ export function normalizeCompatibilityCvYaml(
   }
 
   normalizeSocialConnections(cvData);
+  normalizeAddressConnection(cvData);
 
   const variantActive = Boolean(options?.variant);
   const selectedTags = normalizeStringList(options?.variant?.tags);

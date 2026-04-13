@@ -2,6 +2,7 @@
 
 from dataclasses import asdict
 from io import StringIO
+from urllib.parse import quote, urlparse
 
 from ruamel.yaml import YAML
 
@@ -38,6 +39,24 @@ SUPPORTED_SOCIAL_NETWORKS = {
 }
 CUSTOM_CONNECTION_ICONS = {
     "Facebook": "facebook-f",
+}
+TOP_LEVEL_SOCIAL_FIELD_MAP = {
+    "linkedin": "LinkedIn",
+    "github": "GitHub",
+    "gitlab": "GitLab",
+    "instagram": "Instagram",
+    "orcid": "ORCID",
+    "mastodon": "Mastodon",
+    "stackoverflow": "StackOverflow",
+    "researchgate": "ResearchGate",
+    "youtube": "YouTube",
+    "telegram": "Telegram",
+    "whatsapp": "WhatsApp",
+    "x": "X",
+    "bluesky": "Bluesky",
+    "leetcode": "Leetcode",
+    "imdb": "IMDB",
+    "google_scholar": "Google Scholar",
 }
 POSITION_SPACING_SAME_MARKER = "RCVSPACINGSAME:"
 POSITION_SPACING_DIFF_MARKER = "RCVSPACINGDIFF:"
@@ -372,39 +391,113 @@ def normalize_supervisory_activities(entries):
 
 
 def normalize_social_connections(cv_data):
-    if not isinstance(cv_data, dict) or cv_data.get("social_networks") is not None:
+    if not isinstance(cv_data, dict):
         return
 
     social_entries = cv_data.pop("social", None)
-    if not isinstance(social_entries, list):
-        return
-
-    social_networks = []
+    social_networks = list(cv_data.get("social_networks") or [])
     custom_connections = list(cv_data.get("custom_connections") or [])
 
-    for entry in social_entries:
-        if not isinstance(entry, dict):
+    if isinstance(social_entries, list):
+        for entry in social_entries:
+            if not isinstance(entry, dict):
+                continue
+
+            network = entry.get("network")
+            username = entry.get("username")
+            url = entry.get("url")
+
+            if network in SUPPORTED_SOCIAL_NETWORKS and username:
+                social_networks.append({"network": network, "username": username})
+                continue
+
+            if network and (username or url):
+                custom_connections.append(
+                    {
+                        "fontawesome_icon": CUSTOM_CONNECTION_ICONS.get(network, "link"),
+                        "placeholder": username or network,
+                        "url": url,
+                    }
+                )
+
+    for field_name, network in TOP_LEVEL_SOCIAL_FIELD_MAP.items():
+        raw_value = cv_data.pop(field_name, None)
+        if raw_value in (None, ""):
             continue
 
-        network = entry.get("network")
-        username = entry.get("username")
-        url = entry.get("url")
+        username = extract_social_username(raw_value)
+        if not username:
+            continue
 
-        if network in SUPPORTED_SOCIAL_NETWORKS and username:
+        already_present = any(
+            isinstance(entry, dict)
+            and entry.get("network") == network
+            and str(entry.get("username", "")) == username
+            for entry in social_networks
+        )
+        if not already_present:
             social_networks.append({"network": network, "username": username})
-            continue
-
-        if network and (username or url):
-            custom_connections.append(
-                {
-                    "fontawesome_icon": CUSTOM_CONNECTION_ICONS.get(network, "link"),
-                    "placeholder": username or network,
-                    "url": url,
-                }
-            )
 
     if social_networks:
         cv_data["social_networks"] = social_networks
+    if custom_connections:
+        cv_data["custom_connections"] = custom_connections
+
+
+def extract_social_username(value):
+    trimmed = str(value).strip()
+    if not trimmed:
+        return None
+
+    parsed = try_parse_url_like(trimmed)
+    if parsed is not None:
+        segments = [segment.strip() for segment in parsed.path.split("/") if segment.strip()]
+        if segments:
+            return segments[-1].lstrip("@")
+
+    return trimmed.lstrip("@")
+
+
+def try_parse_url_like(value):
+    normalized = value if "://" in value else f"https://{value}"
+    try:
+        return urlparse(normalized)
+    except Exception:
+        return None
+
+
+def normalize_address_connection(cv_data):
+    if not isinstance(cv_data, dict):
+        return
+
+    raw_address = cv_data.pop("address", None)
+    if raw_address in (None, ""):
+        return
+
+    address = str(raw_address).strip()
+    if not address:
+        return
+
+    location = cv_data.get("location")
+    if not isinstance(location, str) or not location.strip():
+        cv_data["location"] = address
+        return
+
+    custom_connections = list(cv_data.get("custom_connections") or [])
+    already_present = any(
+        isinstance(entry, dict)
+        and entry.get("fontawesome_icon") == "location-dot"
+        and str(entry.get("placeholder", "")) == address
+        for entry in custom_connections
+    )
+    if not already_present:
+        custom_connections.append(
+            {
+                "fontawesome_icon": "location-dot",
+                "placeholder": address,
+                "url": f"https://www.google.com/maps/search/?api=1&query={quote(address)}",
+            }
+        )
     if custom_connections:
         cv_data["custom_connections"] = custom_connections
 
@@ -439,6 +532,7 @@ def normalize_cv_yaml(yaml_text):
         return yaml_text
 
     normalize_social_connections(cv_data)
+    normalize_address_connection(cv_data)
 
     sections = cv_data.get("sections")
     if isinstance(sections, dict):

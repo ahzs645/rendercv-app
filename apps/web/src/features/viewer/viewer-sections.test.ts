@@ -148,4 +148,29 @@ describe('prepareViewerSections', () => {
     expect(sections.cv).toContain('position: Student Research Assistant | November 2020 – September 2022');
     expect(sections.cv).not.toContain('RCVSPACINGDIFF:Student Research Assistant');
   });
+
+  it('normalizes common top-level aliases like linkedin and address', () => {
+    const sections = prepareViewerSections({
+      cv: `cv:
+  name: Amir Etminanrad
+  location: Prince George, BC
+  linkedin: linkedin.com/in/amiretminanrad
+  address: 3333 University Way, Prince George, BC
+`,
+      design: `design:
+  theme: classic
+`,
+      locale: '',
+      settings: ''
+    });
+
+    expect(sections.cv).not.toContain('linkedin:');
+    expect(sections.cv).not.toContain('address:');
+    expect(sections.cv).toContain('social_networks:');
+    expect(sections.cv).toContain('network: LinkedIn');
+    expect(sections.cv).toContain('username: amiretminanrad');
+    expect(sections.cv).toContain('custom_connections:');
+    expect(sections.cv).toContain('fontawesome_icon: location-dot');
+    expect(sections.cv).toContain('placeholder: 3333 University Way, Prince George, BC');
+  });
 });

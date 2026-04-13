@@ -5,6 +5,7 @@ import YAML from 'yaml';
 import { defaultDesigns, fileStore } from '@rendercv/core';
 import type { CvFileSections } from '@rendercv/contracts';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
+import { summarizeRenderErrors } from '../features/viewer/render-error-format';
 
 const MAX_YAML_SIZE = 1024 * 1024;
 
@@ -116,12 +117,7 @@ export function YamlImportButton({
         const errors = await validateYamlImport(importedSections);
         if (errors.length > 0) {
           if (!isCompatibilityYaml) {
-            const firstError = errors[0]?.message?.trim();
-            toast.error(
-              firstError
-                ? `This file is not valid RenderCV YAML. ${firstError}`
-                : 'This file is not valid RenderCV YAML.'
-            );
+            toast.error(summarizeRenderErrors(errors));
             return;
           }
         }
