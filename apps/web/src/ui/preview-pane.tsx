@@ -467,12 +467,54 @@ function PreviewCanvas({
             ))}
           </div>
         ) : (
-          <div className={`mx-auto flex aspect-[8.5/11] max-w-3xl items-center justify-center rounded-sm shadow-2xl ${invertPreview ? 'bg-background' : 'bg-white'}`}>
-            <p className="text-sm text-muted-foreground">
-              {viewer.isInitializing ? 'Initializing render pipeline…' : 'Rendering preview…'}
-            </p>
-          </div>
+          <PreviewLoadingSkeleton
+            invertPreview={invertPreview}
+            message={viewer.isInitializing ? 'Preparing preview engine…' : 'Updating preview…'}
+          />
         )}
+      </div>
+    </div>
+  );
+}
+
+function PreviewLoadingSkeleton({
+  invertPreview,
+  message
+}: {
+  invertPreview: boolean;
+  message: string;
+}) {
+  return (
+    <div
+      className={`mx-auto flex aspect-[8.5/11] max-w-3xl flex-col rounded-sm shadow-2xl ${
+        invertPreview ? 'bg-background' : 'bg-white'
+      }`}
+      aria-live="polite"
+    >
+      <div className="flex flex-1 flex-col gap-8 p-6 sm:p-10">
+        <div className="space-y-3 animate-pulse">
+          <div className="h-8 w-2/5 rounded-full bg-muted/70" />
+          <div className="h-3 w-3/5 rounded-full bg-muted/50" />
+          <div className="h-3 w-1/2 rounded-full bg-muted/40" />
+        </div>
+        <div className="space-y-6 animate-pulse">
+          {[0, 1, 2].map((section) => (
+            <div key={section} className="space-y-3">
+              <div className="h-4 w-1/3 rounded-full bg-muted/60" />
+              <div className="space-y-2">
+                {[0, 1, 2].map((row) => (
+                  <div key={row} className="h-3 rounded-full bg-muted/35" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="border-t border-border/40 px-6 py-4 sm:px-10">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex size-2.5 rounded-full bg-primary animate-pulse" />
+          <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
       </div>
     </div>
   );
@@ -538,7 +580,7 @@ function PreviewPaneHeader({
         ) : null}
         {resolvedControls.downloadTypst ? (
           <PreviewButton
-            label="Download Typst"
+            label="Export source (.typ)"
             onClick={async () => {
               if (!sections) return;
               const typst = await viewer.renderToTypst(sections);

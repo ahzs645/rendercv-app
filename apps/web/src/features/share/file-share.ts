@@ -6,8 +6,8 @@ const RENDERCV_FILE_EXTENSION = '.rendercv.json';
 const MAX_IMPORT_SIZE = 2 * 1024 * 1024; // 2 MB
 
 /**
- * Download the share payload as a `.rendercv.json` file.
- * This always includes origin when available — no URL length limits.
+ * Back up the current resume as a `.rendercv.json` file.
+ * This always includes review origin data when available, so there are no URL length limits.
  */
 export async function exportShareFile(payload: EncodedSharePayload) {
   const json = JSON.stringify(payload, null, 2);
@@ -16,13 +16,13 @@ export async function exportShareFile(payload: EncodedSharePayload) {
 }
 
 /**
- * Prompt the user for a `.rendercv.json` file and parse it.
+ * Prompt the user for a `.rendercv.json` backup file and parse it.
  */
 export function importShareFile(): Promise<EncodedSharePayload | null> {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.rendercv.json,.json';
 
     input.addEventListener('change', () => {
       const file = input.files?.[0];

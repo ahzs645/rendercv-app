@@ -71,7 +71,7 @@ export function PreviewPage() {
             <Download className="size-4" />
           </ToolbarButton>
           <ToolbarButton
-            label="Download Typst"
+            label="Export source (.typ)"
             onClick={async () => {
               if (!sections) return;
               const typst = await viewer.renderToTypst(sections);

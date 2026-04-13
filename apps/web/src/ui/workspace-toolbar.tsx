@@ -93,7 +93,7 @@ export function WorkspaceToolbar({
       await navigator.clipboard.writeText(result.url);
 
       if (result.originDropped) {
-        toast.warning('Share link copied, but change history was omitted because the resume is too large for a URL. Use "Export JSON" to share with full change tracking.', { duration: 6000 });
+        toast.warning('Share link copied, but tracked changes were omitted because the resume is too large for a URL. Use "Backup file" to keep the full review history.', { duration: 6000 });
       } else if (selectedFile.sharedOrigin) {
         toast.success('Share link with changes copied.');
       } else {
@@ -191,7 +191,7 @@ export function WorkspaceToolbar({
         sections,
         origin: selectedFile.sharedOrigin
       });
-      toast.success('Exported .rendercv.json file.');
+      toast.success('Backup file downloaded.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to export file.');
     }
@@ -218,7 +218,7 @@ export function WorkspaceToolbar({
         sharedOrigin: payload.origin ?? payload.sections
       });
 
-      toast.success(`Imported "${fileName}" — your edits will be tracked.`);
+      toast.success(`Imported "${fileName}" as a review copy with tracked changes.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to import file.');
     }
@@ -822,11 +822,11 @@ function DownloadShareDialog({
           <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold text-foreground">
-                Download &amp; share
+                Share, export, and backup
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                Save {fileName ?? 'this resume'} as rendered output, generate share links, or move
-                it between workspaces with RenderCV JSON.
+                Export a finished file, copy a share link, or back up {fileName ?? 'this resume'}
+                for review and transfer.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -843,68 +843,68 @@ function DownloadShareDialog({
           <div className="max-h-[calc(85vh-5.5rem)] overflow-auto px-6 py-5">
             <div className="grid gap-4 xl:grid-cols-3">
               <DialogActionSection
-                description="Rendered files for sending or editing outside the app."
-                title="Downloads"
+                description="Finished files you can send or keep outside the app."
+                title="Export files"
               >
                 <DialogActionButton
-                  description="Export the current preview as a PDF file."
+                  description="Save the current resume as a polished PDF."
                   disabled={!canPreviewActions}
                   icon={<Download className="size-4" />}
                   onClick={onDownloadPdf}
-                  title="Download PDF"
+                  title="Export PDF"
                 />
                 <DialogActionButton
-                  description="Save the generated Typst source for further edits."
+                  description="Save the underlying source file for advanced editing workflows."
                   disabled={!canPreviewActions}
                   icon={<FileCode2 className="size-4" />}
                   onClick={onDownloadTypst}
-                  title="Download Typst"
+                  title="Export source (.typ)"
                 />
               </DialogActionSection>
 
               <DialogActionSection
-                description="Quick sharing actions for collaborators and devices."
-                title="Sharing"
+                description="Links and quick-send actions for collaborators or other devices."
+                title="Share links"
               >
                 <DialogActionButton
-                  description="Open the native share sheet with the rendered PDF when available."
+                  description="Open your device share sheet with the rendered PDF when available."
                   disabled={!canPreviewActions}
                   icon={<Share2 className="size-4" />}
                   onClick={onSharePdf}
-                  title="Share PDF"
+                  title="Send PDF"
                 />
                 <DialogActionButton
-                  description="Copy a link that opens this resume in the app."
+                  description="Copy a link that opens this resume in RenderCV."
                   disabled={!canLinkActions}
                   icon={<Copy className="size-4" />}
                   onClick={onCopyShareLink}
                   title="Copy share link"
                 />
                 <DialogActionButton
-                  description="Copy a direct PDF download link for this resume."
+                  description="Copy a direct link that downloads the PDF version."
                   disabled={!canLinkActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onCopyPdfLink}
-                  title="Copy PDF link"
+                  title="Copy PDF download link"
                 />
               </DialogActionSection>
 
               <DialogActionSection
-                description="Move resumes in and out with RenderCV-specific JSON files."
-                title="RenderCV JSON"
+                description="Move a resume between workspaces or keep a review copy with tracked changes."
+                title="Backup & review"
               >
                 <DialogActionButton
-                  description="Export a .rendercv.json file with the current resume data."
+                  description="Download a backup file that keeps the current resume data and review history."
                   disabled={!canLinkActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onExportJson}
-                  title="Export .rendercv.json"
+                  title="Backup file"
                 />
                 <DialogActionButton
-                  description="Import a .rendercv.json file into this workspace."
+                  description="Import a backup file into this workspace as a tracked review copy."
                   icon={<FileUp className="size-4" />}
                   onClick={onImportJson}
-                  title="Import .rendercv.json"
+                  title="Import review copy"
                 />
               </DialogActionSection>
             </div>

@@ -17,7 +17,7 @@
 
 @media (min-width: 768px) {
   .form-item-control {
-    opacity: 0;
+    opacity: 0.6;
   }
 
   .form-item-wrapper:hover > .form-item-control,

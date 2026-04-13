@@ -130,10 +130,10 @@ function SectionMapEditor({
       ))}
       <button
         type="button"
-        className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border/60 py-2.5 text-xs text-muted-foreground/70 transition-colors hover:border-border hover:text-foreground"
+        className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border/60 px-3 py-3 text-sm text-muted-foreground/80 transition-colors hover:border-border hover:text-foreground sm:min-h-0 sm:gap-1.5 sm:py-2.5 sm:text-xs sm:text-muted-foreground/70"
         onClick={addSection}
       >
-        <Plus className="size-3.5" />
+        <Plus className="size-4 sm:size-3.5" />
         Add New Section
       </button>
       <div className="h-[20vh]" />
@@ -184,27 +184,27 @@ function SectionEditor({
 
   return (
     <article className="form-section" data-section-key={sectionKey}>
-      <div className="group/section relative -mx-7 mt-3 mb-1 flex items-center px-7">
-        <div className="absolute top-1/2 left-1 flex -translate-y-1/2 flex-col opacity-100 transition-opacity md:opacity-0 md:group-hover/section:opacity-100">
+      <div className="group/section relative -mx-7 mt-3 mb-2 flex min-h-11 items-center px-7">
+        <div className="absolute top-1/2 left-0 flex -translate-y-1/2 flex-col opacity-90 transition-opacity sm:left-1 md:opacity-60 md:group-hover/section:opacity-100">
           <button
             type="button"
             aria-label="Move section up"
-            className={`flex size-4 items-center justify-center text-muted-foreground/50 hover:text-foreground ${index === 0 ? 'invisible' : ''}`}
+            className={`flex size-8 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:size-5 sm:rounded-none sm:hover:bg-transparent ${index === 0 ? 'invisible' : ''}`}
             onClick={() => onMove(-1)}
           >
-            <ArrowUp className="size-3" />
+            <ArrowUp className="size-4 sm:size-3" />
           </button>
           <button
             type="button"
             aria-label="Move section down"
-            className={`flex size-4 items-center justify-center text-muted-foreground/50 hover:text-foreground ${index === total - 1 ? 'invisible' : ''}`}
+            className={`flex size-8 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:size-5 sm:rounded-none sm:hover:bg-transparent ${index === total - 1 ? 'invisible' : ''}`}
             onClick={() => onMove(1)}
           >
-            <ArrowDown className="size-3" />
+            <ArrowDown className="size-4 sm:size-3" />
           </button>
         </div>
         <input
-          className="flex-1 border-b border-muted-foreground/40 bg-transparent font-semibold text-foreground/80 outline-none"
+          className="flex-1 border-b border-muted-foreground/40 bg-transparent py-2 text-base font-semibold text-foreground/80 outline-none sm:py-0 sm:text-[15px]"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           onBlur={() => onRename(sectionKey, title)}
@@ -217,11 +217,11 @@ function SectionEditor({
         />
         <button
           type="button"
-          className="absolute top-1/2 right-1 flex size-5 -translate-y-1/2 items-center justify-center text-muted-foreground/50 opacity-100 transition-opacity hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 md:opacity-0 md:group-hover/section:opacity-100"
+          className="absolute top-1/2 right-0 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground/70 opacity-90 transition-opacity hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 sm:right-1 sm:size-6 sm:rounded-none sm:hover:bg-transparent md:opacity-60 md:group-hover/section:opacity-100"
           aria-label="Delete section"
           onClick={onDelete}
         >
-          <X className="size-3" />
+          <X className="size-4 sm:size-3" />
         </button>
       </div>
       {isEmpty ? (
@@ -251,7 +251,7 @@ function EntryTypeChooser({ onChoose }: { onChoose: (entryType: string) => void 
           <button
             key={option.value}
             type="button"
-            className="rounded border border-border/60 px-2 py-1 text-xs text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
+            className="min-h-10 rounded-md border border-border/60 px-3 py-2 text-sm text-muted-foreground/80 transition-colors hover:bg-accent hover:text-foreground sm:min-h-0 sm:rounded sm:px-2 sm:py-1 sm:text-xs sm:text-muted-foreground/70"
             onClick={() => onChoose(option.value)}
           >
             {option.label}

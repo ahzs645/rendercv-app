@@ -100,7 +100,7 @@ export function EncodedSharePage() {
       sharedOrigin: payload.origin ?? payload.sections
     });
 
-    toast.success(`Imported as "${fileName}" — your edits will be tracked.`);
+    toast.success(`Imported "${fileName}" as a review copy with tracked changes.`);
     navigate('/');
   }
 
@@ -132,8 +132,15 @@ export function EncodedSharePage() {
       ) : (
         <>
           {/* Action bar */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-2 sm:px-6 sm:py-3">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-2">
+              {showDiffToggle ? (
+                <p className="text-sm text-muted-foreground">
+                  This shared resume includes tracked changes from the original. Import it as a
+                  review copy to keep the diff.
+                </p>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-3">
               {showDiffToggle ? (
                 <div className="inline-flex items-center rounded-xl border border-border bg-background p-1">
                   <button
@@ -201,20 +208,21 @@ export function EncodedSharePage() {
                 </div>
               ) : null}
             </div>
+            </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
                   if (!payload) return;
-                  void exportShareFile(payload).then(() => toast.success('Exported .rendercv.json file.'));
+                  void exportShareFile(payload).then(() => toast.success('Backup file downloaded.'));
                 }}
                 disabled={!payload}
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
-                title="Download as .rendercv.json"
+                title="Download a review backup file"
               >
                 <Download className="size-3.5" />
-                Export
+                Backup file
               </button>
               <button
                 type="button"
@@ -223,7 +231,7 @@ export function EncodedSharePage() {
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-40"
               >
                 <Pencil className="size-3.5" />
-                Edit in Workspace
+                Import review copy
               </button>
             </div>
           </div>

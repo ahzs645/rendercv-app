@@ -137,11 +137,11 @@ export function EntryArrayEditor({
               </span>
               <div className="flex flex-1 items-center justify-end gap-3">
                 <button
-                  className="flex items-center gap-0.5 text-[11px] text-muted-foreground/70 hover:text-foreground"
+                  className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:min-h-0 sm:px-0 sm:text-[11px]"
                   onClick={addEntry}
                   type="button"
                 >
-                  <Plus className="size-3" />
+                  <Plus className="size-3.5" />
                   Add
                 </button>
               </div>
@@ -168,10 +168,10 @@ export function EntryArrayEditor({
           </DndContext>
           <button
             type="button"
-            className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground/50 transition-colors hover:text-foreground"
+            className="mt-2 inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground sm:mt-1.5 sm:min-h-0 sm:px-0 sm:text-xs"
             onClick={addEntry}
           >
-            <Plus className="size-3" />
+            <Plus className="size-3.5" />
             {addLabel ?? `Add ${entryAddLabel(template)}`}
           </button>
         </div>
@@ -227,19 +227,19 @@ function SortableEntryArrayItem({
         <div
           ref={setActivatorNodeRef}
           {...listeners}
-          className="form-item-control absolute top-1/2 left-1 -translate-y-1/2 cursor-grab touch-none text-muted-foreground/40 active:cursor-grabbing"
+          className="form-item-control absolute top-1/2 left-0 flex size-9 -translate-y-1/2 items-center justify-center rounded-md cursor-grab touch-none text-muted-foreground/60 active:cursor-grabbing sm:left-1 sm:size-6 sm:rounded-none sm:text-muted-foreground/40"
         >
-          <GripVertical className="size-3.5" />
+          <GripVertical className="size-4 sm:size-3.5" />
         </div>
         <button
           type="button"
-          className="form-item-control absolute top-1/2 right-3 flex size-5 -translate-y-1/2 items-center justify-center text-muted-foreground/50 hover:text-destructive"
+          className="form-item-control absolute top-1/2 right-0 flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:right-3 sm:size-6 sm:rounded-none sm:hover:bg-transparent"
           onClick={() => onRemove(index)}
           aria-label="Remove"
         >
-          <X className="size-3" />
+          <X className="size-4 sm:size-3" />
         </button>
-        <div className="pr-5">
+        <div className="pr-10 sm:pr-7">
           {template === 'text' ? (
             <TextRow
               value={typeof entry === 'string' ? entry : ''}
@@ -577,34 +577,34 @@ function PositionItem({
       className="relative border-b border-border/25 last:border-b-0"
       style={{ '--label-width': labelWidth } as CSSProperties}
     >
-      <div className="form-item-control absolute top-1.5 right-0 flex items-center gap-0.5">
+      <div className="form-item-control absolute top-2 right-0 flex items-center gap-1">
         {index > 0 && (
           <button
             type="button"
-            className="flex size-4 items-center justify-center text-muted-foreground/40 hover:text-foreground"
+            className="flex size-8 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground sm:size-5 sm:rounded sm:text-muted-foreground/40 sm:hover:bg-transparent"
             onClick={() => onMove(-1)}
             aria-label="Move position up"
           >
-            <ArrowUp className="size-2.5" />
+            <ArrowUp className="size-3.5 sm:size-2.5" />
           </button>
         )}
         {index < total - 1 && (
           <button
             type="button"
-            className="flex size-4 items-center justify-center text-muted-foreground/40 hover:text-foreground"
+            className="flex size-8 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground sm:size-5 sm:rounded sm:text-muted-foreground/40 sm:hover:bg-transparent"
             onClick={() => onMove(1)}
             aria-label="Move position down"
           >
-            <ArrowDown className="size-2.5" />
+            <ArrowDown className="size-3.5 sm:size-2.5" />
           </button>
         )}
         <button
           type="button"
-          className="flex size-4 items-center justify-center text-muted-foreground/40 hover:text-destructive"
+          className="flex size-8 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-5 sm:rounded sm:text-muted-foreground/40 sm:hover:bg-transparent"
           onClick={onRemove}
           aria-label="Remove position"
         >
-          <X className="size-2.5" />
+          <X className="size-3.5 sm:size-2.5" />
         </button>
       </div>
       <div className="-ml-0.5 grid grid-cols-[auto_1fr] items-start gap-x-1">
@@ -613,7 +613,7 @@ function PositionItem({
             className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${expanded ? 'rotate-90' : ''}`}
           />
         </button>
-        <div className="col-start-2 row-start-1 pr-14">
+        <div className="col-start-2 row-start-1 pr-16 sm:pr-14">
           <FieldControl
             field={firstField}
             value={getNestedValue(position, firstField.path)}

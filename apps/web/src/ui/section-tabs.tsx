@@ -100,11 +100,11 @@ export function SectionTabs({
     <div className="shrink-0 border-b border-border px-3 pt-2 sm:px-2 sm:pt-1">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:flex-1 sm:px-0">
-          <div className="inline-flex h-9 min-w-max items-center justify-center rounded-lg bg-transparent p-[3px] text-muted-foreground">
+          <div className="inline-flex min-h-11 min-w-max items-center justify-center rounded-lg bg-transparent p-[3px] text-muted-foreground sm:h-9 sm:min-h-0">
           {TAB_ORDER.map((section) => (
             <button
               key={section}
-              className={`inline-flex h-[calc(100%-1px)] items-center justify-center rounded-md border px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none ${
+              className={`inline-flex min-h-10 items-center justify-center rounded-md border px-3 py-2 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none sm:h-[calc(100%-1px)] sm:min-h-0 sm:px-2 sm:py-1 ${
                 active === section
                   ? 'border-border/60 bg-background text-foreground shadow-sm'
                   : 'border-transparent text-foreground hover:bg-muted hover:text-foreground'
@@ -121,7 +121,7 @@ export function SectionTabs({
 
         {showVariantControls ? (
           <div
-            className="-mx-1 flex items-center gap-0.5 px-1 sm:ml-3 sm:shrink-0 sm:px-0"
+            className="-mx-1 flex flex-wrap items-center gap-1 px-1 sm:ml-3 sm:shrink-0 sm:flex-nowrap sm:gap-0.5 sm:px-0"
             data-testid="variant-selector"
           >
             {null}
@@ -161,12 +161,12 @@ export function SectionTabs({
                 />
                 <button
                   aria-label="Import variants YAML"
-                  className="inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 sm:h-6 sm:min-h-0 sm:gap-1 sm:px-2 sm:text-xs"
                   disabled={isImportingVariants}
                   onClick={() => variantsInputRef.current?.click()}
                   type="button"
                 >
-                  <Upload className="size-3.5" />
+                  <Upload className="size-4 sm:size-3.5" />
                   {isImportingVariants ? 'Importing…' : 'Import variants'}
                 </button>
               </>
@@ -175,7 +175,7 @@ export function SectionTabs({
               <>
                 <button
                   aria-label={`Previous ${variant.label.toLowerCase()}`}
-                  className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 sm:size-6"
                   disabled={!canCycle}
                   onClick={() => {
                     if (!canCycle || currentIndex <= 0) {
@@ -186,7 +186,7 @@ export function SectionTabs({
                   }}
                   type="button"
                 >
-                  <ChevronLeft className="size-3.5" />
+                  <ChevronLeft className="size-4 sm:size-3.5" />
                 </button>
                 <VariantDropdown
                   label={variant.label}
@@ -197,7 +197,7 @@ export function SectionTabs({
                 />
                 <button
                   aria-label={`Next ${variant.label.toLowerCase()}`}
-                  className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 sm:size-6"
                   disabled={!canCycle}
                   onClick={() => {
                     if (!canCycle || currentIndex >= variant.options.length - 1) {
@@ -208,7 +208,7 @@ export function SectionTabs({
                   }}
                   type="button"
                 >
-                  <ChevronRight className="size-3.5" />
+                  <ChevronRight className="size-4 sm:size-3.5" />
                 </button>
               </>
             ) : null}
@@ -267,7 +267,7 @@ function VariantDropdown({
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+        className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground sm:h-6 sm:min-h-0 sm:gap-1 sm:px-2 sm:text-xs"
         onClick={() => setOpen((prev) => !prev)}
         type="button"
       >
@@ -281,7 +281,7 @@ function VariantDropdown({
             </span>
           ))}
         </span>
-        <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+        <ChevronDown className="size-3.5 shrink-0 text-muted-foreground sm:size-3" />
       </button>
       {open ? (
         <div
@@ -292,7 +292,7 @@ function VariantDropdown({
           {options.map((option) => (
             <button
               key={option}
-              className="relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-xs whitespace-nowrap text-left outline-none select-none hover:bg-accent hover:text-accent-foreground"
+              className="relative flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2.5 text-sm whitespace-nowrap text-left outline-none select-none hover:bg-accent hover:text-accent-foreground sm:rounded-sm sm:px-2 sm:py-1.5 sm:text-xs"
               role="menuitem"
               type="button"
               onClick={() => {

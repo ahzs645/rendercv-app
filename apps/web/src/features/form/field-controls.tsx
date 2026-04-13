@@ -44,6 +44,10 @@ const FONT_OPTIONS = [
   'XCharter'
 ];
 
+const STACKED_ROW_CLASSNAME = 'flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:gap-0 sm:py-1.5';
+const STACKED_LABEL_CLASSNAME =
+  'w-full shrink-0 text-xs text-muted-foreground sm:w-[var(--label-width,8rem)]';
+
 export function FieldControl({
   field,
   value,
@@ -209,23 +213,23 @@ function ToggleButtonsRow({
   square?: boolean;
 }) {
   return (
-    <div className="flex items-center py-1.5">
-      <span className="shrink-0 text-xs text-muted-foreground" style={{ width: 'var(--label-width, 8rem)' }}>
+    <div className={STACKED_ROW_CLASSNAME}>
+      <span className={STACKED_LABEL_CLASSNAME}>
         {label}
       </span>
-      <div className="flex flex-wrap gap-0.5">
+      <div className="flex flex-wrap gap-1 sm:gap-0.5">
         {options.map((option) => {
           const Icon = option.icon;
           return (
             <button
               key={option.value}
               type="button"
-              className={`flex h-6 items-center rounded transition-colors ${
+              className={`inline-flex min-h-11 items-center rounded-md transition-colors sm:min-h-0 sm:rounded ${
                 square
-                  ? 'w-6 justify-center text-xs'
+                  ? 'w-11 justify-center text-sm sm:h-6 sm:w-6 sm:text-xs'
                   : Icon
-                    ? 'gap-1 px-1.5 text-[10px]'
-                    : 'px-2 text-[11px]'
+                    ? 'gap-1.5 px-3 text-xs sm:h-6 sm:gap-1 sm:px-1.5 sm:text-[10px]'
+                    : 'px-3 text-xs sm:h-6 sm:px-2 sm:text-[11px]'
               } ${
                 value === option.value
                   ? 'bg-primary/10 text-primary'
@@ -262,8 +266,8 @@ function CollapsibleChoiceRow({
   }, [value]);
 
   return (
-    <div className="flex items-center py-1.5">
-      <span className="shrink-0 text-xs text-muted-foreground" style={{ width: 'var(--label-width, 8rem)' }}>
+    <div className={STACKED_ROW_CLASSNAME}>
+      <span className={STACKED_LABEL_CLASSNAME}>
         {label}
       </span>
       <div className="min-w-0 flex-1">
@@ -275,12 +279,12 @@ function CollapsibleChoiceRow({
                 key={option.value}
                 type="button"
                 data-value={option.value}
-                className={`flex h-6 items-center whitespace-nowrap transition-[color,background-color,opacity,border-radius,font-size,padding] duration-[100ms] ${
+                className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-md transition-[color,background-color,opacity,border-radius,font-size,padding] duration-[100ms] sm:min-h-0 ${
                   !expanded && value === option.value && value
-                    ? 'cursor-pointer rounded-none bg-transparent px-0 text-sm text-foreground hover:text-primary'
+                    ? 'cursor-pointer bg-transparent px-0 text-sm text-foreground hover:text-primary sm:rounded-none'
                     : value === option.value
-                      ? 'rounded bg-primary/10 px-2 text-[11px] text-primary'
-                      : 'rounded px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'bg-primary/10 px-3 text-xs text-primary sm:px-2 sm:text-[11px]'
+                      : 'px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2 sm:text-[11px]'
                 }`}
                 onClick={() => {
                   if (!expanded) {
@@ -330,18 +334,18 @@ function DimensionRow({
   }
 
   return (
-    <div className="flex items-center gap-1 py-1.5">
-      <span className="shrink-0 text-xs text-muted-foreground" style={{ width: 'var(--label-width, 8rem)' }}>
+    <div className={`${STACKED_ROW_CLASSNAME} sm:gap-1`}>
+      <span className={STACKED_LABEL_CLASSNAME}>
         {label}
       </span>
-      <div className="relative flex">
+      <div className="relative flex min-h-11 items-center sm:min-h-0">
         <span className="invisible absolute text-sm whitespace-pre" aria-hidden="true">
           {num || '0'}
         </span>
         <input
           type="number"
           step="0.01"
-          className="[appearance:textfield] bg-transparent text-sm outline-none select-text placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none cursor-ew-resize"
+          className="[appearance:textfield] bg-transparent py-2 text-base outline-none select-text placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50 sm:py-0 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none cursor-ew-resize"
           style={{ width: `${Math.max((num || '0').length * 0.62 + 0.5, 0.75)}rem` }}
           value={num}
           onChange={(event) => {
@@ -363,12 +367,12 @@ function DimensionRow({
             key={optionUnit}
             type="button"
             data-value={optionUnit}
-            className={`flex py-0 whitespace-nowrap transition-[color,background-color,opacity,border-radius,font-size,padding] duration-[100ms] ${
+            className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-md transition-[color,background-color,opacity,border-radius,font-size,padding] duration-[100ms] sm:min-h-0 ${
               !expanded && optionUnit === unit
-                ? 'cursor-pointer rounded-none bg-transparent px-0 text-sm text-foreground hover:text-primary'
+                ? 'cursor-pointer bg-transparent px-0 text-sm text-foreground hover:text-primary sm:rounded-none'
                 : optionUnit === unit
-                  ? 'rounded bg-primary/10 px-2 text-[11px] text-primary'
-                  : 'rounded px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'bg-primary/10 px-3 text-xs text-primary sm:px-2 sm:text-[11px]'
+                  : 'px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2 sm:text-[11px]'
             }`}
             onClick={() => {
               if (!expanded) {
@@ -404,22 +408,22 @@ function BooleanRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center py-1.5">
-      <span className="shrink-0 text-xs text-muted-foreground" style={{ width: 'var(--label-width, 8rem)' }}>
+    <div className={STACKED_ROW_CLASSNAME}>
+      <span className={STACKED_LABEL_CLASSNAME}>
         {label}
       </span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
-        className={`inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent transition-all outline-none ${
+        className={`inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-transparent transition-all outline-none sm:h-[1.15rem] sm:w-8 ${
           checked ? 'bg-primary' : 'bg-input'
         }`}
         onClick={() => onChange(!checked)}
       >
         <span
-          className={`block size-4 rounded-full bg-background transition-transform ${
-            checked ? 'translate-x-[calc(100%-2px)]' : 'translate-x-0'
+          className={`block size-5 rounded-full bg-background transition-transform sm:size-4 ${
+            checked ? 'translate-x-[calc(100%-6px)] sm:translate-x-[calc(100%-2px)]' : 'translate-x-[2px] sm:translate-x-0'
           }`}
         />
       </button>
@@ -440,13 +444,13 @@ function ColorRow({
   const swatchValue = asHexColor(value);
 
   return (
-    <div className="flex items-center py-1.5">
-      <span className="shrink-0 text-xs text-muted-foreground" style={{ width: 'var(--label-width, 8rem)' }}>
+    <div className={STACKED_ROW_CLASSNAME}>
+      <span className={STACKED_LABEL_CLASSNAME}>
         {label}
       </span>
       <button
         type="button"
-        className="size-5 shrink-0 cursor-pointer rounded-full border border-border/60"
+        className="size-11 shrink-0 cursor-pointer rounded-full border border-border/60 sm:size-5"
         aria-label="Pick color"
         style={{ backgroundColor: swatchValue }}
         onClick={() => inputRef.current?.click()}
@@ -461,7 +465,7 @@ function ColorRow({
       <input
         type="text"
         placeholder="#000000"
-        className="ml-2 min-w-0 flex-1 bg-transparent py-0.5 font-mono text-sm outline-none select-text placeholder:text-muted-foreground/50"
+        className="min-w-0 flex-1 bg-transparent py-2 font-mono text-base outline-none select-text placeholder:text-muted-foreground/50 sm:ml-2 sm:py-0.5 sm:text-sm"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -529,18 +533,15 @@ function DateRow({
   }
 
   return (
-    <div className="relative flex items-center py-1.5" ref={containerRef}>
-      <span
-        className="shrink-0 text-xs text-muted-foreground"
-        style={{ width: 'var(--label-width, 8rem)' }}
-      >
+    <div className={`relative ${STACKED_ROW_CLASSNAME}`} ref={containerRef}>
+      <span className={STACKED_LABEL_CLASSNAME}>
         {field.label}
       </span>
       <div className="flex min-w-0 flex-1 items-center gap-1">
         {isEndDate && (
           <button
             type="button"
-            className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] transition-colors ${
+            className={`shrink-0 rounded-md px-3 py-2 text-xs transition-colors sm:px-1.5 sm:py-0.5 sm:text-[11px] ${
               isPresent
                 ? 'bg-primary/10 text-primary'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -552,14 +553,14 @@ function DateRow({
         )}
         <textarea
           rows={1}
-          className="field-sizing-content min-w-0 flex-1 resize-none bg-transparent py-0 text-sm outline-none select-text placeholder:text-muted-foreground/50"
+          className="field-sizing-content min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2 text-base outline-none select-text placeholder:text-muted-foreground/50 sm:min-h-0 sm:py-0 sm:text-sm"
           value={value}
           placeholder={field.placeholder}
           onChange={(event) => onChange(event.target.value)}
         />
         <button
           type="button"
-          className={`shrink-0 rounded p-0.5 transition-colors ${
+          className={`inline-flex size-10 shrink-0 items-center justify-center rounded-md transition-colors sm:size-auto sm:rounded sm:p-0.5 ${
             open
               ? 'bg-primary/10 text-primary'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -571,19 +572,19 @@ function DateRow({
       </div>
 
       {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-56 rounded-lg border border-border bg-popover p-3 shadow-lg">
+        <div className="absolute top-full right-0 z-50 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-border bg-popover p-3 shadow-lg sm:w-56">
           {/* Year navigation */}
           <div className="mb-2 flex items-center justify-between">
             <button
               type="button"
-              className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:size-auto sm:rounded sm:p-0.5"
               onClick={() => setCalYear((y) => y - 1)}
             >
               <ChevronLeft className="size-3.5" />
             </button>
             <button
               type="button"
-              className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors sm:px-2 sm:py-0.5 sm:text-xs ${
                 selectedYearOnly
                   ? 'bg-primary/10 text-primary'
                   : 'text-foreground hover:bg-muted'
@@ -595,7 +596,7 @@ function DateRow({
             </button>
             <button
               type="button"
-              className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:size-auto sm:rounded sm:p-0.5"
               onClick={() => setCalYear((y) => y + 1)}
             >
               <ChevronRight className="size-3.5" />
@@ -608,7 +609,7 @@ function DateRow({
               <button
                 key={month}
                 type="button"
-                className={`rounded py-1 text-[11px] transition-colors ${
+                className={`rounded-md py-2 text-xs transition-colors sm:rounded sm:py-1 sm:text-[11px] ${
                   selectedMonth === i
                     ? 'bg-primary/10 font-medium text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -630,7 +631,7 @@ function DateRow({
               <button
                 key={season}
                 type="button"
-                className={`rounded py-1 text-[11px] transition-colors ${
+                className={`rounded-md py-2 text-xs transition-colors sm:rounded sm:py-1 sm:text-[11px] ${
                   selectedSeason === season
                     ? 'bg-primary/10 font-medium text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -648,7 +649,7 @@ function DateRow({
               <div className="my-2 h-px bg-border/40" />
               <button
                 type="button"
-                className={`w-full rounded py-1 text-[11px] transition-colors ${
+                className={`w-full rounded-md py-2 text-xs transition-colors sm:rounded sm:py-1 sm:text-[11px] ${
                   isPresent
                     ? 'bg-primary/10 font-medium text-primary'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -682,8 +683,8 @@ function SectionStyleRow({
   ] as const;
 
   return (
-    <div className="flex items-center py-1.5">
-      <span className="shrink-0 text-xs text-muted-foreground" style={{ width: 'var(--label-width, 8rem)' }}>
+    <div className={STACKED_ROW_CLASSNAME}>
+      <span className={STACKED_LABEL_CLASSNAME}>
         {label}
       </span>
       <div className="flex flex-wrap gap-1">
@@ -691,7 +692,7 @@ function SectionStyleRow({
           <button
             key={option.value}
             type="button"
-            className={`flex h-7 items-center gap-0.5 rounded border px-2 transition-colors ${
+            className={`inline-flex min-h-11 items-center gap-1 rounded-md border px-3 transition-colors sm:min-h-0 sm:h-7 sm:gap-0.5 sm:rounded sm:px-2 ${
               value === option.value
                 ? 'border-primary/30 bg-primary/10 text-primary'
                 : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
