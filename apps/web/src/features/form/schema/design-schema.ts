@@ -501,8 +501,9 @@ const themeSpecificDesignGroups: Record<string, FieldGroup[]> = {
         },
         {
           path: ['website_link_color'],
-          label: 'Links',
-          type: 'color'
+          label: 'Header Website Link',
+          type: 'color',
+          description: 'Controls the website link color in the Ahmad Style header.'
         }
       ]
     },

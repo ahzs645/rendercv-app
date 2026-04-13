@@ -480,7 +480,7 @@ function PreviewCanvas({
 
 function PreviewLoadingSkeleton({
   invertPreview,
-  message
+  message: _message
 }: {
   invertPreview: boolean;
   message: string;
@@ -509,12 +509,6 @@ function PreviewLoadingSkeleton({
               </div>
             </div>
           ))}
-        </div>
-      </div>
-      <div className="border-t border-border/40 px-6 py-4 sm:px-10">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex size-2.5 rounded-full bg-primary animate-pulse" />
-          <p className="text-sm text-muted-foreground">{message}</p>
         </div>
       </div>
     </div>
