@@ -121,7 +121,7 @@ export function SectionTabs({
 
         {showVariantControls ? (
           <div
-            className="-mx-1 flex flex-wrap items-center gap-1 px-1 sm:ml-3 sm:shrink-0 sm:flex-nowrap sm:gap-0.5 sm:px-0"
+            className="-mx-1 flex flex-nowrap items-center gap-1 overflow-hidden px-1 sm:ml-3 sm:shrink-0 sm:gap-0.5 sm:px-0"
             data-testid="variant-selector"
           >
             {null}
@@ -161,13 +161,13 @@ export function SectionTabs({
                 />
                 <button
                   aria-label="Import variants YAML"
-                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 sm:h-6 sm:min-h-0 sm:gap-1 sm:px-2 sm:text-xs"
+                  className="inline-flex min-h-10 min-w-0 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 sm:h-6 sm:min-h-0 sm:gap-1 sm:px-2 sm:text-xs"
                   disabled={isImportingVariants}
                   onClick={() => variantsInputRef.current?.click()}
                   type="button"
                 >
-                  <Upload className="size-4 sm:size-3.5" />
-                  {isImportingVariants ? 'Importing…' : 'Import variants'}
+                  <Upload className="size-4 shrink-0 sm:size-3.5" />
+                  <span className="truncate">{isImportingVariants ? 'Importing…' : 'Import variants'}</span>
                 </button>
               </>
             ) : null}
@@ -261,21 +261,21 @@ function VariantDropdown({
   }, [open, close]);
 
   return (
-    <div className="relative shrink-0">
+    <div className="relative min-w-0">
       <button
         ref={triggerRef}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground sm:h-6 sm:min-h-0 sm:gap-1 sm:px-2 sm:text-xs"
+        className="inline-flex min-h-10 min-w-0 max-w-full items-center gap-1.5 rounded-md px-3 text-sm font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground sm:h-6 sm:min-h-0 sm:gap-1 sm:px-2 sm:text-xs"
         onClick={() => setOpen((prev) => !prev)}
         type="button"
       >
-        <span className="inline-grid text-left">
+        <span className="inline-grid min-w-0 text-left">
           {options.map((option) => (
             <span
               key={option}
-              className={`col-start-1 row-start-1${option !== value ? ' invisible' : ''}`}
+              className={`col-start-1 row-start-1 truncate${option !== value ? ' invisible' : ''}`}
             >
               {renderLabel(option)}
             </span>
