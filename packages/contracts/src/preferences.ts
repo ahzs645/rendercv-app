@@ -8,6 +8,7 @@ export interface UserPreferences {
   linksCollapsed: boolean;
   themeLibrary: Record<string, string>;
   selectedFileId?: string;
+  reviewDisplayName?: string;
   colorMode: ColorMode;
   previewDarkMode: boolean;
   showArchive: boolean;

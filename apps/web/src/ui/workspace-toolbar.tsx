@@ -20,19 +20,32 @@ import {
   PanelLeft,
   Plus,
   Redo2,
+  Send,
   Share2,
   SlidersHorizontal,
   Sun,
   Undo2,
   X
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
-import { fileStore, preferencesStore, readThemeName, readLocaleName } from '@rendercv/core';
+import { fileStore, preferencesStore, readThemeName, readLocaleName, reviewStore } from '@rendercv/core';
 import { toast } from 'sonner';
 import { downloadBlob } from '../features/viewer/download';
 import { buildEncodedShareUrl, buildEncodedSharePdfUrl } from '../features/share/encoded-share';
 import { exportShareFile, importShareFile } from '../features/share/file-share';
 import { ChangesDialog } from '../features/share/changes-dialog';
+import {
+  buildReviewProposalUrl,
+  exportReviewProposalPackage,
+  importReviewProposalPackage,
+  ReviewProposalTooLargeError
+} from '../features/review/package-utils';
+import { ReviewerNameDialog } from '../features/review/reviewer-name-dialog';
+import {
+  buildProposalPackageFromSession,
+  importReviewProposalIntoSession
+} from '../features/review/session-utils';
 import { useStore } from '../lib/use-store';
 import type { MonacoEditorHandle } from './monaco-editor';
 import type { ViewerRenderer } from './preview-pane';
@@ -62,8 +75,10 @@ export function WorkspaceToolbar({
   sidebarCollapsed: boolean;
   viewer: ViewerRenderer;
 }) {
+  const navigate = useNavigate();
   const preferences = useStore(preferencesStore);
   const fileSnapshot = useStore(fileStore);
+  const reviewSnapshot = useStore(reviewStore);
   const prefersDark =
     typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const isDark =
@@ -75,8 +90,27 @@ export function WorkspaceToolbar({
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [reviewerDialogOpen, setReviewerDialogOpen] = useState(false);
   const showMobileEditorControls = mobilePane === 'editor';
   const hasSharedOrigin = Boolean(selectedFile?.sharedOrigin);
+  const selectedReviewSession = selectedFile
+    ? reviewSnapshot.sessions.find(
+        (session) =>
+          session.linkedFileId === selectedFile.id ||
+          session.mergeDraft?.draftFileId === selectedFile.id
+      )
+    : undefined;
+  const activeReviewProposal = selectedReviewSession?.activeProposalId
+    ? selectedReviewSession.proposals.find(
+        (proposal) => proposal.proposalId === selectedReviewSession.activeProposalId
+      )
+    : undefined;
+  const canSendProposal = Boolean(
+    selectedFile &&
+      sections &&
+      selectedReviewSession &&
+      selectedReviewSession.mergeDraft?.draftFileId !== selectedFile.id
+  );
 
   async function copyShareLink() {
     if (!selectedFile || !sections) {
@@ -87,18 +121,10 @@ export function WorkspaceToolbar({
       const result = await buildEncodedShareUrl({
         version: 1,
         fileName: selectedFile.name,
-        sections,
-        origin: selectedFile.sharedOrigin
+        sections
       });
       await navigator.clipboard.writeText(result.url);
-
-      if (result.originDropped) {
-        toast.warning('Share link copied, but tracked changes were omitted because the resume is too large for a URL. Use "Backup file" to keep the full review history.', { duration: 6000 });
-      } else if (selectedFile.sharedOrigin) {
-        toast.success('Share link with changes copied.');
-      } else {
-        toast.success('Share link copied.');
-      }
+      toast.success('Share link copied.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create share link.');
     }
@@ -188,8 +214,7 @@ export function WorkspaceToolbar({
       await exportShareFile({
         version: 1,
         fileName: selectedFile.name,
-        sections,
-        origin: selectedFile.sharedOrigin
+        sections
       });
       toast.success('Backup file downloaded.');
     } catch (error) {
@@ -205,23 +230,93 @@ export function WorkspaceToolbar({
       const designKey = readThemeName(payload.sections.design) ?? 'classic';
       const localeKey = readLocaleName(payload.sections.locale) ?? 'english';
       const fileName = fileStore.uniqueName(
-        payload.origin ? `${payload.fileName} (Review)` : payload.fileName
+        payload.fileName
       );
 
-      fileStore.createFile(fileName, {
+      const file = fileStore.createFile(fileName, {
         cv: payload.sections.cv,
         settings: payload.sections.settings,
         designs: { [designKey]: payload.sections.design },
         locales: { [localeKey]: payload.sections.locale },
         selectedTheme: designKey,
-        selectedLocale: localeKey,
-        sharedOrigin: payload.origin ?? payload.sections
+        selectedLocale: localeKey
       });
 
-      toast.success(`Imported "${fileName}" as a review copy with tracked changes.`);
+      reviewStore.ensureSession({
+        linkedFileId: file.id,
+        baseFileName: fileName,
+        rootBaselineSections: payload.sections
+      });
+
+      toast.success(`Imported "${fileName}". You can send changes back as a review proposal later.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to import file.');
     }
+  }
+
+  async function importReviewPackage() {
+    try {
+      const payload = await importReviewProposalPackage();
+      if (!payload) {
+        return;
+      }
+
+      const session = importReviewProposalIntoSession(payload);
+      setDownloadDialogOpen(false);
+      toast.success(`Imported review proposal from ${payload.reviewerName}.`);
+      navigate(`/review/${session.sessionId}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to import review proposal.');
+    }
+  }
+
+  async function handleReviewerConfirm(reviewerName: string) {
+    if (!selectedFile || !sections || !canSendProposal || !selectedReviewSession) {
+      return;
+    }
+
+    preferencesStore.patch({ reviewDisplayName: reviewerName });
+    const proposalPackage = reviewStore.createProposalPackage({
+      sessionId: selectedReviewSession.sessionId,
+      linkedFileId: selectedFile.id,
+      fileName: selectedFile.name,
+      proposedSections: sections,
+      reviewerName
+    });
+
+    try {
+      const url = await buildReviewProposalUrl(proposalPackage);
+      await navigator.clipboard.writeText(url);
+      toast.success(activeReviewProposal ? 'Forwarded review proposal link copied.' : 'Review proposal link copied.');
+    } catch (error) {
+      if (error instanceof ReviewProposalTooLargeError) {
+        await exportReviewProposalPackage(proposalPackage);
+        toast.warning('Proposal was too large for a link, so a review package file was downloaded instead.');
+      } else {
+        toast.error(error instanceof Error ? error.message : 'Failed to create review proposal.');
+      }
+    } finally {
+      setReviewerDialogOpen(false);
+    }
+  }
+
+  async function exportReviewPackage() {
+    if (!selectedReviewSession || !activeReviewProposal) {
+      toast.error('There is no active review proposal to export.');
+      return;
+    }
+
+    const proposalPackage = buildProposalPackageFromSession(
+      selectedReviewSession.sessionId,
+      activeReviewProposal.proposalId
+    );
+    if (!proposalPackage) {
+      toast.error('Active review proposal is no longer available.');
+      return;
+    }
+
+    await exportReviewProposalPackage(proposalPackage);
+    toast.success('Review proposal package downloaded.');
   }
 
   if (isMobile) {
@@ -470,15 +565,23 @@ export function WorkspaceToolbar({
         <DownloadShareDialog
           canLinkActions={canLinkActions}
           canPreviewActions={canPreviewActions}
+          canReviewActions={canSendProposal}
           fileName={selectedFile?.name}
           onCopyPdfLink={() => void copyPdfLink()}
           onCopyShareLink={() => void copyShareLink()}
           onDownloadPdf={() => void downloadPdf()}
           onDownloadTypst={() => void downloadTypst()}
           onExportJson={() => void exportJson()}
+          onExportReviewPackage={() => void exportReviewPackage()}
           onImportJson={() => void importJson()}
+          onImportReviewPackage={() => void importReviewPackage()}
           onOpenChange={setDownloadDialogOpen}
+          onSendProposal={() => {
+            setDownloadDialogOpen(false);
+            setReviewerDialogOpen(true);
+          }}
           onSharePdf={() => void sharePdf()}
+          sendProposalLabel={activeReviewProposal ? 'Forward proposal' : 'Send proposal'}
           open={downloadDialogOpen}
         />
         {hasSharedOrigin && sections && selectedFile?.sharedOrigin ? (
@@ -638,15 +741,23 @@ export function WorkspaceToolbar({
       <DownloadShareDialog
         canLinkActions={canLinkActions}
         canPreviewActions={canPreviewActions}
+        canReviewActions={canSendProposal}
         fileName={selectedFile?.name}
         onCopyPdfLink={() => void copyPdfLink()}
         onCopyShareLink={() => void copyShareLink()}
         onDownloadPdf={() => void downloadPdf()}
         onDownloadTypst={() => void downloadTypst()}
         onExportJson={() => void exportJson()}
+        onExportReviewPackage={() => void exportReviewPackage()}
         onImportJson={() => void importJson()}
+        onImportReviewPackage={() => void importReviewPackage()}
         onOpenChange={setDownloadDialogOpen}
+        onSendProposal={() => {
+          setDownloadDialogOpen(false);
+          setReviewerDialogOpen(true);
+        }}
         onSharePdf={() => void sharePdf()}
+        sendProposalLabel={activeReviewProposal ? 'Forward proposal' : 'Send proposal'}
         open={downloadDialogOpen}
       />
       {hasSharedOrigin && sections && selectedFile?.sharedOrigin ? (
@@ -657,6 +768,15 @@ export function WorkspaceToolbar({
           modified={sections}
         />
       ) : null}
+      <ReviewerNameDialog
+        confirmLabel={activeReviewProposal ? 'Forward proposal' : 'Send proposal'}
+        description="Add the name that should appear on the review proposal package."
+        initialName={preferences.reviewDisplayName}
+        onConfirm={(name) => void handleReviewerConfirm(name)}
+        onOpenChange={setReviewerDialogOpen}
+        open={reviewerDialogOpen}
+        title="Reviewer name"
+      />
     </div>
   );
 }
@@ -790,28 +910,38 @@ function ToolbarActionButton({
 function DownloadShareDialog({
   canLinkActions,
   canPreviewActions,
+  canReviewActions,
   fileName,
   onCopyPdfLink,
   onCopyShareLink,
   onDownloadPdf,
   onDownloadTypst,
   onExportJson,
+  onExportReviewPackage,
   onImportJson,
+  onImportReviewPackage,
   onOpenChange,
+  onSendProposal,
   onSharePdf,
+  sendProposalLabel,
   open
 }: {
   canLinkActions: boolean;
   canPreviewActions: boolean;
+  canReviewActions: boolean;
   fileName?: string;
   onCopyPdfLink: () => void | Promise<void>;
   onCopyShareLink: () => void | Promise<void>;
   onDownloadPdf: () => void | Promise<void>;
   onDownloadTypst: () => void | Promise<void>;
   onExportJson: () => void | Promise<void>;
+  onExportReviewPackage: () => void | Promise<void>;
   onImportJson: () => void | Promise<void>;
+  onImportReviewPackage: () => void | Promise<void>;
   onOpenChange: (open: boolean) => void;
+  onSendProposal: () => void | Promise<void>;
   onSharePdf: () => void | Promise<void>;
+  sendProposalLabel: string;
   open: boolean;
 }) {
   return (
@@ -890,21 +1020,46 @@ function DownloadShareDialog({
               </DialogActionSection>
 
               <DialogActionSection
-                description="Move a resume between workspaces or keep a review copy with tracked changes."
+                description="Move a resume between workspaces or keep a clean local backup for later edits."
                 title="Backup & review"
               >
                 <DialogActionButton
-                  description="Download a backup file that keeps the current resume data and review history."
+                  description="Download a backup file with the current resume contents."
                   disabled={!canLinkActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onExportJson}
                   title="Backup file"
                 />
                 <DialogActionButton
-                  description="Import a backup file into this workspace as a tracked review copy."
+                  description="Import a clean backup file into this workspace and keep it eligible for review proposals."
                   icon={<FileUp className="size-4" />}
                   onClick={onImportJson}
                   title="Import review copy"
+                />
+              </DialogActionSection>
+              <DialogActionSection
+                description="Send edits back as a review proposal or import one into the local review inbox."
+                title="Review proposals"
+              >
+                <DialogActionButton
+                  description="Create a review proposal package from the current file and copy a proposal link when it fits."
+                  disabled={!canReviewActions}
+                  icon={<Send className="size-4" />}
+                  onClick={onSendProposal}
+                  title={sendProposalLabel}
+                />
+                <DialogActionButton
+                  description="Download the current active review proposal as a file package."
+                  disabled={!canReviewActions}
+                  icon={<FileDown className="size-4" />}
+                  onClick={onExportReviewPackage}
+                  title="Export review package"
+                />
+                <DialogActionButton
+                  description="Import a returned review proposal into the local review inbox."
+                  icon={<FileUp className="size-4" />}
+                  onClick={onImportReviewPackage}
+                  title="Import review package"
                 />
               </DialogActionSection>
             </div>

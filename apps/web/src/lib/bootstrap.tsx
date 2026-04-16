@@ -3,12 +3,14 @@ import { createPreviewChannel } from '@rendercv/core';
 import { defaultDesigns } from '@rendercv/core';
 import { preferencesStore } from '@rendercv/core';
 import { resolveFileSections } from '@rendercv/core';
+import { reviewStore } from '@rendercv/core';
 import { useEffect, useRef } from 'react';
 import { api } from './api';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 
 const FILE_STORAGE_KEY = 'rendercv_guest_files';
 const PREFERENCE_STORAGE_KEY = 'rendercv_preferences';
+const REVIEW_STORAGE_KEY = 'rendercv_review_sessions';
 const BUILT_IN_THEME_KEYS = new Set(Object.keys(defaultDesigns));
 
 function stripReadOnly(files: ReturnType<typeof fileStore.getSnapshot>['files']) {
@@ -63,6 +65,23 @@ export function WorkspaceBootstrap() {
   const bootstrapped = useRef(false);
   const contentTimers = useRef(new Map<string, number>());
 
+  function migrateLegacyReviewCopies() {
+    const files = fileStore.getSnapshot().files;
+    for (const file of files) {
+      if (!file.sharedOrigin) {
+        continue;
+      }
+
+      reviewStore.migrateLegacyReviewCopy({
+        fileId: file.id,
+        fileName: file.name,
+        createdAt: file.lastEdited,
+        rootBaselineSections: file.sharedOrigin,
+        proposedSections: resolveFileSections(file)
+      });
+    }
+  }
+
   useEffect(() => {
     if (bootstrapped.current) {
       return;
@@ -93,6 +112,17 @@ export function WorkspaceBootstrap() {
     }
     ensureBundledThemeLibraryEntries();
 
+    try {
+      const rawReviews = localStorage.getItem(REVIEW_STORAGE_KEY);
+      if (rawReviews) {
+        const parsedReviews = JSON.parse(rawReviews);
+        reviewStore.hydrate(parsedReviews.sessions ?? parsedReviews);
+      }
+    } catch {
+      reviewStore.hydrate(undefined);
+    }
+    migrateLegacyReviewCopies();
+
     api.getPreferences().then((response) => {
       preferencesStore.patch(response.preferences);
       ensureBundledThemeLibraryEntries();
@@ -106,6 +136,7 @@ export function WorkspaceBootstrap() {
         fileStore.hydrate(response.files);
         syncThemeLibraryFromFiles(response.files);
         ensureBundledThemeLibraryEntries();
+        migrateLegacyReviewCopies();
       }
     }).catch(() => {});
   }, []);
@@ -179,6 +210,12 @@ export function WorkspaceBootstrap() {
       contentTimers.current.clear();
       channel.close();
     };
+  }, []);
+
+  useEffect(() => {
+    return reviewStore.subscribe(() => {
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(reviewStore.getSnapshot()));
+    });
   }, []);
 
   return null;

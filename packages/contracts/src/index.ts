@@ -7,3 +7,4 @@ export * from './github';
 export * from './feedback';
 export * from './public-cv';
 export * from './api';
+export * from './review';

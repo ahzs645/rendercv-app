@@ -12,6 +12,8 @@ import { PrototypeRenderersPage } from './routes/prototype-renderers-page';
 import { SentryTestPage } from './routes/sentry-test-page';
 import { EncodedSharePage } from './routes/encoded-share-page';
 import { SharedCvPage } from './routes/shared-cv-page';
+import { ReviewImportPage } from './routes/review-import-page';
+import { ReviewSessionPage } from './routes/review-session-page';
 
 export const router = createBrowserRouter(
   [
@@ -32,6 +34,8 @@ export const router = createBrowserRouter(
         },
         { path: 'preview', element: <PreviewPage /> },
         { path: 'share', element: <EncodedSharePage /> },
+        { path: 'review-import', element: <ReviewImportPage /> },
+        { path: 'review/:sessionId', element: <ReviewSessionPage /> },
         { path: 'prototype-renderers', element: <PrototypeRenderersPage /> },
         { path: 'sentry-test', element: <SentryTestPage /> },
         { path: ':sharedCvId', element: <SharedCvPage /> }

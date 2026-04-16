@@ -7,7 +7,6 @@ const MAX_IMPORT_SIZE = 2 * 1024 * 1024; // 2 MB
 
 /**
  * Back up the current resume as a `.rendercv.json` file.
- * This always includes review origin data when available, so there are no URL length limits.
  */
 export async function exportShareFile(payload: EncodedSharePayload) {
   const json = JSON.stringify(payload, null, 2);
@@ -47,8 +46,7 @@ export function importShareFile(): Promise<EncodedSharePayload | null> {
           resolve({
             version: data.version ?? 1,
             fileName: data.fileName ?? file.name.replace(/\.rendercv\.json$/i, '').replace(/\.json$/i, ''),
-            sections: data.sections,
-            origin: data.origin
+            sections: data.sections
           });
         } catch (err) {
           reject(err instanceof Error ? err : new Error('Failed to parse .rendercv.json file.'));

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { GitCompareArrows } from 'lucide-react';
-import { classicTheme, defaultDesigns, fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
+import { GitCompareArrows, Check, Pencil, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { classicTheme, defaultDesigns, fileStore, preferencesStore, resolveFileSections, reviewStore } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
+import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
 import { useIsMobile } from '../lib/use-mobile';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
@@ -95,7 +97,9 @@ function isInteractiveElementFocused(): boolean {
 }
 
 export function Workspace() {
+  const navigate = useNavigate();
   const fileSnapshot = useStore(fileStore);
+  const reviewSnapshot = useStore(reviewStore);
   const preferences = useStore(preferencesStore);
   const sidebarRef = useRef<ImperativePanelHandle>(null);
   const monacoRef = useRef<MonacoEditorHandle>(null);
@@ -109,6 +113,16 @@ export function Workspace() {
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileSnapshot.selectedFileId);
   const rawSections = selectedFile ? resolveFileSections(selectedFile) : undefined;
   const viewerSections = selectedFile ? resolveViewerSections(selectedFile) : undefined;
+  const selectedReviewSession = selectedFile
+    ? reviewSnapshot.sessions.find(
+        (session) =>
+          session.linkedFileId === selectedFile.id ||
+          session.mergeDraft?.draftFileId === selectedFile.id
+      )
+    : undefined;
+  const isMergeDraft = Boolean(
+    selectedFile && selectedReviewSession?.mergeDraft?.draftFileId === selectedFile.id
+  );
   const activeSection = preferences.activeSection;
   const currentValue = rawSections?.[activeSection] ?? '';
   const viewer = useViewerRenderer(viewerSections);
@@ -455,12 +469,93 @@ export function Workspace() {
 
   const editorPane = (
     <div className="flex min-h-0 flex-1 flex-col">
-      {selectedFile?.sharedOrigin ? (
+      {isMergeDraft && selectedFile && selectedReviewSession ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-primary/20 bg-primary/5 px-4 py-3 text-xs text-primary">
+          <Pencil className="size-3.5 shrink-0" />
+          <span className="mr-auto">
+            Editing merge draft for an active review session. The linked resume will not change
+            until you apply the merged result.
+          </span>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            onClick={() => {
+              const sections = resolveFileSections(selectedFile);
+              reviewStore.updateActiveProposalFromDraft(
+                selectedReviewSession.sessionId,
+                sections,
+                selectedFile.name
+              );
+              toast.success('Proposal updated from merge draft.');
+            }}
+            type="button"
+          >
+            <Pencil className="size-3.5" />
+            Update proposal
+          </button>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            onClick={() => {
+              const sections = resolveFileSections(selectedFile);
+              const linkedFileId = selectedReviewSession.linkedFileId;
+
+              if (linkedFileId && linkedFileId !== selectedFile.id) {
+                fileStore.replaceFileSections(linkedFileId, sections);
+                fileStore.selectFile(linkedFileId);
+                fileStore.deleteFile(selectedFile.id);
+                reviewStore.linkSessionToFile(selectedReviewSession.sessionId, linkedFileId);
+              } else {
+                const finalName = fileStore.uniqueName(
+                  selectedReviewSession.baseFileName === selectedFile.name
+                    ? selectedFile.name
+                    : selectedReviewSession.baseFileName
+                );
+                fileStore.renameFile(selectedFile.id, finalName);
+                reviewStore.linkSessionToFile(selectedReviewSession.sessionId, selectedFile.id);
+                fileStore.selectFile(selectedFile.id);
+              }
+
+              reviewStore.resolveSession(selectedReviewSession.sessionId, sections, 'applied');
+              toast.success('Merged result applied to resume.');
+              navigate('/');
+            }}
+            type="button"
+          >
+            <Check className="size-3.5" />
+            Apply merged result
+          </button>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            onClick={() => {
+              fileStore.deleteFile(selectedFile.id);
+              reviewStore.clearMergeDraft(selectedReviewSession.sessionId);
+              if (selectedReviewSession.linkedFileId) {
+                fileStore.selectFile(selectedReviewSession.linkedFileId);
+                navigate('/');
+              } else {
+                navigate(`/review/${selectedReviewSession.sessionId}`);
+              }
+              toast.success('Merge draft discarded.');
+            }}
+            type="button"
+          >
+            <X className="size-3.5" />
+            Discard draft
+          </button>
+        </div>
+      ) : selectedFile?.sharedOrigin ? (
         <div className="flex items-center gap-2 border-b border-amber-500/20 bg-amber-500/5 px-4 py-2 text-xs text-amber-600 dark:text-amber-400">
           <GitCompareArrows className="size-3.5 shrink-0" />
           <span>
             Reviewing shared CV — edits are tracked against the original.
             Changed fields are highlighted in the form view.
+          </span>
+        </div>
+      ) : selectedReviewSession?.linkedFileId === selectedFile?.id ? (
+        <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/5 px-4 py-2 text-xs text-primary">
+          <GitCompareArrows className="size-3.5 shrink-0" />
+          <span>
+            This resume is attached to a local review thread. Use Download &amp; share to send or
+            forward review proposals.
           </span>
         </div>
       ) : null}

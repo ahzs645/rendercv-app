@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Download, Eye, EyeOff, GitCompareArrows, Minus, Pencil, Plus, Upload } from 'lucide-react';
-import { fileStore, preferencesStore, readThemeName, readLocaleName } from '@rendercv/core';
+import type { CvFileSections } from '@rendercv/contracts';
+import { fileStore, preferencesStore, readThemeName, readLocaleName, reviewStore } from '@rendercv/core';
 import { toast } from 'sonner';
 import type { EncodedSharePayload } from '../features/share/encoded-share';
 import { decodeSharePayload } from '../features/share/encoded-share';
@@ -16,12 +17,13 @@ import { PreviewPaneView } from '../ui/preview-pane';
 import { StyledTooltip } from '../ui/styled-tooltip';
 
 type ViewMode = 'preview' | 'diff';
+type LegacyEncodedSharePayload = EncodedSharePayload & { origin?: CvFileSections };
 
 export function EncodedSharePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [payload, setPayload] = useState<EncodedSharePayload | null>(null);
+  const [payload, setPayload] = useState<LegacyEncodedSharePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const isPdfDownload = searchParams.get('dl') === 'pdf';
@@ -53,18 +55,19 @@ export function EncodedSharePage() {
 
     void decodeSharePayload(token)
       .then((decoded) => {
+        const legacyDecoded = decoded as LegacyEncodedSharePayload;
         if (cancelled) {
           return;
         }
 
-        setPayload(decoded);
+        setPayload(legacyDecoded);
         setError(null);
 
         // Auto-switch to diff view when origin is present and has changes
         if (
-          decoded.origin &&
-          decoded.sections &&
-          hasChanges(decoded.origin, decoded.sections)
+          legacyDecoded.origin &&
+          legacyDecoded.sections &&
+          hasChanges(legacyDecoded.origin, legacyDecoded.sections)
         ) {
           setViewMode('diff');
         }
@@ -88,19 +91,34 @@ export function EncodedSharePage() {
 
     const designKey = readThemeName(payload.sections.design) ?? 'classic';
     const localeKey = readLocaleName(payload.sections.locale) ?? 'english';
-    const fileName = fileStore.uniqueName(`${payload.fileName} (Review)`);
+    const importedFileName = fileStore.uniqueName(payload.fileName);
 
-    fileStore.createFile(fileName, {
+    const file = fileStore.createFile(importedFileName, {
       cv: payload.sections.cv,
       settings: payload.sections.settings,
       designs: { [designKey]: payload.sections.design },
       locales: { [localeKey]: payload.sections.locale },
       selectedTheme: designKey,
-      selectedLocale: localeKey,
-      sharedOrigin: payload.origin ?? payload.sections
+      selectedLocale: localeKey
     });
 
-    toast.success(`Imported "${fileName}" as a review copy with tracked changes.`);
+    if (payload.origin) {
+      reviewStore.migrateLegacyReviewCopy({
+        fileId: file.id,
+        fileName: importedFileName,
+        createdAt: Date.now(),
+        rootBaselineSections: payload.origin,
+        proposedSections: payload.sections
+      });
+      toast.success(`Imported "${importedFileName}" into the review inbox.`);
+    } else {
+      reviewStore.ensureSession({
+        linkedFileId: file.id,
+        baseFileName: importedFileName,
+        rootBaselineSections: payload.sections
+      });
+      toast.success(`Imported "${importedFileName}". You can send changes back as a review proposal later.`);
+    }
     navigate('/');
   }
 
@@ -136,8 +154,8 @@ export function EncodedSharePage() {
             <div className="flex flex-col gap-2">
               {showDiffToggle ? (
                 <p className="text-sm text-muted-foreground">
-                  This shared resume includes tracked changes from the original. Import it as a
-                  review copy to keep the diff.
+                  This is a legacy review link with tracked changes from the original. Import it to
+                  move the review into the new local inbox.
                 </p>
               ) : null}
               <div className="flex flex-wrap items-center gap-3">
@@ -231,7 +249,7 @@ export function EncodedSharePage() {
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-40"
               >
                 <Pencil className="size-3.5" />
-                Import review copy
+                {payload?.origin ? 'Import review copy' : 'Import resume copy'}
               </button>
             </div>
           </div>

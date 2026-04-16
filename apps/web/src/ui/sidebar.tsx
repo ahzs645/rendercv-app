@@ -6,6 +6,7 @@ import {
   EllipsisVertical,
   FilePlus2,
   FileText,
+  GitCompareArrows,
   Link as LinkIcon,
   Lock,
   Monitor,
@@ -13,9 +14,9 @@ import {
   Shield,
   Trash2
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import type { CvFile } from '@rendercv/contracts';
-import { fileStore } from '@rendercv/core';
+import { fileStore, reviewStore } from '@rendercv/core';
 import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { PdfImportButton } from './pdf-import-button';
@@ -51,6 +52,8 @@ export function Sidebar({
 }) {
   const asideRef = useRef<HTMLElement>(null);
   const snapshot = useStore(fileStore);
+  const reviewSnapshot = useStore(reviewStore);
+  const location = useLocation();
   const [mode, setMode] = useState<SidebarMode>('full');
   const activeFiles = useMemo(
     () =>
@@ -61,6 +64,21 @@ export function Sidebar({
   );
   const isCompact = mode !== 'full';
   const isMini = mode === 'mini';
+  const reviewSessions = useMemo(
+    () =>
+      reviewSnapshot.sessions
+        .filter((session) => session.status !== 'resolved')
+        .sort((left, right) => {
+          const leftProposalTime = left.proposals[0]?.createdAt ?? 0;
+          const rightProposalTime = right.proposals[0]?.createdAt ?? 0;
+          return rightProposalTime - leftProposalTime;
+        }),
+    [reviewSnapshot.sessions]
+  );
+  const archivedReviewSessions = useMemo(
+    () => reviewSnapshot.sessions.filter((session) => session.status === 'resolved'),
+    [reviewSnapshot.sessions]
+  );
 
   useEffect(() => {
     const element = asideRef.current;
@@ -137,6 +155,82 @@ export function Sidebar({
             </li>
           ))}
         </ul>
+        {(reviewSessions.length > 0 || archivedReviewSessions.length > 0) && !isMini ? (
+          <div className="mt-6 space-y-4">
+            {reviewSessions.length > 0 ? (
+              <div>
+                <div className="mb-2 flex items-center justify-between px-2">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/60">
+                    Resumes in Review
+                  </p>
+                  <span className="text-[11px] text-sidebar-foreground/45">{reviewSessions.length}</span>
+                </div>
+                <ul className="space-y-1">
+                  {reviewSessions.map((session) => {
+                    const activeProposal = session.proposals.find(
+                      (proposal) => proposal.proposalId === session.activeProposalId
+                    );
+                    const selected = location.pathname === `/review/${session.sessionId}`;
+                    return (
+                      <li key={session.sessionId}>
+                        <Link
+                          className={`flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors ${
+                            selected
+                              ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                          }`}
+                          to={`/review/${session.sessionId}`}
+                        >
+                          <GitCompareArrows className="mt-0.5 size-4 shrink-0" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate">{session.baseFileName}</span>
+                            <span className="block truncate text-xs text-sidebar-foreground/60">
+                              {activeProposal
+                                ? `${activeProposal.reviewerName} proposal`
+                                : 'Ready to send changes back'}
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
+            {archivedReviewSessions.length > 0 ? (
+              <div>
+                <div className="mb-2 flex items-center justify-between px-2">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/60">
+                    Review Archive
+                  </p>
+                  <span className="text-[11px] text-sidebar-foreground/45">{archivedReviewSessions.length}</span>
+                </div>
+                <ul className="space-y-1">
+                  {archivedReviewSessions.map((session) => (
+                    <li key={session.sessionId}>
+                      <Link
+                        className={`flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors ${
+                          location.pathname === `/review/${session.sessionId}`
+                            ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                        }`}
+                        to={`/review/${session.sessionId}`}
+                      >
+                        <Archive className="mt-0.5 size-4 shrink-0" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{session.baseFileName}</span>
+                          <span className="block truncate text-xs text-sidebar-foreground/60">
+                            {session.archivedHistory[0]?.outcome === 'applied' ? 'Applied' : 'Rejected'}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {!activeFiles.length && !isMini ? (
           <div className="mt-3 rounded-lg border border-dashed border-sidebar-border px-3 py-4 text-sm text-sidebar-foreground/60">
             Create a CV, import YAML, or start from another source.

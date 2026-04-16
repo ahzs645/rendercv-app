@@ -599,6 +599,44 @@ export class FileStore {
     });
   }
 
+  replaceFileSections(id: string, sections: CvFileSections) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file) {
+      return;
+    }
+
+    const nextTheme = readThemeName(sections.design) ?? file.selectedTheme;
+    const nextLocale = readLocaleName(sections.locale) ?? file.selectedLocale;
+    const nextLastEdited = Date.now();
+    const nextDesigns = { ...file.designs, [nextTheme]: sections.design };
+    const nextLocales = { ...file.locales, [nextLocale]: sections.locale };
+
+    this.#store.update((current) => ({
+      ...current,
+      files: current.files.map((entry) =>
+        entry.id === id
+          ? withReadOnly({
+              ...(entry as Omit<CvFile, 'isReadOnly'>),
+              cv: sections.cv,
+              settings: sections.settings,
+              designs: nextDesigns,
+              locales: nextLocales,
+              selectedTheme: nextTheme,
+              selectedLocale: nextLocale,
+              lastEdited: nextLastEdited
+            })
+          : entry
+      )
+    }));
+
+    this.persistence?.onUpdateMeta?.(id, {
+      designs: nextDesigns,
+      selectedTheme: nextTheme,
+      selectedLocale: nextLocale
+    });
+    this.persistence?.onContentChange?.(id);
+  }
+
   setChatMessages(id: string, chatMessages: unknown[]) {
     this.#store.update((current) => ({
       ...current,
