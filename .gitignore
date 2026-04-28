@@ -9,4 +9,4 @@ playwright-report
 test-results
 .turbo
 static/cdn/themes/*.zip
-apps/api/apps/api/data/
+apps/api/data/

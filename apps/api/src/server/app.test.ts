@@ -10,6 +10,56 @@ describe('RenderCV API', () => {
     expect(Array.isArray(body.files)).toBe(true);
   });
 
+  it('returns 400 for malformed file content patches', async () => {
+    const response = await app.request('/api/files/file-1/content', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'file-1', sections: { cv: 123 }, lastEdited: Date.now() })
+    });
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe('invalid_payload');
+  });
+
+  it('rejects file content patches with mismatched ids', async () => {
+    const filesResponse = await app.request('/api/files');
+    const filesBody = (await filesResponse.json()) as { files: Array<{ id: string }> };
+    const id = filesBody.files[0]?.id;
+    expect(id).toBeTruthy();
+
+    const response = await app.request(`/api/files/${id}/content`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: 'different-id',
+        sections: { cv: 'cv:\n  name: Jane Doe' },
+        lastEdited: Date.now()
+      })
+    });
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe('file_id_mismatch');
+  });
+
+  it('rejects file metadata patches with mismatched ids', async () => {
+    const filesResponse = await app.request('/api/files');
+    const filesBody = (await filesResponse.json()) as { files: Array<{ id: string }> };
+    const id = filesBody.files[0]?.id;
+    expect(id).toBeTruthy();
+
+    const response = await app.request(`/api/files/${id}/meta`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'different-id', name: 'Should Not Apply' })
+    });
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe('file_id_mismatch');
+  });
+
   it('rejects migrate requests without a firebase uid', async () => {
     const response = await app.request('/api/migrate', {
       method: 'POST',

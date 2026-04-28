@@ -16,12 +16,26 @@ import type {
 import type { CvFile, FeedbackSubmission } from '@rendercv/contracts';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+export const API_ENABLED = import.meta.env.VITE_DISABLE_API === 'true'
+  ? false
+  : import.meta.env.DEV || API_BASE_URL.length > 0;
+
+export class ApiUnavailableError extends Error {
+  constructor() {
+    super('API is unavailable in this static build.');
+    this.name = 'ApiUnavailableError';
+  }
+}
 
 function apiUrl(path: string) {
   return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
 }
 
 async function request<T>(input: string, init?: RequestInit): Promise<T> {
+  if (!API_ENABLED) {
+    throw new ApiUnavailableError();
+  }
+
   const response = await fetch(input, {
     headers: {
       'Content-Type': 'application/json',
@@ -116,6 +130,10 @@ export const api = {
     });
   },
   async importPdf(file: File) {
+    if (!API_ENABLED) {
+      throw new ApiUnavailableError();
+    }
+
     const formData = new FormData();
     formData.set('pdf', file);
 

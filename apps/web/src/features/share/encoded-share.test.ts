@@ -40,4 +40,19 @@ describe('encoded share links', () => {
 
     expect(result.url).toContain('/share#');
   });
+
+  it('rejects decoded payloads with invalid section shapes', async () => {
+    const token = await encodeSharePayload({
+      version: 1,
+      fileName: 'Resume',
+      sections: makeSections()
+    });
+
+    const decoded = JSON.parse(JSON.stringify(await decodeSharePayload(token))) as Record<string, unknown>;
+    decoded.sections = { cv: 'cv:' };
+
+    await expect(decodeSharePayload(await encodeSharePayload(decoded as never))).rejects.toThrow(
+      'Invalid share payload.'
+    );
+  });
 });

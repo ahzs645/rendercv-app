@@ -1,5 +1,5 @@
 import createWebShareEngine from '@firstform/json-url/web-share';
-import type { ReviewProposalPackage } from '@rendercv/contracts';
+import type { CvFileSections, ReviewProposalPackage } from '@rendercv/contracts';
 import { downloadBlob } from '../viewer/download';
 
 const REVIEW_PACKAGE_EXTENSION = '.rendercv.review.json';
@@ -26,7 +26,7 @@ export async function encodeReviewProposalPackage(payload: ReviewProposalPackage
 }
 
 export async function decodeReviewProposalPackage(token: string) {
-  return await shareEngine.decompress(token, { deURI: true });
+  return validateReviewProposalPackage(await shareEngine.decompress(token, { deURI: true }));
 }
 
 export async function buildReviewProposalUrl(payload: ReviewProposalPackage) {
@@ -82,18 +82,7 @@ export function importReviewProposalPackage(): Promise<ReviewProposalPackage | n
       const reader = new FileReader();
       reader.onload = () => {
         try {
-          const parsed = JSON.parse(reader.result as string) as ReviewProposalPackage;
-          if (
-            !parsed ||
-            parsed.version !== 1 ||
-            !parsed.rootBaselineSections ||
-            !parsed.proposedSections ||
-            typeof parsed.reviewerName !== 'string'
-          ) {
-            reject(new Error('Invalid review proposal file.'));
-            return;
-          }
-          resolve(parsed);
+          resolve(validateReviewProposalPackage(JSON.parse(reader.result as string)));
         } catch (error) {
           reject(error instanceof Error ? error : new Error('Failed to parse review proposal file.'));
         }
@@ -104,4 +93,52 @@ export function importReviewProposalPackage(): Promise<ReviewProposalPackage | n
 
     input.click();
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSections(value: unknown): value is CvFileSections {
+  return (
+    isRecord(value) &&
+    typeof value.cv === 'string' &&
+    typeof value.design === 'string' &&
+    typeof value.locale === 'string' &&
+    typeof value.settings === 'string'
+  );
+}
+
+export function validateReviewProposalPackage(value: unknown): ReviewProposalPackage {
+  if (!isRecord(value)) {
+    throw new Error('Invalid review proposal payload.');
+  }
+
+  if (
+    value.version !== 1 ||
+    typeof value.proposalId !== 'string' ||
+    (value.parentProposalId !== undefined && typeof value.parentProposalId !== 'string') ||
+    typeof value.threadId !== 'string' ||
+    typeof value.rootFingerprint !== 'string' ||
+    typeof value.fileName !== 'string' ||
+    !isSections(value.rootBaselineSections) ||
+    !isSections(value.proposedSections) ||
+    typeof value.reviewerName !== 'string' ||
+    typeof value.createdAt !== 'number'
+  ) {
+    throw new Error('Invalid review proposal payload.');
+  }
+
+  return {
+    version: 1,
+    proposalId: value.proposalId,
+    ...(value.parentProposalId ? { parentProposalId: value.parentProposalId } : {}),
+    threadId: value.threadId,
+    rootFingerprint: value.rootFingerprint,
+    fileName: value.fileName,
+    rootBaselineSections: value.rootBaselineSections,
+    proposedSections: value.proposedSections,
+    reviewerName: value.reviewerName,
+    createdAt: value.createdAt
+  };
 }

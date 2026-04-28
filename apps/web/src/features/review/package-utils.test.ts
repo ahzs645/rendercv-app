@@ -71,4 +71,13 @@ describe('review proposal package utils', () => {
 
     await expect(buildReviewProposalUrl(payload)).rejects.toBeInstanceOf(ReviewProposalTooLargeError);
   });
+
+  it('rejects decoded proposal packages with invalid section shapes', async () => {
+    const token = await encodeReviewProposalPackage({
+      ...makeProposal(),
+      proposedSections: { cv: 'cv:' } as never
+    });
+
+    await expect(decodeReviewProposalPackage(token)).rejects.toThrow('Invalid review proposal payload.');
+  });
 });

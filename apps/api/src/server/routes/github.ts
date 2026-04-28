@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import type { GitHubConnectionResponse, GitHubSyncResponse } from '@rendercv/contracts';
 import { resolveFileSections } from '@rendercv/core';
 import { jsonError } from '../errors';
-import { persistState, serverState } from '../persistence';
+import { API_DATA_DIR, persistState, serverState } from '../persistence';
 
 export const githubRouter = new Hono()
   .get('/connection', (context) =>
@@ -50,7 +50,7 @@ export const githubRouter = new Hono()
 
 function connectAndSync(repoName: string, isPrivate: boolean) {
   const repoFullName = `rendercv-local/${repoName}`;
-  const exportRoot = resolve(process.cwd(), 'apps/api/data/github-sync', repoName);
+  const exportRoot = resolve(API_DATA_DIR, 'github-sync', repoName);
 
   mkdirSync(exportRoot, { recursive: true });
 

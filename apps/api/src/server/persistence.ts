@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { CvFile, FeedbackSubmission, GitHubConnection, UserPreferences } from '@rendercv/contracts';
 import { fileStore } from '@rendercv/core';
 
@@ -15,7 +16,8 @@ type PersistedState = {
   };
 };
 
-const DATA_PATH = resolve(process.cwd(), 'apps/api/data/state.json');
+export const API_DATA_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../data');
+const DATA_PATH = resolve(API_DATA_DIR, 'state.json');
 
 function stripReadOnly(files: ReturnType<typeof fileStore.getSnapshot>['files']) {
   return files.map(({ isReadOnly: _isReadOnly, ...file }) => file);

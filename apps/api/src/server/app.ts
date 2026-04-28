@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { ZodError } from 'zod';
 import type { ApiErrorResponse } from '@rendercv/contracts';
 import { filesRouter } from './routes/files';
 import { preferencesRouter } from './routes/preferences';
@@ -39,12 +40,37 @@ app.notFound((context) =>
 );
 
 app.onError((error, context) => {
+  if (error instanceof ZodError) {
+    return context.json<ApiErrorResponse>(
+      {
+        error: {
+          code: 'invalid_payload',
+          message: 'Invalid request payload.',
+          details: error.issues
+        }
+      },
+      400
+    );
+  }
+
+  if (error instanceof SyntaxError) {
+    return context.json<ApiErrorResponse>(
+      {
+        error: {
+          code: 'invalid_json',
+          message: 'Invalid JSON request body.'
+        }
+      },
+      400
+    );
+  }
+
   console.error(error);
   return context.json<ApiErrorResponse>(
     {
       error: {
         code: 'internal_error',
-        message: error.message
+        message: 'Internal server error.'
       }
     },
     500

@@ -5,13 +5,17 @@ import { preferencesStore } from '@rendercv/core';
 import { resolveFileSections } from '@rendercv/core';
 import { reviewStore } from '@rendercv/core';
 import { useEffect, useRef } from 'react';
-import { api } from './api';
+import { toast } from 'sonner';
+import { api, API_ENABLED, ApiUnavailableError } from './api';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 
 const FILE_STORAGE_KEY = 'rendercv_guest_files';
 const PREFERENCE_STORAGE_KEY = 'rendercv_preferences';
 const REVIEW_STORAGE_KEY = 'rendercv_review_sessions';
 const BUILT_IN_THEME_KEYS = new Set(Object.keys(defaultDesigns));
+const RETRY_DELAYS = [2_000, 10_000] as const;
+
+const reportedApiFailures = new Set<string>();
 
 function stripReadOnly(files: ReturnType<typeof fileStore.getSnapshot>['files']) {
   return files.map(({ isReadOnly: _isReadOnly, ...file }) => file);
@@ -59,6 +63,38 @@ function ensureBundledThemeLibraryEntries() {
   if (nextLibrary) {
     preferencesStore.patch({ themeLibrary: nextLibrary });
   }
+}
+
+function reportApiFailure(label: string, error: unknown) {
+  if (error instanceof ApiUnavailableError || !API_ENABLED) {
+    return;
+  }
+
+  console.warn(`[RenderCV] ${label} failed`, error);
+  if (reportedApiFailures.has(label)) {
+    return;
+  }
+
+  reportedApiFailures.add(label);
+  toast.warning(`${label} failed. Your local browser copy is still saved.`);
+}
+
+function persistWithRetry(label: string, operation: () => Promise<unknown>, attempt = 0) {
+  if (!API_ENABLED) {
+    return;
+  }
+
+  operation().catch((error: unknown) => {
+    reportApiFailure(label, error);
+    const delay = RETRY_DELAYS[attempt];
+    if (delay === undefined) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      persistWithRetry(label, operation, attempt + 1);
+    }, delay);
+  });
 }
 
 export function WorkspaceBootstrap() {
@@ -123,22 +159,28 @@ export function WorkspaceBootstrap() {
     }
     migrateLegacyReviewCopies();
 
-    api.getPreferences().then((response) => {
-      preferencesStore.patch(response.preferences);
-      ensureBundledThemeLibraryEntries();
-      if (response.preferences.selectedFileId) {
-        fileStore.selectFile(response.preferences.selectedFileId);
-      }
-    }).catch(() => {});
-
-    api.getFiles().then((response) => {
-      if (response.files.length > 0) {
-        fileStore.hydrate(response.files);
-        syncThemeLibraryFromFiles(response.files);
+    if (API_ENABLED) {
+      api.getPreferences().then((response) => {
+        preferencesStore.patch(response.preferences);
         ensureBundledThemeLibraryEntries();
-        migrateLegacyReviewCopies();
-      }
-    }).catch(() => {});
+        if (response.preferences.selectedFileId) {
+          fileStore.selectFile(response.preferences.selectedFileId);
+        }
+      }).catch((error: unknown) => {
+        reportApiFailure('Loading cloud preferences', error);
+      });
+
+      api.getFiles().then((response) => {
+        if (response.files.length > 0) {
+          fileStore.hydrate(response.files);
+          syncThemeLibraryFromFiles(response.files);
+          ensureBundledThemeLibraryEntries();
+          migrateLegacyReviewCopies();
+        }
+      }).catch((error: unknown) => {
+        reportApiFailure('Loading cloud files', error);
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -148,7 +190,7 @@ export function WorkspaceBootstrap() {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       const isDark = snapshot.colorMode === 'dark' || (snapshot.colorMode === 'system' && prefersDark);
       document.documentElement.classList.toggle('dark', isDark);
-      api.patchPreferences(snapshot).catch(() => {});
+      persistWithRetry('Saving cloud preferences', () => api.patchPreferences(snapshot));
     });
   }, []);
 
@@ -156,13 +198,13 @@ export function WorkspaceBootstrap() {
     fileStore.persistence = {
       onCreateFile(file) {
         const { isReadOnly: _isReadOnly, ...payload } = file;
-        api.createFile(payload).catch(() => {});
+        persistWithRetry('Creating cloud file', () => api.createFile(payload));
       },
       onDeleteFile(id) {
-        api.deleteFile(id).catch(() => {});
+        persistWithRetry('Deleting cloud file', () => api.deleteFile(id));
       },
       onUpdateMeta(id, patch) {
-        api.patchFileMeta({ id, ...patch }).catch(() => {});
+        persistWithRetry('Saving cloud file metadata', () => api.patchFileMeta({ id, ...patch }));
       },
       onContentChange(id) {
         const existingTimer = contentTimers.current.get(id);
@@ -177,11 +219,13 @@ export function WorkspaceBootstrap() {
           }
 
           const sections = resolveFileSections(file);
-          api.patchFileContent({
-            id,
-            sections,
-            lastEdited: file.lastEdited
-          }).catch(() => {});
+          persistWithRetry('Saving cloud file content', () =>
+            api.patchFileContent({
+              id,
+              sections,
+              lastEdited: file.lastEdited
+            })
+          );
           contentTimers.current.delete(id);
         }, 350);
 

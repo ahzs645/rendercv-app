@@ -42,6 +42,16 @@ type PendingRequest<T = unknown> = {
   reject: (error: Error) => void;
 };
 
+type RendererWorkerService = {
+  pyodideWorker: Worker;
+  typstWorker: Worker;
+  pyodidePending: Map<number, PendingRequest>;
+  typstPending: Map<number, PendingRequest>;
+  nextPyodideId: number;
+  nextTypstId: number;
+  initPromise: Promise<void>;
+};
+
 type ValidationSource = 'cache' | 'inflight' | 'worker';
 
 const MAX_VALIDATION_CACHE_ENTRIES = 24;
@@ -52,6 +62,8 @@ const YAML_SOURCE_TO_SECTION: Record<string, SectionKey> = {
   locale_yaml_file: 'locale',
   settings_yaml_file: 'settings'
 };
+
+let rendererWorkerService: RendererWorkerService | null = null;
 
 function logViewerDebug(label: string, details: Record<string, unknown>) {
   if (!import.meta.env.DEV) {
@@ -82,6 +94,85 @@ function errorFromWorker(payload: WorkerErrorPayload | string) {
     error.stack = payload.stack;
   }
   return error;
+}
+
+async function getRendererWorkerService(fontUrls: string[]) {
+  if (rendererWorkerService) {
+    await rendererWorkerService.initPromise;
+    return rendererWorkerService;
+  }
+
+  const startedAt = performance.now();
+  const TypstWorker = (await import('./typst.worker?worker')).default;
+  const PyodideWorker = (await import('./pyodide.worker?worker')).default;
+
+  const service: RendererWorkerService = {
+    typstWorker: new TypstWorker(),
+    pyodideWorker: new PyodideWorker(),
+    typstPending: new Map(),
+    pyodidePending: new Map(),
+    nextTypstId: 0,
+    nextPyodideId: 0,
+    initPromise: Promise.resolve()
+  };
+
+  service.typstWorker.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
+    const { id, type, payload } = event.data;
+    const pending = service.typstPending.get(id);
+    if (!pending) return;
+    if (type === 'ERROR') {
+      pending.reject(errorFromWorker(payload as WorkerErrorPayload));
+    } else {
+      pending.resolve(payload);
+    }
+    service.typstPending.delete(id);
+  };
+
+  service.pyodideWorker.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
+    const { id, type, payload } = event.data;
+    const pending = service.pyodidePending.get(id);
+    if (!pending) return;
+    if (type === 'ERROR') {
+      pending.reject(errorFromWorker(payload as WorkerErrorPayload));
+    } else {
+      pending.resolve(payload);
+    }
+    service.pyodidePending.delete(id);
+  };
+
+  rendererWorkerService = service;
+  service.initPromise = Promise.all([
+    postRendererMessage(service, 'typst', 'INIT', { fontUrls }),
+    postRendererMessage(service, 'pyodide', 'INIT')
+  ]).then(() => {
+    logViewerDebug('init timings', {
+      totalMs: Number((performance.now() - startedAt).toFixed(1)),
+      workerLifecycle: 'module'
+    });
+  });
+
+  await service.initPromise;
+  return service;
+}
+
+function postRendererMessage<T = unknown>(
+  service: RendererWorkerService,
+  target: 'pyodide' | 'typst',
+  type: string,
+  payload?: unknown
+) {
+  return new Promise<T>((resolve, reject) => {
+    if (target === 'pyodide') {
+      const id = ++service.nextPyodideId;
+      service.pyodidePending.set(id, { resolve: resolve as (value: unknown) => void, reject });
+      service.pyodideWorker.postMessage({ id, type, payload });
+      return;
+    }
+
+    const id = ++service.nextTypstId;
+    service.typstPending.set(id, { resolve: resolve as (value: unknown) => void, reject });
+    service.typstWorker.postMessage({ id, type, payload });
+  });
 }
 
 function buildFontUrls(fontFamilies: Iterable<string>, baseUrl: string) {
@@ -180,12 +271,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const localeContent = sections?.locale ?? '';
   const settingsContent = sections?.settings ?? '';
 
-  const pyodideWorkerRef = useRef<Worker | null>(null);
-  const typstWorkerRef = useRef<Worker | null>(null);
-  const pyodidePending = useRef(new Map<number, PendingRequest>());
-  const typstPending = useRef(new Map<number, PendingRequest>());
-  const nextPyodideId = useRef(0);
-  const nextTypstId = useRef(0);
+  const rendererServiceRef = useRef<RendererWorkerService | null>(null);
   const pageUrls = useRef<string[]>([]);
   const currentRenderRequest = useRef(0);
   const loadedFonts = useRef<string[]>([]);
@@ -205,27 +291,19 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const zoomPercent = Math.round(effectiveZoom * 100);
 
   const postMessageToPyodide = useCallback(<T = unknown,>(type: string, payload?: unknown) => {
-    if (!pyodideWorkerRef.current) {
+    if (!rendererServiceRef.current) {
       return Promise.reject(new Error('Pyodide worker not initialized'));
     }
 
-    return new Promise<T>((resolve, reject) => {
-      const id = ++nextPyodideId.current;
-      pyodidePending.current.set(id, { resolve: resolve as (value: unknown) => void, reject });
-      pyodideWorkerRef.current?.postMessage({ id, type, payload });
-    });
+    return postRendererMessage<T>(rendererServiceRef.current, 'pyodide', type, payload);
   }, []);
 
   const postMessageToTypst = useCallback((type: string, payload?: unknown) => {
-    if (!typstWorkerRef.current) {
+    if (!rendererServiceRef.current) {
       return Promise.reject(new Error('Typst worker not initialized'));
     }
 
-    return new Promise<unknown>((resolve, reject) => {
-      const id = ++nextTypstId.current;
-      typstPending.current.set(id, { resolve, reject });
-      typstWorkerRef.current?.postMessage({ id, type, payload });
-    });
+    return postRendererMessage(rendererServiceRef.current, 'typst', type, payload);
   }, []);
 
   const loadValidationResult = useCallback(
@@ -364,47 +442,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
     async function initialize() {
       try {
-        const startedAt = performance.now();
-        const TypstWorker = (await import('./typst.worker?worker')).default;
-        const PyodideWorker = (await import('./pyodide.worker?worker')).default;
-
-        const typstWorker = new TypstWorker();
-        const pyodideWorker = new PyodideWorker();
-        typstWorkerRef.current = typstWorker;
-        pyodideWorkerRef.current = pyodideWorker;
-
-        typstWorker.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
-          const { id, type, payload } = event.data;
-          const pending = typstPending.current.get(id);
-          if (!pending) return;
-          if (type === 'ERROR') {
-            pending.reject(errorFromWorker(payload as WorkerErrorPayload));
-          } else {
-            pending.resolve(payload);
-          }
-          typstPending.current.delete(id);
-        };
-
-        pyodideWorker.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
-          const { id, type, payload } = event.data;
-          const pending = pyodidePending.current.get(id);
-          if (!pending) return;
-          if (type === 'ERROR') {
-            pending.reject(errorFromWorker(payload as WorkerErrorPayload));
-          } else {
-            pending.resolve(payload as ViewerValidationResult);
-          }
-          pyodidePending.current.delete(id);
-        };
-
-        await Promise.all([
-          postMessageToTypst('INIT', { fontUrls: loadedFonts.current }),
-          postMessageToPyodide('INIT')
-        ]);
-
-        logViewerDebug('init timings', {
-          totalMs: Number((performance.now() - startedAt).toFixed(1))
-        });
+        rendererServiceRef.current = await getRendererWorkerService(loadedFonts.current);
 
         if (!cancelled) {
           setIsInitializing(false);
@@ -429,12 +467,9 @@ export function useViewerRenderer(sections?: CvFileSections) {
       lastPdfTypstContent.current = null;
       lastPdfBytes.current = null;
       pdfInFlight.current.clear();
-      typstWorkerRef.current?.terminate();
-      pyodideWorkerRef.current?.terminate();
-      typstWorkerRef.current = null;
-      pyodideWorkerRef.current = null;
+      rendererServiceRef.current = null;
     };
-  }, [postMessageToPyodide, postMessageToTypst]);
+  }, []);
 
   useEffect(() => {
     validationCache.current.clear();

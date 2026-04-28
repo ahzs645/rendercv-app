@@ -7,6 +7,10 @@ export interface EncodedSharePayload {
   sections: CvFileSections;
 }
 
+export type DecodedSharePayload = EncodedSharePayload & {
+  origin?: CvFileSections;
+};
+
 const SHARE_LINK_MAX_LENGTH = 24000;
 
 const shareEngine = createWebShareEngine<EncodedSharePayload>({
@@ -17,8 +21,8 @@ export async function encodeSharePayload(payload: EncodedSharePayload) {
   return await shareEngine.compress(payload);
 }
 
-export async function decodeSharePayload(token: string) {
-  return await shareEngine.decompress(token, { deURI: true });
+export async function decodeSharePayload(token: string): Promise<DecodedSharePayload> {
+  return validateSharePayload(await shareEngine.decompress(token, { deURI: true }));
 }
 
 export interface BuildShareUrlResult {
@@ -44,4 +48,39 @@ export async function buildEncodedSharePdfUrl(payload: EncodedSharePayload) {
   url.searchParams.set('dl', 'pdf');
   url.hash = token;
   return url.toString();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSections(value: unknown): value is CvFileSections {
+  return (
+    isRecord(value) &&
+    typeof value.cv === 'string' &&
+    typeof value.design === 'string' &&
+    typeof value.locale === 'string' &&
+    typeof value.settings === 'string'
+  );
+}
+
+export function validateSharePayload(value: unknown): DecodedSharePayload {
+  if (!isRecord(value)) {
+    throw new Error('Invalid share payload.');
+  }
+
+  if (value.version !== 1 || typeof value.fileName !== 'string' || !isSections(value.sections)) {
+    throw new Error('Invalid share payload.');
+  }
+
+  if (value.origin !== undefined && !isSections(value.origin)) {
+    throw new Error('Invalid share payload.');
+  }
+
+  return {
+    version: 1,
+    fileName: value.fileName,
+    sections: value.sections,
+    ...(value.origin ? { origin: value.origin } : {})
+  };
 }
