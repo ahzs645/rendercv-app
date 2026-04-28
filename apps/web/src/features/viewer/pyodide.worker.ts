@@ -33,6 +33,7 @@ let loadPyodideFn: LoadPyodide | null = null;
 let loadPyodidePromise: Promise<LoadPyodide> | null = null;
 let storedCustomThemes: StoredCustomTheme[] = [];
 const registeredThemeNames = new Set<string>();
+let pyodideOperationQueue = Promise.resolve();
 
 const PREWARM_IMPORTS = `
 from rendercv.schema.rendercv_model_builder import build_rendercv_dictionary_and_model, BuildRendercvModelArguments
@@ -493,6 +494,15 @@ function toJsValue<T>(value: T | { toJs: () => T }) {
   return value as T;
 }
 
+function queuePyodideOperation<T>(operation: () => Promise<T>) {
+  const queued = pyodideOperationQueue.then(operation, operation);
+  pyodideOperationQueue = queued.then(
+    () => undefined,
+    () => undefined
+  );
+  return queued;
+}
+
 function setYamlInputGlobals(sections: {
   cv: string;
   design: string;
@@ -614,8 +624,11 @@ async function initialize() {
         .toJs()
     );
     const newEntries = [...afterEntries].filter((entry) => !beforeEntries.has(entry));
-    const tarball = await createPackageTar(pyodide, newEntries);
-    void writePackagesToIDB(tarball);
+    self.setTimeout(() => {
+      void queuePyodideOperation(() => createPackageTar(pyodide, newEntries))
+        .then((tarball) => writePackagesToIDB(tarball))
+        .catch(() => {});
+    }, 5_000);
   }
 
   try {
@@ -645,16 +658,18 @@ self.onmessage = async (event: MessageEvent<{ id: number; type: string; payload?
         self.postMessage({
           id,
           type: 'RENDER_SUCCESS',
-          payload: await renderSectionsWithFallback(sections)
+          payload: await queuePyodideOperation(() => renderSectionsWithFallback(sections))
         });
         break;
       }
       case 'IMPORT_THEME_ARCHIVE': {
         const themePayload = payload as { archiveName: string; bytes: Uint8Array | ArrayBuffer };
-        const result = await registerCustomThemeArchive(
-          pyodide,
-          themePayload.archiveName,
-          ensureUint8Array(themePayload.bytes)
+        const result = await queuePyodideOperation(() =>
+          registerCustomThemeArchive(
+            pyodide,
+            themePayload.archiveName,
+            ensureUint8Array(themePayload.bytes)
+          )
         );
         const storedTheme = {
           archiveName: themePayload.archiveName,
