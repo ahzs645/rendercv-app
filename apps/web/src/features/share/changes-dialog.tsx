@@ -1,7 +1,9 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import type { CvFileSections } from '@rendercv/contracts';
-import { DiffViewer } from './diff-viewer';
+import { lazy, Suspense } from 'react';
+
+const DiffViewer = lazy(() => import('./diff-viewer').then((module) => ({ default: module.DiffViewer })));
 
 export function ChangesDialog({
   open,
@@ -34,7 +36,9 @@ export function ChangesDialog({
             </Dialog.Close>
           </div>
           <div className="min-h-0 flex-1">
-            <DiffViewer origin={origin} modified={modified} />
+            <Suspense fallback={<div className="h-full bg-card" />}>
+              <DiffViewer origin={origin} modified={modified} />
+            </Suspense>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

@@ -31,6 +31,8 @@ type PyodideLike = {
 let pyodide!: PyodideLike;
 let loadPyodideFn: LoadPyodide | null = null;
 let loadPyodidePromise: Promise<LoadPyodide> | null = null;
+let storedCustomThemes: StoredCustomTheme[] = [];
+const registeredThemeNames = new Set<string>();
 
 const PREWARM_IMPORTS = `
 from rendercv.schema.rendercv_model_builder import build_rendercv_dictionary_and_model, BuildRendercvModelArguments
@@ -348,6 +350,13 @@ result
   return result;
 }
 
+function upsertStoredCustomTheme(theme: StoredCustomTheme) {
+  storedCustomThemes = [
+    ...storedCustomThemes.filter((entry) => entry.themeName !== theme.themeName),
+    { ...theme, bytes: ensureUint8Array(theme.bytes) }
+  ];
+}
+
 async function readStoredCustomThemes() {
   const db = await openIDB();
 
@@ -360,7 +369,8 @@ async function readStoredCustomThemes() {
 
 async function restoreCustomThemes(instance: PyodideLike, themes: StoredCustomTheme[]) {
   for (const theme of themes) {
-    await registerCustomThemeArchive(instance, theme.archiveName, ensureUint8Array(theme.bytes));
+    const result = await registerCustomThemeArchive(instance, theme.archiveName, ensureUint8Array(theme.bytes));
+    registeredThemeNames.add(result.themeName);
   }
 }
 
@@ -384,11 +394,14 @@ async function ensureBundledThemes(instance: PyodideLike, storedThemes: StoredCu
 
       const bytes = new Uint8Array(await response.arrayBuffer());
       const result = await registerCustomThemeArchive(instance, theme.archiveName, bytes);
-      await persistCustomTheme({
+      const storedTheme = {
         archiveName: getBundledThemeCacheKey(theme.archiveName),
         bytes,
         themeName: result.themeName
-      });
+      };
+      await persistCustomTheme(storedTheme);
+      upsertStoredCustomTheme(storedTheme);
+      registeredThemeNames.add(result.themeName);
     } catch (error) {
       if (import.meta.env.DEV) {
         console.warn('[RenderCV worker] failed to register bundled theme', theme.themeKey, error);
@@ -408,6 +421,48 @@ async function persistCustomTheme(theme: StoredCustomTheme) {
   next.push({ ...theme, bytes: ensureUint8Array(theme.bytes) });
   await idbPut(db, CUSTOM_THEMES_KEY, next);
   db.close();
+}
+
+function readDesignThemeName(design: string) {
+  return /^\s*theme\s*:\s*([^\s#]+)\s*$/m.exec(design)?.[1]?.replace(/^['"]|['"]$/g, '');
+}
+
+async function ensureThemeRegistered(themeName: string | undefined) {
+  if (!themeName || registeredThemeNames.has(themeName)) {
+    return;
+  }
+
+  const storedTheme = storedCustomThemes.find((theme) => theme.themeName === themeName);
+  if (storedTheme) {
+    const result = await registerCustomThemeArchive(
+      pyodide,
+      storedTheme.archiveName,
+      ensureUint8Array(storedTheme.bytes)
+    );
+    registeredThemeNames.add(result.themeName);
+    return;
+  }
+
+  const bundledTheme = BUNDLED_THEMES.find((theme) => theme.themeKey === themeName);
+  if (!bundledTheme) {
+    return;
+  }
+
+  const response = await fetch(assetUrl(bundledTheme.archivePath));
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${bundledTheme.archivePath}: ${response.status}`);
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const result = await registerCustomThemeArchive(pyodide, bundledTheme.archiveName, bytes);
+  const nextStoredTheme = {
+    archiveName: getBundledThemeCacheKey(bundledTheme.archiveName),
+    bytes,
+    themeName: result.themeName
+  };
+  await persistCustomTheme(nextStoredTheme);
+  upsertStoredCustomTheme(nextStoredTheme);
+  registeredThemeNames.add(result.themeName);
 }
 
 function ensureUint8Array(value: Uint8Array | ArrayBuffer | { buffer?: ArrayBufferLike } | number[]) {
@@ -455,6 +510,7 @@ async function renderSectionsWithFallback(sections: {
   locale: string;
   settings: string;
 }) {
+  await ensureThemeRegistered(readDesignThemeName(sections.design));
   setYamlInputGlobals(sections);
 
   const firstResult = JSON.parse(toJsValue(await pyodide.runPythonAsync(YAML_TO_TYPST_RENDER_RESULT)) as string) as {
@@ -563,11 +619,9 @@ async function initialize() {
   }
 
   try {
-    const storedThemes = await readStoredCustomThemes();
-    await restoreCustomThemes(pyodide, storedThemes);
-    await ensureBundledThemes(pyodide, storedThemes);
+    storedCustomThemes = await readStoredCustomThemes();
   } catch {
-    // Ignore theme restore failures and let render-time validation surface issues.
+    // Ignore theme discovery failures and let render-time validation surface issues.
   }
   await pyodide.runPythonAsync(PREWARM_IMPORTS);
 }
@@ -602,11 +656,14 @@ self.onmessage = async (event: MessageEvent<{ id: number; type: string; payload?
           themePayload.archiveName,
           ensureUint8Array(themePayload.bytes)
         );
-        await persistCustomTheme({
+        const storedTheme = {
           archiveName: themePayload.archiveName,
           bytes: ensureUint8Array(themePayload.bytes),
           themeName: result.themeName
-        });
+        };
+        await persistCustomTheme(storedTheme);
+        upsertStoredCustomTheme(storedTheme);
+        registeredThemeNames.add(result.themeName);
         self.postMessage({
           id,
           type: 'IMPORT_THEME_ARCHIVE_SUCCESS',

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Download, Eye, EyeOff, GitCompareArrows, Minus, Pencil, Plus, Upload } from 'lucide-react';
@@ -9,7 +9,6 @@ import type { EncodedSharePayload } from '../features/share/encoded-share';
 import { decodeSharePayload } from '../features/share/encoded-share';
 import { exportShareFile, importShareFile } from '../features/share/file-share';
 import { hasChanges } from '../features/share/diff-utils';
-import { DiffViewer } from '../features/share/diff-viewer';
 import { downloadBlob } from '../features/viewer/download';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import { useStore } from '../lib/use-store';
@@ -18,6 +17,9 @@ import { StyledTooltip } from '../ui/styled-tooltip';
 
 type ViewMode = 'preview' | 'diff';
 type LegacyEncodedSharePayload = EncodedSharePayload & { origin?: CvFileSections };
+const DiffViewer = lazy(() =>
+  import('../features/share/diff-viewer').then((module) => ({ default: module.DiffViewer }))
+);
 
 export function EncodedSharePage() {
   const location = useLocation();
@@ -257,7 +259,9 @@ export function EncodedSharePage() {
           {/* Content area */}
           {viewMode === 'diff' && payload?.origin ? (
             <div className="min-h-0 flex-1" style={{ height: 'calc(100vh - 57px)' }}>
-              <DiffViewer origin={payload.origin} modified={payload.sections} />
+              <Suspense fallback={<div className="h-full bg-card" />}>
+                <DiffViewer origin={payload.origin} modified={payload.sections} />
+              </Suspense>
             </div>
           ) : (
             <PreviewPaneView

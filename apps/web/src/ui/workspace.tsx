@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { GitCompareArrows, Check, Pencil, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -20,7 +20,6 @@ import {
   resolveViewerSections
 } from '../features/viewer/viewer-sections';
 import { buildYamlEntrySearchTerms } from '../features/viewer/svg-click-map';
-import { MonacoEditor } from './monaco-editor';
 import type { MonacoEditorHandle } from './monaco-editor';
 import { PreviewPaneView } from './preview-pane';
 import { SectionTabs } from './section-tabs';
@@ -32,6 +31,9 @@ const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
 const SIDEBAR_OVERLAY_BREAKPOINT = Math.ceil(SIDEBAR_MINI_WIDTH / (SIDEBAR_DEFAULT_SIZE / 100));
 const BUILT_IN_THEMES = new Set(Object.keys(defaultDesigns));
+const MonacoEditor = lazy(() =>
+  import('./monaco-editor').then((module) => ({ default: module.MonacoEditor }))
+);
 
 const LEGACY_DESIGN_KEY_PATTERN =
   /^\s*(font_size|page_size|keep_sections_together|keep_entries_together|prevent_orphaned_headers|section_heading_size)\s*:/m;
@@ -561,13 +563,15 @@ export function Workspace() {
       ) : null}
       <div className="min-h-0 flex-1 p-4 pt-3 sm:p-5 sm:pt-4">
         {preferences.yamlEditor ? (
-          <MonacoEditor
-            key={activeSection}
-            ref={monacoRef}
-            value={currentValue}
-            onChange={handleSectionChange}
-            readOnly={selectedFile?.isLocked}
-          />
+          <Suspense fallback={<EditorLoadingSkeleton />}>
+            <MonacoEditor
+              key={activeSection}
+              ref={monacoRef}
+              value={currentValue}
+              onChange={handleSectionChange}
+              readOnly={selectedFile?.isLocked}
+            />
+          </Suspense>
         ) : (
           <FormEditor
             key={activeSection}
@@ -672,6 +676,23 @@ export function Workspace() {
           </div>
         </Panel>
       </PanelGroup>
+    </div>
+  );
+}
+
+function EditorLoadingSkeleton() {
+  return (
+    <div className="flex h-full min-h-[420px] w-full flex-col rounded-2xl border border-border bg-card p-4">
+      <div className="mb-4 h-4 w-24 animate-pulse rounded-full bg-muted" />
+      <div className="space-y-3">
+        {Array.from({ length: 12 }, (_, index) => (
+          <div
+            key={index}
+            className="h-3 animate-pulse rounded-full bg-muted/70"
+            style={{ width: `${92 - (index % 5) * 9}%` }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

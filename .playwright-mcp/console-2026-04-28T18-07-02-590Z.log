@@ -1,0 +1,36 @@
+[     151ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/preferences:0
+[     151ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/files:0
+[     175ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/preferences:0
+[     176ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/files/cca94b87-79e0-46d9-9c2a-f9eb7ec04de0/meta:0
+[     916ms] [LOG] Loading micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[     955ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[    2615ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/a25a9113-9f51-48b7-848a-7d3fb211c3e7:6436
+[    2622ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/a25a9113-9f51-48b7-848a-7d3fb211c3e7:3140
+[   14690ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/preferences:0
+[   14690ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/files:0
+[   15299ms] [LOG] Loading micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   15336ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   15712ms] [LOG] typing-inspection already loaded from default channel @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   15712ms] [LOG] Loading Jinja2, MarkupSafe, annotated-types, idna, pydantic, pydantic_core, typing-extensions @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   15769ms] [LOG] Loaded Jinja2, MarkupSafe, annotated-types, idna, pydantic, pydantic_core, typing-extensions @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   16953ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/7a77151b-b811-47f6-97b1-56bd10f07a33:6436
+[   16958ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/7a77151b-b811-47f6-97b1-56bd10f07a33:3140
+[   17675ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/preferences:0
+[   17675ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/files:0
+[   18240ms] [LOG] Loading micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   18277ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   19813ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/7123a775-b09e-45fa-ae9c-9186b598fe77:6436
+[   19817ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/7123a775-b09e-45fa-ae9c-9186b598fe77:3140
+[   20546ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/files:0
+[   20547ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/preferences:0
+[   21131ms] [LOG] Loading micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   21167ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   22682ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/7a72b62e-5d70-4860-8363-dd8a0d4581ff:6436
+[   22686ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/7a72b62e-5d70-4860-8363-dd8a0d4581ff:3140
+[   23396ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/preferences:0
+[   23396ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:4173/api/files:0
+[   23992ms] [LOG] Loading micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   24032ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:4173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   25611ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/a09a37b9-bb70-478c-b8b0-9e2aaada0ba5:6436
+[   25615ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:4173/a09a37b9-bb70-478c-b8b0-9e2aaada0ba5:3140
+[  414807ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:4173/rendercv-app/assets/dm-sans-latin-ext-wght-normal-BOFOeGcA.woff2:0
