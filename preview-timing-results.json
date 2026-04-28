@@ -1,0 +1,29 @@
+{
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+  "results": [
+    {
+      "label": "clean-storage",
+      "previewMs": 2593.699999999255,
+      "pageCount": 2,
+      "loadedPageCount": 2,
+      "firstImageAlt": "CV (Classic) page 1",
+      "errors": []
+    },
+    {
+      "label": "warm-storage-1",
+      "previewMs": 2503.9000000003725,
+      "pageCount": 2,
+      "loadedPageCount": 2,
+      "firstImageAlt": "CV (Classic) page 1",
+      "errors": []
+    },
+    {
+      "label": "warm-storage-2",
+      "previewMs": 2412.5999999996275,
+      "pageCount": 2,
+      "loadedPageCount": 2,
+      "firstImageAlt": "CV (Classic) page 1",
+      "errors": []
+    }
+  ]
+}

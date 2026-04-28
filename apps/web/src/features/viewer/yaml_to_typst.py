@@ -18,7 +18,7 @@ yaml_input_design: str
 yaml_input_locale: str
 yaml_input_settings: str
 
-PREFERRED_FLAVORS = ["consulting_onepage", "default"]
+PREFERRED_FLAVORS = ["default"]
 SUPPORTED_SOCIAL_NETWORKS = {
     "LinkedIn",
     "GitHub",
@@ -60,6 +60,7 @@ TOP_LEVEL_SOCIAL_FIELD_MAP = {
 }
 POSITION_SPACING_SAME_MARKER = "RCVSPACINGSAME:"
 POSITION_SPACING_DIFF_MARKER = "RCVSPACINGDIFF:"
+ARCHIVED_TAG = "archived"
 MONTH_NAMES = {
     "01": "January",
     "02": "February",
@@ -180,6 +181,21 @@ def normalize_flavored_fields(entry):
     return normalized
 
 
+def normalize_string_list(value):
+    if not isinstance(value, list):
+        return []
+
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def matches_entry_variant(entry):
+    required_tags = normalize_string_list(entry.get("tags"))
+    if ARCHIVED_TAG in required_tags:
+        return False
+
+    return True
+
+
 def strip_compat_fields(entry):
     if not isinstance(entry, dict):
         return entry
@@ -187,6 +203,8 @@ def strip_compat_fields(entry):
     normalized = dict(entry)
     normalized.pop("itags", None)
     normalized.pop("tags", None)
+    normalized.pop("spacing_after", None)
+    normalized.pop("show_date_in_position", None)
     return normalized
 
 
@@ -248,23 +266,29 @@ def expand_nested_positions(entry):
     if not isinstance(entry, dict):
         return [entry]
 
-    normalized_entry = strip_compat_fields(normalize_flavored_fields(entry))
+    prepared_entry = normalize_flavored_fields(entry)
+    if not matches_entry_variant(prepared_entry):
+        return []
+
+    show_date_in_position = bool(prepared_entry.get("show_date_in_position", False))
+    normalized_entry = strip_compat_fields(prepared_entry)
     positions = normalized_entry.get("positions")
     if not isinstance(positions, list):
-        normalized_entry.pop("show_date_in_position", None)
         return [clean_mapping(normalized_entry)]
 
     visible_positions = []
     for position in positions:
         if not isinstance(position, dict):
             continue
-        visible_positions.append(strip_compat_fields(normalize_flavored_fields(position)))
+        prepared_position = normalize_flavored_fields(position)
+        if not matches_entry_variant(prepared_position):
+            continue
+        visible_positions.append(strip_compat_fields(prepared_position))
 
     if not visible_positions:
         return []
 
     base_entry = dict(normalized_entry)
-    show_date_in_position = bool(base_entry.pop("show_date_in_position", False))
     base_entry.pop("positions", None)
 
     company_start_date = select_company_start_date(visible_positions)
@@ -328,7 +352,11 @@ def normalize_publications(entries):
         if not isinstance(entry, dict):
             continue
 
-        item = strip_compat_fields(normalize_flavored_fields(entry))
+        prepared_entry = normalize_flavored_fields(entry)
+        if not matches_entry_variant(prepared_entry):
+            continue
+
+        item = strip_compat_fields(prepared_entry)
         authors = item.get("authors")
         if isinstance(authors, dict) and "flavors" in authors:
             authors = pick_flavor_value(authors)

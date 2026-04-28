@@ -8,8 +8,8 @@ export type BundledTheme = {
 
 export const BUNDLED_THEMES: BundledTheme[] = [
   {
-    "archiveName": "ahzs645-resume-4d9e1da5122f.zip",
-    "archivePath": "cdn/themes/ahzs645-resume-4d9e1da5122f.zip",
+    "archiveName": "ahzs645-resume-81fda66a90eb.zip",
+    "archivePath": "cdn/themes/ahzs645-resume-81fda66a90eb.zip",
     "design": "design:\n  theme: ahmadstyle\n",
     "themeKey": "ahmadstyle"
   }

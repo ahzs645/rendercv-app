@@ -11,6 +11,7 @@ interface TypstModule {
 const BASE_URL = import.meta.env.BASE_URL;
 
 let typst: TypstModule | null = null;
+let typstRuntimePromise: Promise<[unknown, { preloadRemoteFonts: (fontUrls: string[]) => unknown }]> | null = null;
 
 function assetUrl(path: string) {
   return new URL(`${BASE_URL}${path}`, self.location.origin).toString();
@@ -110,12 +111,19 @@ async function loadScript(url: string) {
   }
 }
 
+async function loadTypstRuntime() {
+  if (!typstRuntimePromise) {
+    typstRuntimePromise = Promise.all([
+      loadScript(assetUrl('cdn/typst-ts-esm/all-in-one-lite.bundle.js')),
+      loadScript(assetUrl('cdn/typst-ts-esm/options.init.mjs'))
+    ]) as Promise<[unknown, { preloadRemoteFonts: (fontUrls: string[]) => unknown }]>;
+  }
+
+  return typstRuntimePromise;
+}
+
 async function initTypst(fontUrls: string[]) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [, options] = (await Promise.all([
-    loadScript(assetUrl('cdn/typst-ts-esm/all-in-one-lite.bundle.js')),
-    loadScript(assetUrl('cdn/typst-ts-esm/options.init.mjs'))
-  ])) as any[];
+  const [, options] = await loadTypstRuntime();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   typst = (self as any).$typst as TypstModule;
   typst.setCompilerInitOptions({

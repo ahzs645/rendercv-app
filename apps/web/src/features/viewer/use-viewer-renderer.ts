@@ -84,10 +84,6 @@ function errorFromWorker(payload: WorkerErrorPayload | string) {
   return error;
 }
 
-function mergeStoredFontFamilies(storedFamilies: string[] | null | undefined) {
-  return new Set([...(storedFamilies ?? []), ...DEFAULT_FONT_FAMILIES]);
-}
-
 function buildFontUrls(fontFamilies: Iterable<string>, baseUrl: string) {
   return Array.from(
     new Set(Array.from(fontFamilies).flatMap((fontFamily) => getFontUrls(fontFamily, baseUrl)))
@@ -198,8 +194,12 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const validationInFlight = useRef(new Map<string, Promise<ViewerValidationResult>>());
   const pendingPreviewSections = useRef<CvFileSections | null>(null);
   const previewRenderLoopActive = useRef(false);
+  const lastTypstSectionsKey = useRef<string | null>(null);
   const lastTypstContent = useRef<string | null>(null);
   const lastTypstSvgPages = useRef<string[] | null>(null);
+  const lastPdfTypstContent = useRef<string | null>(null);
+  const lastPdfBytes = useRef<Uint8Array | null>(null);
+  const pdfInFlight = useRef(new Map<string, Promise<Uint8Array>>());
 
   const effectiveZoom = zoomFactor;
   const zoomPercent = Math.round(effectiveZoom * 100);
@@ -277,19 +277,16 @@ export function useViewerRenderer(sections?: CvFileSections) {
       }
     }
 
-    if (fontsAdded) {
-      localStorage.setItem('loadedFonts', JSON.stringify(loadedFonts.current));
-      localStorage.setItem(
-        'loadedFontFamilies',
-        JSON.stringify(Array.from(loadedFontFamilies.current))
-      );
-    }
-
     return fontsAdded;
   }, []);
 
   const renderToTypst = useCallback(
     async (renderSections: CvFileSections) => {
+      const key = buildValidationCacheKey(renderSections, renderVersion);
+      if (key === lastTypstSectionsKey.current && lastTypstContent.current) {
+        return lastTypstContent.current;
+      }
+
       const startedAt = performance.now();
       const { result, source } = await loadValidationResult(renderSections);
 
@@ -303,16 +300,40 @@ export function useViewerRenderer(sections?: CvFileSections) {
       if (fontsChanged) {
         await postMessageToTypst('REINIT', { fontUrls: loadedFonts.current });
       }
+      lastTypstSectionsKey.current = key;
+      lastTypstContent.current = result.content;
       return result.content;
     },
-    [checkAndLoadFonts, loadValidationResult, postMessageToTypst]
+    [checkAndLoadFonts, loadValidationResult, postMessageToTypst, renderVersion]
   );
 
   const renderToPdf = useCallback(
     async (renderSections: CvFileSections) => {
       const typst = await renderToTypst(renderSections);
       if (!typst) return null;
-      return (await postMessageToTypst('PDF', { content: typst })) as Uint8Array;
+
+      if (typst === lastPdfTypstContent.current && lastPdfBytes.current) {
+        return lastPdfBytes.current;
+      }
+
+      const existingRequest = pdfInFlight.current.get(typst);
+      if (existingRequest) {
+        return existingRequest;
+      }
+
+      const request = postMessageToTypst('PDF', { content: typst })
+        .then((bytes) => {
+          const pdfBytes = bytes as Uint8Array;
+          lastPdfTypstContent.current = typst;
+          lastPdfBytes.current = pdfBytes;
+          return pdfBytes;
+        })
+        .finally(() => {
+          pdfInFlight.current.delete(typst);
+        });
+
+      pdfInFlight.current.set(typst, request);
+      return request;
     },
     [postMessageToTypst, renderToTypst]
   );
@@ -327,21 +348,14 @@ export function useViewerRenderer(sections?: CvFileSections) {
   );
 
   useEffect(() => {
-    try {
-      const storedFamilies = localStorage.getItem('loadedFontFamilies');
-      loadedFontFamilies.current = mergeStoredFontFamilies(
-        storedFamilies ? (JSON.parse(storedFamilies) as string[]) : null
-      );
-      loadedFonts.current = buildFontUrls(loadedFontFamilies.current, import.meta.env.BASE_URL);
+    loadedFontFamilies.current = new Set(DEFAULT_FONT_FAMILIES);
+    loadedFonts.current = getDefaultFontUrls(import.meta.env.BASE_URL);
 
-      localStorage.setItem('loadedFonts', JSON.stringify(loadedFonts.current));
-      localStorage.setItem(
-        'loadedFontFamilies',
-        JSON.stringify(Array.from(loadedFontFamilies.current))
-      );
+    try {
+      localStorage.removeItem('loadedFonts');
+      localStorage.removeItem('loadedFontFamilies');
     } catch {
-      loadedFonts.current = getDefaultFontUrls(import.meta.env.BASE_URL);
-      loadedFontFamilies.current = new Set(DEFAULT_FONT_FAMILIES);
+      // Local storage may be unavailable in embedded/private contexts.
     }
   }, []);
 
@@ -409,8 +423,12 @@ export function useViewerRenderer(sections?: CvFileSections) {
       cancelled = true;
       revokePageUrls(pageUrls.current);
       pageUrls.current = [];
+      lastTypstSectionsKey.current = null;
       lastTypstContent.current = null;
       lastTypstSvgPages.current = null;
+      lastPdfTypstContent.current = null;
+      lastPdfBytes.current = null;
+      pdfInFlight.current.clear();
       typstWorkerRef.current?.terminate();
       pyodideWorkerRef.current?.terminate();
       typstWorkerRef.current = null;
@@ -421,8 +439,12 @@ export function useViewerRenderer(sections?: CvFileSections) {
   useEffect(() => {
     validationCache.current.clear();
     validationInFlight.current.clear();
+    lastTypstSectionsKey.current = null;
     lastTypstContent.current = null;
     lastTypstSvgPages.current = null;
+    lastPdfTypstContent.current = null;
+    lastPdfBytes.current = null;
+    pdfInFlight.current.clear();
   }, [renderVersion]);
 
   const renderLatestPreview = useCallback(async () => {
@@ -471,6 +493,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
           }
 
           const typst = result.content;
+          const typstSectionsKey = buildValidationCacheKey(renderSections, renderVersion);
 
           if (!typst) {
             setSvgPages([]);
@@ -490,6 +513,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
           // Skip Typst SVG render if the content is identical to last render
           if (typst === lastTypstContent.current && lastTypstSvgPages.current) {
+            lastTypstSectionsKey.current = typstSectionsKey;
             logViewerDebug('render timings', {
               validationSource: source,
               pyodideMs: Number(pyodideMs.toFixed(1)),
@@ -502,6 +526,9 @@ export function useViewerRenderer(sections?: CvFileSections) {
             setRenderErrors([]);
             continue;
           }
+
+          lastTypstSectionsKey.current = typstSectionsKey;
+          lastTypstContent.current = typst;
 
           const fontsChanged = checkAndLoadFonts(typst);
           if (fontsChanged) {

@@ -1,0 +1,65 @@
+[     176ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:20102
+[     362ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/preferences:0
+[     362ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/files:0
+[    1148ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[    1187ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[    1563ms] [LOG] typing-inspection already loaded from default channel @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[    1563ms] [LOG] Loading Jinja2, MarkupSafe, annotated-types, idna, pydantic, pydantic_core, typing-extensions @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[    1613ms] [LOG] Loaded Jinja2, MarkupSafe, annotated-types, idna, pydantic, pydantic_core, typing-extensions @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[    2707ms] [LOG] totalMs 2384.8 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[    2909ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 6751, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5173/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:379
+[    2911ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5173/cb6892fa-874c-4968-a90e-7cb426a999d8:6436
+[    2917ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5173/cb6892fa-874c-4968-a90e-7cb426a999d8:3140
+[    3403ms] [LOG] validationSource inflight @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:18
+[    3403ms] [LOG] pyodideMs 139.4 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[    3403ms] [LOG] svgMs 492.1 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[    3403ms] [LOG] totalMs 632.2 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[    3403ms] [LOG] typstSvgCache miss @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:18
+[    3403ms] [LOG] pageCount 2 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   24799ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/preferences:0
+[   24800ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/files:0
+[   25387ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   25422ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   25756ms] [LOG] typing-inspection already loaded from default channel @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   25756ms] [LOG] Loading Jinja2, MarkupSafe, annotated-types, idna, pydantic, pydantic_core, typing-extensions @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   25806ms] [LOG] Loaded Jinja2, MarkupSafe, annotated-types, idna, pydantic, pydantic_core, typing-extensions @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   26849ms] [LOG] totalMs 2075.8 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   27036ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 6751, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5173/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:379
+[   27037ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5173/74143b2f-1dc9-443e-950a-3f65a684b2e3:6436
+[   27042ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5173/74143b2f-1dc9-443e-950a-3f65a684b2e3:3140
+[   27152ms] [LOG] validationSource inflight @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:18
+[   27152ms] [LOG] pyodideMs 122.7 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   27152ms] [LOG] svgMs 115.1 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   27152ms] [LOG] totalMs 238 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   27152ms] [LOG] typstSvgCache miss @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:18
+[   27152ms] [LOG] pageCount 2 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   27847ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/preferences:0
+[   27847ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/files:0
+[   28448ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   28486ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   29874ms] [LOG] totalMs 2052 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   30059ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 6751, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5173/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:379
+[   30060ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5173/134484a0-0d22-4b08-b186-9db591cd5fa9:6436
+[   30064ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5173/134484a0-0d22-4b08-b186-9db591cd5fa9:3140
+[   30163ms] [LOG] validationSource inflight @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:18
+[   30163ms] [LOG] pyodideMs 121.2 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   30163ms] [LOG] svgMs 102.8 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   30163ms] [LOG] totalMs 224.6 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   30163ms] [LOG] typstSvgCache miss @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:18
+[   30163ms] [LOG] pageCount 2 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   30857ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/preferences:0
+[   30857ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/files:0
+[   31413ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   31449ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5173/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[   32794ms] [LOG] totalMs 1961.4 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   32978ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 6751, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5173/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:379
+[   32979ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5173/0cccc4fd-4578-4a3d-8f66-a41ebc0d40fd:6436
+[   32982ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5173/0cccc4fd-4578-4a3d-8f66-a41ebc0d40fd:3140
+[   33079ms] [LOG] validationSource inflight @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:18
+[   33079ms] [LOG] pyodideMs 121.1 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   33079ms] [LOG] svgMs 100.9 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   33079ms] [LOG] totalMs 222.3 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[   33079ms] [LOG] typstSvgCache miss @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:18
+[   33079ms] [LOG] pageCount 2 @ http://localhost:5173/rendercv-app/src/features/viewer/use-viewer-renderer.ts:22
+[  101138ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/rendercv-app/@vite/client:864
+[  101139ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/rendercv-app/@vite/client:864

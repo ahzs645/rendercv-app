@@ -44,6 +44,7 @@ const IDB_DB_NAME = 'pyodide-pkg-cache';
 const IDB_STORE = 'packages';
 const BASE_URL = import.meta.env.BASE_URL;
 const CUSTOM_THEMES_KEY = 'custom-themes';
+const BUNDLED_THEME_CACHE_VERSION = 'theme-normalization-v2';
 const CUSTOM_THEME_MISSING_PATTERN = /The custom theme folder .* does not exist\./;
 const YAML_TO_TYPST_RENDER_RESULT = `${yamlToTypstPy}
 import json
@@ -219,6 +220,9 @@ MULTILINE_COMPATIBILITY_REPLACEMENTS = {
       outlined: true,
       bookmarked: true,
     )[ #text(size: {{ design.section_heading_size }}, weight: "bold")[#upper(title)] ]''',
+    '''{% if header_link_color == "#000000" and design.colors.links %}
+  {% set header_link_color = design.colors.links %}
+{% endif %}''': '''{% set header_link_color = "#000000" if header_link_color == "#000000" else header_link_color %}''',
 }
 
 TEXT_WITH_TEMPLATE_ARGUMENT_PATTERN = re.compile(
@@ -363,7 +367,9 @@ async function restoreCustomThemes(instance: PyodideLike, themes: StoredCustomTh
 async function ensureBundledThemes(instance: PyodideLike, storedThemes: StoredCustomTheme[]) {
   for (const theme of BUNDLED_THEMES) {
     const alreadyCached = storedThemes.some(
-      (entry) => entry.themeName === theme.themeKey && entry.archiveName === theme.archiveName
+      (entry) =>
+        entry.themeName === theme.themeKey &&
+        entry.archiveName === getBundledThemeCacheKey(theme.archiveName)
     );
 
     if (alreadyCached) {
@@ -379,7 +385,7 @@ async function ensureBundledThemes(instance: PyodideLike, storedThemes: StoredCu
       const bytes = new Uint8Array(await response.arrayBuffer());
       const result = await registerCustomThemeArchive(instance, theme.archiveName, bytes);
       await persistCustomTheme({
-        archiveName: theme.archiveName,
+        archiveName: getBundledThemeCacheKey(theme.archiveName),
         bytes,
         themeName: result.themeName
       });
@@ -389,6 +395,10 @@ async function ensureBundledThemes(instance: PyodideLike, storedThemes: StoredCu
       }
     }
   }
+}
+
+function getBundledThemeCacheKey(archiveName: string) {
+  return `${archiveName}:${BUNDLED_THEME_CACHE_VERSION}`;
 }
 
 async function persistCustomTheme(theme: StoredCustomTheme) {
