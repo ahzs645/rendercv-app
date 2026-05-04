@@ -6,18 +6,21 @@ import {
   EllipsisVertical,
   FilePlus2,
   FileText,
+  FolderDown,
   GitCompareArrows,
   HelpCircle,
   Link as LinkIcon,
   Lock,
   Monitor,
   Pencil,
+  RotateCcw,
   Shield,
   Trash2
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import type { CvFile } from '@rendercv/contracts';
-import { fileStore, reviewStore } from '@rendercv/core';
+import { fileStore, preferencesStore, resolveFileSections, reviewStore } from '@rendercv/core';
+import { toast } from 'sonner';
 import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { onboardingTour } from '../features/onboarding/tour-state';
@@ -25,6 +28,8 @@ import { PdfImportButton } from './pdf-import-button';
 import { YamlImportButton } from './yaml-import-button';
 import type { PreparedYamlImport } from './yaml-import-button';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
+import { downloadBlob } from '../features/viewer/download';
+import type { ZipFile } from '../features/files/zip.worker';
 
 type SidebarMode = 'full' | 'compact' | 'mini';
 
@@ -55,13 +60,26 @@ export function Sidebar({
   const asideRef = useRef<HTMLElement>(null);
   const snapshot = useStore(fileStore);
   const reviewSnapshot = useStore(reviewStore);
+  const preferences = useStore(preferencesStore);
   const location = useLocation();
   const [mode, setMode] = useState<SidebarMode>('full');
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const activeFiles = useMemo(
     () =>
       snapshot.files
         .filter((file) => !file.isArchived && !file.isTrashed)
         .sort((left, right) => right.lastEdited - left.lastEdited),
+    [snapshot.files]
+  );
+  const archivedFiles = useMemo(
+    () =>
+      snapshot.files
+        .filter((file) => file.isArchived && !file.isTrashed)
+        .sort((left, right) => right.lastEdited - left.lastEdited),
+    [snapshot.files]
+  );
+  const trashedFiles = useMemo(
+    () => snapshot.files.filter((file) => file.isTrashed).sort((left, right) => right.lastEdited - left.lastEdited),
     [snapshot.files]
   );
   const isCompact = mode !== 'full';
@@ -108,6 +126,59 @@ export function Sidebar({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+
+  const downloadAllData = useCallback(async () => {
+    if (isDownloadingAll) return;
+    setIsDownloadingAll(true);
+
+    try {
+      const files: ZipFile[] = [
+        ...activeFiles.map((file) => ({ name: file.name, sections: resolveFileSections(file) })),
+        ...archivedFiles.map((file) => ({
+          name: file.name,
+          sections: resolveFileSections(file),
+          group: 'Archive'
+        })),
+        ...trashedFiles.map((file) => ({
+          name: file.name,
+          sections: resolveFileSections(file),
+          group: 'Trash'
+        }))
+      ];
+
+      if (files.length === 0) {
+        toast.error('No CVs available to export.');
+        return;
+      }
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        import('../features/files/zip.worker?worker')
+          .then((ZipWorker) => {
+            const worker = new ZipWorker.default();
+            worker.postMessage({ files });
+            worker.onmessage = (event: MessageEvent<{ type: 'SUCCESS'; blob: Blob } | { type: 'ERROR'; message: string }>) => {
+              worker.terminate();
+              if (event.data.type === 'SUCCESS') {
+                resolve(event.data.blob);
+              } else {
+                reject(new Error(event.data.message));
+              }
+            };
+            worker.onerror = () => {
+              worker.terminate();
+              reject(new Error('Failed to create data export.'));
+            };
+          })
+          .catch(reject);
+      });
+
+      await downloadBlob(blob, 'CVs.zip');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to download all data.');
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  }, [activeFiles, archivedFiles, isDownloadingAll, trashedFiles]);
 
   return (
     <aside
@@ -160,6 +231,30 @@ export function Sidebar({
             </li>
           ))}
         </ul>
+        {!isMini && (archivedFiles.length > 0 || preferences.showArchive) ? (
+          <FileGroup
+            compact={isCompact}
+            count={archivedFiles.length}
+            files={archivedFiles}
+            label="Archive"
+            mini={isMini}
+            open={preferences.showArchive}
+            selectedFileId={snapshot.selectedFileId}
+            onToggle={() => preferencesStore.patch({ showArchive: !preferences.showArchive })}
+          />
+        ) : null}
+        {!isMini && (trashedFiles.length > 0 || preferences.showTrash) ? (
+          <FileGroup
+            compact={isCompact}
+            count={trashedFiles.length}
+            files={trashedFiles}
+            label="Trash"
+            mini={isMini}
+            open={preferences.showTrash}
+            selectedFileId={snapshot.selectedFileId}
+            onToggle={() => preferencesStore.patch({ showTrash: !preferences.showTrash })}
+          />
+        ) : null}
         {(reviewSessions.length > 0 || archivedReviewSessions.length > 0) && !isMini ? (
           <div className="mt-6 space-y-4">
             {reviewSessions.length > 0 ? (
@@ -261,6 +356,22 @@ export function Sidebar({
             <HelpCircle className="size-4 shrink-0" />
             {isCompact ? <span className="sr-only">Product Tour</span> : <span>Product Tour</span>}
           </button>
+          <button
+            className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-60 ${
+              isMini ? 'justify-center px-0 py-2' : isCompact ? 'justify-center px-2 py-2' : 'gap-2 px-2 py-2 text-left'
+            }`}
+            disabled={isDownloadingAll}
+            onClick={() => void downloadAllData()}
+            title="Download all data"
+            type="button"
+          >
+            <FolderDown className="size-4 shrink-0" />
+            {isCompact ? (
+              <span className="sr-only">Download all data</span>
+            ) : (
+              <span>{isDownloadingAll ? 'Downloading...' : 'Download all data'}</span>
+            )}
+          </button>
           <SidebarLinkButton compact={isCompact} icon={<Shield className="size-4" />} mini={isMini} to="/privacy-policy">
             Privacy Policy
           </SidebarLinkButton>
@@ -290,6 +401,59 @@ function SidebarBrand({ compact, mini }: { compact: boolean; mini: boolean }) {
           </p>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function FileGroup({
+  compact,
+  count,
+  files,
+  label,
+  mini,
+  open,
+  selectedFileId,
+  onToggle
+}: {
+  compact: boolean;
+  count: number;
+  files: CvFile[];
+  label: 'Archive' | 'Trash';
+  mini: boolean;
+  open: boolean;
+  selectedFileId?: string;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="mt-5">
+      <button
+        className="mb-2 flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+        onClick={onToggle}
+        type="button"
+      >
+        <span>{label}</span>
+        <span className="text-sidebar-foreground/45">{count}</span>
+      </button>
+      {open ? (
+        count > 0 ? (
+          <ul className="space-y-1">
+            {files.map((file) => (
+              <li key={file.id}>
+                <SidebarFileRow
+                  compact={compact}
+                  file={file}
+                  mini={mini}
+                  selected={selectedFileId === file.id}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="rounded-lg border border-dashed border-sidebar-border px-3 py-3 text-sm text-sidebar-foreground/60">
+            {label === 'Archive' ? 'No archived CVs.' : 'Trash is empty.'}
+          </div>
+        )
+      ) : null}
     </div>
   );
 }
@@ -413,64 +577,107 @@ function SidebarFileRow({
               className="absolute right-0 top-full z-50 mt-1 min-w-[15rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
               role="menu"
             >
-              <FileMenuItem
-                icon={<Lock className="size-4" />}
-                label={file.isLocked ? 'Unlock' : 'Lock'}
-                shortcut="⌘K"
-                onClick={() => {
-                  if (file.isLocked) fileStore.unlockFile(file.id);
-                  else fileStore.lockFile(file.id);
-                  closeMenu();
-                }}
-              />
-              <FileMenuItem
-                icon={<LinkIcon className="size-4" />}
-                label="Make public and copy link"
-                onClick={async () => {
-                  fileStore.makePublic(file.id);
-                  await navigator.clipboard.writeText(
-                    new URL(`${import.meta.env.BASE_URL}${file.id}`, window.location.origin).toString()
-                  );
-                  closeMenu();
-                }}
-              />
-              <FileMenuItem
-                icon={<Copy className="size-4" />}
-                label="Duplicate"
-                shortcut="⌘D"
-                onClick={() => {
-                  fileStore.duplicateFile(file.id);
-                  closeMenu();
-                }}
-              />
-              <FileMenuItem
-                icon={<Pencil className="size-4" />}
-                label="Rename"
-                onClick={() => {
-                  setRenameDraft(file.name);
-                  setIsRenaming(true);
-                  closeMenu();
-                }}
-              />
+              {!file.isArchived && !file.isTrashed ? (
+                <FileMenuItem
+                  icon={<Lock className="size-4" />}
+                  label={file.isLocked ? 'Unlock' : 'Lock'}
+                  shortcut="Cmd K"
+                  onClick={() => {
+                    if (file.isLocked) fileStore.unlockFile(file.id);
+                    else fileStore.lockFile(file.id);
+                    closeMenu();
+                  }}
+                />
+              ) : null}
+              {!file.isTrashed ? (
+                <FileMenuItem
+                  icon={<LinkIcon className="size-4" />}
+                  label="Make public and copy link"
+                  onClick={async () => {
+                    fileStore.makePublic(file.id);
+                    await navigator.clipboard.writeText(
+                      new URL(`${import.meta.env.BASE_URL}${file.id}`, window.location.origin).toString()
+                    );
+                    closeMenu();
+                  }}
+                />
+              ) : null}
+              {!file.isTrashed ? (
+                <FileMenuItem
+                  icon={<Copy className="size-4" />}
+                  label="Duplicate"
+                  shortcut="Cmd D"
+                  onClick={() => {
+                    fileStore.duplicateFile(file.id);
+                    closeMenu();
+                  }}
+                />
+              ) : null}
+              {!file.isReadOnly ? (
+                <FileMenuItem
+                  icon={<Pencil className="size-4" />}
+                  label="Rename"
+                  onClick={() => {
+                    setRenameDraft(file.name);
+                    setIsRenaming(true);
+                    closeMenu();
+                  }}
+                />
+              ) : null}
               <div className="-mx-1 my-1 h-px bg-border" role="separator" />
-              <FileMenuItem
-                icon={<Archive className="size-4" />}
-                label="Move to archive"
-                onClick={() => {
-                  fileStore.archiveFile(file.id);
-                  closeMenu();
-                }}
-              />
-              <FileMenuItem
-                destructive
-                icon={<Trash2 className="size-4" />}
-                label="Move to trash"
-                shortcut="⌘⌫"
-                onClick={() => {
-                  fileStore.trashFile(file.id);
-                  closeMenu();
-                }}
-              />
+              {file.isArchived && !file.isTrashed ? (
+                <FileMenuItem
+                  icon={<RotateCcw className="size-4" />}
+                  label="Restore from archive"
+                  onClick={() => {
+                    fileStore.restoreFromArchive(file.id);
+                    closeMenu();
+                  }}
+                />
+              ) : !file.isTrashed ? (
+                <FileMenuItem
+                  icon={<Archive className="size-4" />}
+                  label="Move to archive"
+                  onClick={() => {
+                    fileStore.archiveFile(file.id);
+                    closeMenu();
+                  }}
+                />
+              ) : null}
+              {file.isTrashed ? (
+                <>
+                  <FileMenuItem
+                    icon={<RotateCcw className="size-4" />}
+                    label="Restore from trash"
+                    onClick={() => {
+                      fileStore.restoreFile(file.id);
+                      closeMenu();
+                    }}
+                  />
+                  <FileMenuItem
+                    destructive
+                    icon={<Trash2 className="size-4" />}
+                    label="Delete permanently"
+                    onClick={() => {
+                      if (window.confirm(`Delete "${file.name}" permanently? This cannot be undone.`)) {
+                        fileStore.deleteFile(file.id);
+                      }
+                      closeMenu();
+                    }}
+                  />
+                </>
+              ) : (
+                <FileMenuItem
+                  destructive
+                  icon={<Trash2 className="size-4" />}
+                  label="Move to trash"
+                  shortcut="Cmd Backspace"
+                  onClick={() => {
+                    fileStore.trashFile(file.id);
+                    closeMenu();
+                  }}
+                />
+              )}
             </div>
           ) : null}
         </>
@@ -511,7 +718,7 @@ function FileMenuItem({
       {label}
       {shortcut ? (
         <span className="ml-auto inline-flex items-center gap-1">
-          {shortcut.split('').filter((c) => c !== ' ').map((key, index) => (
+          {shortcut.split(' ').map((key, index) => (
             <kbd
               key={index}
               className="pointer-events-none inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-muted px-1 font-sans text-xs font-medium text-muted-foreground select-none"

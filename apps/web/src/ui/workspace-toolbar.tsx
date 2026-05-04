@@ -134,6 +134,25 @@ export function WorkspaceToolbar({
     }
   }
 
+  async function copyReviewLink() {
+    if (!selectedFile || !sections) {
+      return;
+    }
+
+    try {
+      const result = await buildEncodedShareUrl({
+        version: 1,
+        fileName: selectedFile.name,
+        sections,
+        origin: sections
+      });
+      await navigator.clipboard.writeText(result.url);
+      toast.success('Review link copied.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create review link.');
+    }
+  }
+
   async function copyPdfLink() {
     if (!selectedFile || !sections) {
       return;
@@ -582,6 +601,7 @@ export function WorkspaceToolbar({
           canReviewActions={canSendProposal}
           fileName={selectedFile?.name}
           onCopyPdfLink={() => void copyPdfLink()}
+          onCopyReviewLink={() => void copyReviewLink()}
           onCopyShareLink={() => void copyShareLink()}
           onDownloadPdf={() => void downloadPdf()}
           onDownloadTypst={() => void downloadTypst()}
@@ -725,6 +745,7 @@ export function WorkspaceToolbar({
           disabled={!canLinkActions}
           menuOpen={shareMenuOpen}
           onCopyPdfLink={() => void copyPdfLink()}
+          onCopyReviewLink={() => void copyReviewLink()}
           onCopyShareLink={() => void copyShareLink()}
           onMenuOpenChange={setShareMenuOpen}
           onOpenShareDialog={() => setDownloadDialogOpen(true)}
@@ -776,6 +797,7 @@ export function WorkspaceToolbar({
         canReviewActions={canSendProposal}
         fileName={selectedFile?.name}
         onCopyPdfLink={() => void copyPdfLink()}
+        onCopyReviewLink={() => void copyReviewLink()}
         onCopyShareLink={() => void copyShareLink()}
         onDownloadPdf={() => void downloadPdf()}
         onDownloadTypst={() => void downloadTypst()}
@@ -919,6 +941,7 @@ function ShareComboButton({
   disabled = false,
   menuOpen,
   onCopyPdfLink,
+  onCopyReviewLink,
   onCopyShareLink,
   onMenuOpenChange,
   onOpenShareDialog,
@@ -928,6 +951,7 @@ function ShareComboButton({
   disabled?: boolean;
   menuOpen: boolean;
   onCopyPdfLink: () => void | Promise<void>;
+  onCopyReviewLink: () => void | Promise<void>;
   onCopyShareLink: () => void | Promise<void>;
   onMenuOpenChange: (open: boolean) => void;
   onOpenShareDialog: () => void;
@@ -1009,6 +1033,14 @@ function ShareComboButton({
             onClick={() => {
               onMenuOpenChange(false);
               void onCopyShareLink();
+            }}
+          />
+          <ToolbarMenuItem
+            icon={<GitCompareArrows className="size-4" />}
+            label="Copy review link"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onCopyReviewLink();
             }}
           />
           <ToolbarMenuItem
@@ -1172,6 +1204,7 @@ function DownloadShareDialog({
   canReviewActions,
   fileName,
   onCopyPdfLink,
+  onCopyReviewLink,
   onCopyShareLink,
   onDownloadPdf,
   onDownloadTypst,
@@ -1190,6 +1223,7 @@ function DownloadShareDialog({
   canReviewActions: boolean;
   fileName?: string;
   onCopyPdfLink: () => void | Promise<void>;
+  onCopyReviewLink: () => void | Promise<void>;
   onCopyShareLink: () => void | Promise<void>;
   onDownloadPdf: () => void | Promise<void>;
   onDownloadTypst: () => void | Promise<void>;
@@ -1268,6 +1302,13 @@ function DownloadShareDialog({
                   icon={<Copy className="size-4" />}
                   onClick={onCopyShareLink}
                   title="Copy share link"
+                />
+                <DialogActionButton
+                  description="Copy an editable review copy link so a collaborator can send changes back."
+                  disabled={!canLinkActions}
+                  icon={<GitCompareArrows className="size-4" />}
+                  onClick={onCopyReviewLink}
+                  title="Copy review link"
                 />
                 <DialogActionButton
                   description="Copy a direct link that downloads the PDF version."

@@ -369,3 +369,33 @@ See https://react.dev/link/invalid-hook-call for tips about how to debug and fix
 [ 2277887ms] [LOG] totalMs 282.8 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
 [ 2277887ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
 [ 2277887ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2623902ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=ceba5193:20102
+[ 2625195ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2625235ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2626884ms] [LOG] totalMs 2901.9 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2626884ms] [LOG] workerLifecycle module @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2627290ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 17543, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2627433ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2627435ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/e32d4986-2f05-4126-85a3-41969ac824db:6436
+[ 2627442ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/e32d4986-2f05-4126-85a3-41969ac824db:3140
+[ 2627863ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2627863ms] [LOG] pyodideMs 393.2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2627863ms] [LOG] svgMs 428.1 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2627863ms] [LOG] totalMs 822.1 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2627863ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2627863ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2999956ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=ceba5193:20102
+[ 3001208ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 3001247ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 3002813ms] [LOG] totalMs 2783.6 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 3002813ms] [LOG] workerLifecycle module @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 3003236ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 17543, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 3003384ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 3003386ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/b02e31bc-ea4e-47fb-b3bb-95f527599f0e:6436
+[ 3003392ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/b02e31bc-ea4e-47fb-b3bb-95f527599f0e:3140
+[ 3003730ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 3003730ms] [LOG] pyodideMs 414.8 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 3003730ms] [LOG] svgMs 344.8 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 3003730ms] [LOG] totalMs 760.4 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 3003730ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 3003730ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23

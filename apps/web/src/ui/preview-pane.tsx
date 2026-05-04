@@ -17,6 +17,7 @@ import {
 } from '../features/viewer/svg-click-map';
 import type { SectionMapEntry, SectionMapResult } from '../features/viewer/typst-section-map';
 import { formatRenderErrorMessage } from '../features/viewer/render-error-format';
+import { attachZoomGestures } from '../features/viewer/zoom-gestures';
 
 export type ViewerRenderer = ReturnType<typeof useViewerRenderer>;
 
@@ -343,9 +344,25 @@ function PreviewCanvas({
   const pageBoxesPromiseCache = useRef(new Map<string, Promise<Awaited<ReturnType<typeof measureSvgTextBoxesFromUrl>>>>());
   const documentCandidateCache = useRef<ReturnType<typeof buildSvgDocumentCandidates> | null | undefined>(undefined);
   const sectionCandidateCache = useRef(new Map<string, ReturnType<typeof buildSvgSectionCandidates>>());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const zoomFactorRef = useRef(viewer.zoomFactor);
   const [debugZonesByPage, setDebugZonesByPage] = useState<
     Record<string, ReturnType<typeof buildSvgPageHitZones>>
   >({});
+
+  useEffect(() => {
+    zoomFactorRef.current = viewer.zoomFactor;
+  }, [viewer.zoomFactor]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return undefined;
+
+    return attachZoomGestures(container, {
+      getZoom: () => zoomFactorRef.current,
+      setZoom: viewer.setZoom
+    });
+  }, [viewer.setZoom]);
 
   useEffect(() => {
     pageBoxesPromiseCache.current.clear();
@@ -415,7 +432,11 @@ function PreviewCanvas({
 
   return (
     <div className={shellClassName}>
-      <div className="h-full overflow-auto rounded-2xl border border-border bg-sidebar p-3 sm:p-6">
+      <div
+        ref={scrollContainerRef}
+        className="h-full overflow-auto rounded-2xl border border-border bg-sidebar p-3 sm:p-6"
+        data-zoom-container
+      >
         {viewer.initError ? (
           <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{viewer.initError}</div>
         ) : viewer.renderErrors.length > 0 ? (
@@ -425,7 +446,12 @@ function PreviewCanvas({
             ))}
           </div>
         ) : viewer.svgPages.length > 0 ? (
-          <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:gap-6" style={{ width: `${viewer.zoomFactor * 100}%` }}>
+          <div
+            className="mx-auto flex max-w-4xl flex-col gap-4 sm:gap-6"
+            data-zoom-content
+            data-zoom-layer
+            style={{ width: `${viewer.zoomFactor * 100}%` }}
+          >
             {viewer.svgPages.map((page, pageIndex) => (
               <div
                 key={pageIndex}
@@ -433,6 +459,7 @@ function PreviewCanvas({
                 onClick={
                   hasClickHandler
                     ? (event: MouseEvent<HTMLDivElement>) => {
+                        if (event.detail >= 2) return;
                         // Don't navigate if the user was selecting text
                         const sel = window.getSelection();
                         if (sel && sel.toString().length > 0) return;

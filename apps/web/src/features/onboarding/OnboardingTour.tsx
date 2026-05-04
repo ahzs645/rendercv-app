@@ -21,6 +21,7 @@ export function OnboardingTour({
 }) {
   const { isRunning } = useStore(onboardingTour);
   const driverRef = useRef<Driver | null>(null);
+  const handledRef = useRef(false);
 
   useEffect(() => {
     if (!isRunning) {
@@ -30,6 +31,7 @@ export function OnboardingTour({
       return;
     }
 
+    handledRef.current = false;
     const tour = driver({
       animate: true,
       showProgress: true,
@@ -42,7 +44,15 @@ export function OnboardingTour({
       stageRadius: 8,
       popoverOffset: 12,
       onCloseClick: () => {
+        handledRef.current = true;
         tour.destroy();
+        onboardingTour.skip();
+      },
+      onDestroyed: () => {
+        if (handledRef.current) {
+          return;
+        }
+        handledRef.current = true;
         onboardingTour.skip();
       },
       steps: buildTourSteps(
@@ -57,6 +67,7 @@ export function OnboardingTour({
             setOpenMobile: onOpenMobileSidebar
           },
           onComplete: () => {
+            handledRef.current = true;
             tour.destroy();
             onboardingTour.complete();
           }

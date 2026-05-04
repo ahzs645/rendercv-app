@@ -41,6 +41,21 @@ describe('encoded share links', () => {
     expect(result.url).toContain('/share#');
   });
 
+  it('round-trips review share payloads with origin sections', async () => {
+    const origin = makeSections();
+    const payload = {
+      version: 1 as const,
+      fileName: 'Resume',
+      sections: makeSections({ cv: 'cv:\n  name: Reviewer Draft' }),
+      origin
+    };
+
+    const token = await encodeSharePayload(payload);
+    const decoded = await decodeSharePayload(token);
+
+    expect(decoded).toEqual(payload);
+  });
+
   it('rejects decoded payloads with invalid section shapes', async () => {
     const token = await encodeSharePayload({
       version: 1,

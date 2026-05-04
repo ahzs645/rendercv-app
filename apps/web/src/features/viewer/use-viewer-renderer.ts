@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CvFileSections, SectionKey } from '@rendercv/contracts';
-import { MAX_ZOOM, MIN_ZOOM, ZOOM_STEP } from './zoom-config';
+import { ZOOM_STEP } from './zoom-config';
+import { clampZoom } from './zoom-math';
 import { DEFAULT_FONT_FAMILIES, FONT_VARIANTS, getDefaultFontUrls, getFontUrls } from './fonts';
 import { parseTypstSectionMap } from './typst-section-map';
 import type { SectionMapResult } from './typst-section-map';
@@ -697,15 +698,19 @@ export function useViewerRenderer(sections?: CvFileSections) {
   );
 
   const zoomIn = useCallback(() => {
-    setZoomFactor((current) => Math.min(MAX_ZOOM, current + ZOOM_STEP));
+    setZoomFactor((current) => clampZoom(current + ZOOM_STEP));
   }, []);
 
   const zoomOut = useCallback(() => {
-    setZoomFactor((current) => Math.max(MIN_ZOOM, current - ZOOM_STEP));
+    setZoomFactor((current) => clampZoom(current - ZOOM_STEP));
   }, []);
 
   const zoomReset = useCallback(() => {
     setZoomFactor(1);
+  }, []);
+
+  const setZoom = useCallback((zoom: number) => {
+    setZoomFactor(clampZoom(zoom));
   }, []);
 
   return useMemo(
@@ -721,6 +726,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomIn,
       zoomOut,
       zoomReset,
+      setZoom,
       renderToPdf,
       renderToSvg,
       renderToTypst,
@@ -739,6 +745,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomIn,
       zoomOut,
       zoomReset,
+      setZoom,
       renderToPdf,
       renderToSvg,
       renderToTypst,

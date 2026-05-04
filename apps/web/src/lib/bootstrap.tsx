@@ -15,6 +15,7 @@ const PREFERENCE_STORAGE_KEY = 'rendercv_preferences';
 const REVIEW_STORAGE_KEY = 'rendercv_review_sessions';
 const BUILT_IN_THEME_KEYS = new Set(Object.keys(defaultDesigns));
 const RETRY_DELAYS = [2_000, 10_000] as const;
+const CLOUD_SYNC_ENABLED = API_ENABLED && import.meta.env.VITE_ENABLE_CLOUD_SYNC === 'true';
 
 const reportedApiFailures = new Set<string>();
 
@@ -67,7 +68,7 @@ function ensureBundledThemeLibraryEntries() {
 }
 
 function reportApiFailure(label: string, error: unknown) {
-  if (error instanceof ApiUnavailableError || !API_ENABLED) {
+  if (error instanceof ApiUnavailableError || !CLOUD_SYNC_ENABLED) {
     return;
   }
 
@@ -81,7 +82,7 @@ function reportApiFailure(label: string, error: unknown) {
 }
 
 function persistWithRetry(label: string, operation: () => Promise<unknown>, attempt = 0) {
-  if (!API_ENABLED) {
+  if (!CLOUD_SYNC_ENABLED) {
     return;
   }
 
@@ -161,7 +162,7 @@ export function WorkspaceBootstrap() {
     }
     migrateLegacyReviewCopies();
 
-    if (API_ENABLED) {
+    if (CLOUD_SYNC_ENABLED) {
       api.getPreferences().then((response) => {
         preferencesStore.patch(response.preferences);
         ensureBundledThemeLibraryEntries();

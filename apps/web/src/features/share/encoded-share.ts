@@ -5,11 +5,10 @@ export interface EncodedSharePayload {
   version: 1;
   fileName: string;
   sections: CvFileSections;
+  origin?: CvFileSections;
 }
 
-export type DecodedSharePayload = EncodedSharePayload & {
-  origin?: CvFileSections;
-};
+export type DecodedSharePayload = EncodedSharePayload;
 
 const SHARE_LINK_MAX_LENGTH = 24000;
 

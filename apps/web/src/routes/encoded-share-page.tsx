@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Download, Eye, EyeOff, GitCompareArrows, Minus, Pencil, Plus, Upload } from 'lucide-react';
-import type { CvFileSections } from '@rendercv/contracts';
 import { fileStore, preferencesStore, readThemeName, readLocaleName, reviewStore } from '@rendercv/core';
 import { toast } from 'sonner';
 import type { EncodedSharePayload } from '../features/share/encoded-share';
@@ -16,7 +15,6 @@ import { PreviewPaneView } from '../ui/preview-pane';
 import { StyledTooltip } from '../ui/styled-tooltip';
 
 type ViewMode = 'preview' | 'diff';
-type LegacyEncodedSharePayload = EncodedSharePayload & { origin?: CvFileSections };
 const DiffViewer = lazy(() =>
   import('../features/share/diff-viewer').then((module) => ({ default: module.DiffViewer }))
 );
@@ -25,7 +23,7 @@ export function EncodedSharePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [payload, setPayload] = useState<LegacyEncodedSharePayload | null>(null);
+  const [payload, setPayload] = useState<EncodedSharePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const isPdfDownload = searchParams.get('dl') === 'pdf';
@@ -57,19 +55,18 @@ export function EncodedSharePage() {
 
     void decodeSharePayload(token)
       .then((decoded) => {
-        const legacyDecoded = decoded as LegacyEncodedSharePayload;
         if (cancelled) {
           return;
         }
 
-        setPayload(legacyDecoded);
+        setPayload(decoded);
         setError(null);
 
         // Auto-switch to diff view when origin is present and has changes
         if (
-          legacyDecoded.origin &&
-          legacyDecoded.sections &&
-          hasChanges(legacyDecoded.origin, legacyDecoded.sections)
+          decoded.origin &&
+          decoded.sections &&
+          hasChanges(decoded.origin, decoded.sections)
         ) {
           setViewMode('diff');
         }
@@ -104,7 +101,7 @@ export function EncodedSharePage() {
       selectedLocale: localeKey
     });
 
-    if (payload.origin) {
+    if (payload.origin && hasChanges(payload.origin, payload.sections)) {
       reviewStore.migrateLegacyReviewCopy({
         fileId: file.id,
         fileName: importedFileName,
@@ -117,7 +114,7 @@ export function EncodedSharePage() {
       reviewStore.ensureSession({
         linkedFileId: file.id,
         baseFileName: importedFileName,
-        rootBaselineSections: payload.sections
+        rootBaselineSections: payload.origin ?? payload.sections
       });
       toast.success(`Imported "${importedFileName}". You can send changes back as a review proposal later.`);
     }

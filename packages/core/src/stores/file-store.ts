@@ -532,18 +532,22 @@ export class FileStore {
 
   archiveFile(id: string) {
     this.#updateMeta(id, { isArchived: true });
+    this.#ensureSelectedVisible();
   }
 
   restoreFromArchive(id: string) {
     this.#updateMeta(id, { isArchived: false });
+    this.#ensureSelectedVisible();
   }
 
   trashFile(id: string) {
     this.#updateMeta(id, { isTrashed: true });
+    this.#ensureSelectedVisible();
   }
 
   restoreFile(id: string) {
     this.#updateMeta(id, { isTrashed: false });
+    this.#ensureSelectedVisible();
   }
 
   lockFile(id: string) {
@@ -689,6 +693,28 @@ export class FileStore {
       timestamp: Date.now()
     });
     this.#applyPatch(id, patch, 'meta', this.selectedFileId);
+  }
+
+  #ensureSelectedVisible() {
+    const preferences = preferencesStore.getSnapshot();
+    const selectedFile = this.selectedFile;
+    const selectedFileIsVisible = selectedFile
+      ? (!selectedFile.isArchived && !selectedFile.isTrashed) ||
+        (selectedFile.isArchived && !selectedFile.isTrashed && preferences.showArchive) ||
+        (selectedFile.isTrashed && preferences.showTrash)
+      : false;
+
+    if (selectedFileIsVisible) {
+      return;
+    }
+
+    const selectedFileId =
+      this.activeFiles[0]?.id ??
+      (preferences.showArchive ? this.archivedFiles[0]?.id : undefined) ??
+      (preferences.showTrash ? this.trashedFiles[0]?.id : undefined);
+
+    this.#store.update((current) => ({ ...current, selectedFileId }));
+    preferencesStore.patch({ selectedFileId });
   }
 
   #pushUndoEntry(entry: UndoEntry) {
