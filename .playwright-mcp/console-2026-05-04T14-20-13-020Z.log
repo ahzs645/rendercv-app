@@ -1,0 +1,347 @@
+[ 1764890ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:20102
+[ 1765982ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 1766021ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 1767573ms] [LOG] totalMs 2616.6 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1767573ms] [LOG] workerLifecycle module @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1767986ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 17543, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 1768118ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 1768119ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/fa55cfba-744c-4666-8ccf-30b9e39f0c4d:6436
+[ 1768125ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/fa55cfba-744c-4666-8ccf-30b9e39f0c4d:3140
+[ 1768433ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1768433ms] [LOG] pyodideMs 389.2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1768433ms] [LOG] svgMs 314.4 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1768433ms] [LOG] totalMs 704.4 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1768433ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1768433ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1805386ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 6751, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 1805464ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1805464ms] [LOG] pyodideMs 121.1 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1805464ms] [LOG] svgMs 78 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1805464ms] [LOG] totalMs 199.5 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1805464ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1805464ms] [LOG] pageCount 2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1902814ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:391
+[ 1902816ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6231
+[ 1902816ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:391
+[ 1902817ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6231
+[ 1902818ms] [ERROR] %o
+
+%s
+
+%s
+ TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) The above error occurred in the <Sidebar> component. React will try to recreate this component tree from scratch using the error boundary you provided, RenderErrorBoundary. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7000
+[ 1902819ms] [ERROR] React Router caught the following error during render TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6270
+[ 1902864ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:391
+[ 1902865ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6231
+[ 1902878ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:391
+[ 1902878ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6231
+[ 1902878ms] [ERROR] %o
+
+%s
+
+%s
+ TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) The above error occurred in the <Sidebar> component. React will try to recreate this component tree from scratch using the error boundary you provided, RenderErrorBoundary. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7000
+[ 1902879ms] [ERROR] React Router caught the following error during render TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6270
+[ 1902908ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:391
+[ 1902909ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6231
+[ 1902918ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:391
+[ 1902919ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6231
+[ 1902919ms] [ERROR] %o
+
+%s
+
+%s
+ TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) The above error occurred in the <Sidebar> component. React will try to recreate this component tree from scratch using the error boundary you provided, RenderErrorBoundary. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7000
+[ 1902919ms] [ERROR] React Router caught the following error during render TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6270
+[ 1902951ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:391
+[ 1902951ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6231
+[ 1902960ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:391
+[ 1902960ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6231
+[ 1902961ms] [ERROR] %o
+
+%s
+
+%s
+ TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) The above error occurred in the <Sidebar> component. React will try to recreate this component tree from scratch using the error boundary you provided, RenderErrorBoundary. @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7000
+[ 1902961ms] [ERROR] React Router caught the following error during render TypeError: Cannot read properties of null (reading 'useRef')
+    at exports.useRef (http://localhost:5174/rendercv-app/node_modules/.vite/deps/chunk-V5OLOE2O.js?v=cd3da878:956:35)
+    at Sidebar (http://localhost:5174/rendercv-app/src/ui/sidebar.tsx?t=1777906314811:33:20)
+    at Object.react_stack_bottom_frame (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:18509:20)
+    at renderWithHooks (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:5654:24)
+    at updateFunctionComponent (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:7475:21)
+    at beginWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:8525:20)
+    at runWithFiberInDEV (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:997:72)
+    at performUnitOfWork (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12561:98)
+    at workLoopSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12424:43)
+    at renderRootSync (http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=a8dea371:12408:13) @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-router-dom.js?v=a8dea371:6270
+[ 1903251ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=cd3da878:20102
+[ 1904352ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 1904390ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 1905940ms] [LOG] totalMs 2596.7 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1905940ms] [LOG] workerLifecycle module @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1906342ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 17543, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 1906480ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 1906482ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/b3464611-3ec8-4906-92ba-eccd4c7199cd:6436
+[ 1906488ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/b3464611-3ec8-4906-92ba-eccd4c7199cd:3140
+[ 1906806ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1906806ms] [LOG] pyodideMs 391.6 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1906806ms] [LOG] svgMs 325 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1906806ms] [LOG] totalMs 717.6 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1906807ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1906807ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1928690ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=ceba5193:20102
+[ 1929776ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 1929816ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 1931458ms] [LOG] totalMs 2682.2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1931458ms] [LOG] workerLifecycle module @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1931880ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 17543, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 1932018ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 1932020ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/b5617f3a-cb0b-4a6c-8a9e-bf55551cc478:6436
+[ 1932033ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/b5617f3a-cb0b-4a6c-8a9e-bf55551cc478:3140
+[ 1932388ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1932388ms] [LOG] pyodideMs 411 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1932388ms] [LOG] svgMs 368.5 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1932388ms] [LOG] totalMs 780.4 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1932388ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1932388ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1961173ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 1961302ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1961302ms] [LOG] pyodideMs 129.6 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1961302ms] [LOG] svgMs 127.9 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1961302ms] [LOG] totalMs 258.2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 1961302ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 1961302ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2117159ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=ceba5193:20102
+[ 2118303ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2118342ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2119911ms] [LOG] totalMs 2665.8 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2119911ms] [LOG] workerLifecycle module @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2120312ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 17543, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2120462ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2120463ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/1f91b172-579a-474a-b054-8c58f0015986:6436
+[ 2120469ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/1f91b172-579a-474a-b054-8c58f0015986:3140
+[ 2120825ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2120825ms] [LOG] pyodideMs 395.4 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2120825ms] [LOG] svgMs 361.8 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2120825ms] [LOG] totalMs 758.3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2120825ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2120825ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2122805ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2122965ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2122965ms] [LOG] pyodideMs 153.7 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2122965ms] [LOG] svgMs 159.2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2122965ms] [LOG] totalMs 313.4 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2122965ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2122965ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2139970ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=ceba5193:20102
+[ 2141136ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2141176ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2142800ms] [LOG] totalMs 2767.4 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2142800ms] [LOG] workerLifecycle module @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2143223ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 17543, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2143358ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2143360ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/cd47549f-61a9-45f8-a57d-d4758cb629ea:6436
+[ 2143366ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/cd47549f-61a9-45f8-a57d-d4758cb629ea:3140
+[ 2143729ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2143729ms] [LOG] pyodideMs 399.6 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2143729ms] [LOG] svgMs 369.8 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2143729ms] [LOG] totalMs 769.8 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2143729ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2143729ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2145327ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=ceba5193:20102
+[ 2146462ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2146503ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2148221ms] [LOG] totalMs 2832.2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2148221ms] [LOG] workerLifecycle module @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2148661ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 17543, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2148820ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2148821ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/e27e5a12-ce5f-4fd4-9b93-920c272c9445:6436
+[ 2148827ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/e27e5a12-ce5f-4fd4-9b93-920c272c9445:3140
+[ 2149164ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2149164ms] [LOG] pyodideMs 443.2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2149164ms] [LOG] svgMs 343.8 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2149165ms] [LOG] totalMs 787.5 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2149165ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2149165ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23

@@ -8,9 +8,27 @@ export type BundledTheme = {
 
 export const BUNDLED_THEMES: BundledTheme[] = [
   {
-    "archiveName": "ahzs645-resume-81fda66a90eb.zip",
-    "archivePath": "cdn/themes/ahzs645-resume-81fda66a90eb.zip",
+    "archiveName": "ahzs645-resume-c955da36307d.zip",
+    "archivePath": "cdn/themes/ahzs645-resume-c955da36307d.zip",
     "design": "design:\n  theme: ahmadstyle\n",
     "themeKey": "ahmadstyle"
+  },
+  {
+    "archiveName": "phd-jakes-resume-c955da36307d.zip",
+    "archivePath": "cdn/themes/phd-jakes-resume-c955da36307d.zip",
+    "design": "design:\n  theme: phdjakes\n",
+    "themeKey": "phdjakes"
+  },
+  {
+    "archiveName": "phd-deedy-resume-c955da36307d.zip",
+    "archivePath": "cdn/themes/phd-deedy-resume-c955da36307d.zip",
+    "design": "design:\n  theme: phddeedy\n",
+    "themeKey": "phddeedy"
+  },
+  {
+    "archiveName": "phd-research-cv-c955da36307d.zip",
+    "archivePath": "cdn/themes/phd-research-cv-c955da36307d.zip",
+    "design": "design:\n  theme: phdresearch\n",
+    "themeKey": "phdresearch"
   }
 ];

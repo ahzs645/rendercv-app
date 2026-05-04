@@ -366,7 +366,11 @@ export function WorkspaceToolbar({
           ) : null}
           <Dialog.Root open={mobileActionsOpen} onOpenChange={setMobileActionsOpen}>
             <Dialog.Trigger asChild>
-              <ToolbarIconButton ariaLabel="More actions" onClick={() => setMobileActionsOpen(true)}>
+              <ToolbarIconButton
+                ariaLabel="More actions"
+                dataOnboarding="share-controls"
+                onClick={() => setMobileActionsOpen(true)}
+              >
                 <SlidersHorizontal className="size-4" />
               </ToolbarIconButton>
             </Dialog.Trigger>
@@ -717,6 +721,7 @@ export function WorkspaceToolbar({
           </ToolbarIconButton>
         </ToolbarControlGroup>
         <ShareComboButton
+          dataOnboarding="share-controls"
           disabled={!canLinkActions}
           menuOpen={shareMenuOpen}
           onCopyPdfLink={() => void copyPdfLink()}
@@ -726,6 +731,7 @@ export function WorkspaceToolbar({
           onSharePdf={() => void sharePdf()}
         />
         <DownloadComboButton
+          dataOnboarding="data-export"
           disabled={!canPreviewActions}
           menuOpen={downloadMenuOpen}
           onDownloadPdf={() => void downloadPdf()}
@@ -909,6 +915,7 @@ function ToolbarControlGroup({ children }: { children: ReactNode }) {
 }
 
 function ShareComboButton({
+  dataOnboarding,
   disabled = false,
   menuOpen,
   onCopyPdfLink,
@@ -917,6 +924,7 @@ function ShareComboButton({
   onOpenShareDialog,
   onSharePdf
 }: {
+  dataOnboarding?: string;
   disabled?: boolean;
   menuOpen: boolean;
   onCopyPdfLink: () => void | Promise<void>;
@@ -955,7 +963,10 @@ function ShareComboButton({
   }, [menuOpen, onMenuOpenChange]);
 
   return (
-    <div className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm">
+    <div
+      className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm"
+      data-onboarding={dataOnboarding}
+    >
       <button
         type="button"
         aria-label="Share PDF"
@@ -1024,6 +1035,7 @@ function ShareComboButton({
 }
 
 function DownloadComboButton({
+  dataOnboarding,
   disabled = false,
   menuOpen,
   onDownloadPdf,
@@ -1031,6 +1043,7 @@ function DownloadComboButton({
   onMenuOpenChange,
   onOpenExportDialog
 }: {
+  dataOnboarding?: string;
   disabled?: boolean;
   menuOpen: boolean;
   onDownloadPdf: () => void | Promise<void>;
@@ -1068,7 +1081,10 @@ function DownloadComboButton({
   }, [menuOpen, onMenuOpenChange]);
 
   return (
-    <div className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm">
+    <div
+      className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm"
+      data-onboarding={dataOnboarding}
+    >
       <button
         type="button"
         aria-label="Download PDF"
@@ -1368,6 +1384,7 @@ function ToolbarIconButton({
   active = false,
   ariaLabel,
   children,
+  dataOnboarding,
   disabled = false,
   onClick,
   variant = 'default'
@@ -1375,6 +1392,7 @@ function ToolbarIconButton({
   active?: boolean;
   ariaLabel: string;
   children: ReactNode;
+  dataOnboarding?: string;
   disabled?: boolean;
   onClick: () => void | Promise<void>;
   variant?: 'default' | 'ghost';
@@ -1384,6 +1402,7 @@ function ToolbarIconButton({
       <button
         type="button"
         aria-label={ariaLabel}
+        data-onboarding={dataOnboarding}
         disabled={disabled}
         onClick={() => void onClick()}
         className={`inline-flex size-8 items-center justify-center rounded-md text-sm transition-colors ${

@@ -16,7 +16,8 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   activeSection: 'cv',
   wordWrap: true,
   entriesExpanded: true,
-  selectedModel: DEFAULT_MODEL_ID
+  selectedModel: DEFAULT_MODEL_ID,
+  onboardingCompletedAt: null
 };
 
 export class PreferencesStore {

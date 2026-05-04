@@ -53,6 +53,12 @@ export const EVENTS = {
   BILLING_INTERVAL_TOGGLED: 'billing_interval_toggled',
   RENDER_FAILED: 'render_failed',
 
+  // --- Onboarding ---
+  ONBOARDING_STARTED: 'onboarding_started',
+  ONBOARDING_STEP_VIEWED: 'onboarding_step_viewed',
+  ONBOARDING_COMPLETED: 'onboarding_completed',
+  ONBOARDING_SKIPPED: 'onboarding_skipped',
+
   // --- Migration ---
   MIGRATION_STARTED: 'migration_started',
   MIGRATION_COMPLETED: 'migration_completed',

@@ -27,6 +27,8 @@ import { SectionTabs } from './section-tabs';
 import { Sidebar, SIDEBAR_MINI_WIDTH } from './sidebar';
 import { FormEditor } from '../features/form/form-editor';
 import { WorkspaceToolbar } from './workspace-toolbar';
+import { OnboardingTour } from '../features/onboarding/OnboardingTour';
+import { onboardingTour } from '../features/onboarding/tour-state';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
@@ -311,6 +313,15 @@ export function Workspace() {
   }, [rawSections?.cv, selectedFile]);
 
   useEffect(() => {
+    if (!selectedFile || preferences.onboardingCompletedAt) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => onboardingTour.start(), 800);
+    return () => window.clearTimeout(timer);
+  }, [preferences.onboardingCompletedAt, selectedFile]);
+
+  useEffect(() => {
     if (!selectedFile || selectedFile.selectedTheme === 'ahmadstyle' || !rawSections?.cv.includes(' | ')) {
       return;
     }
@@ -478,7 +489,7 @@ export function Workspace() {
   );
 
   const editorPane = (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col" data-onboarding="editor-pane">
       {isMergeDraft && selectedFile && selectedReviewSession ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-primary/20 bg-primary/5 px-4 py-3 text-xs text-primary">
           <Pencil className="size-3.5 shrink-0" />
@@ -619,6 +630,11 @@ export function Workspace() {
 
   return (
     <div className="h-dvh overflow-hidden bg-background">
+      <OnboardingTour
+        isMobile={sidebarOverlays}
+        onMobilePaneChange={setMobilePane}
+        onOpenMobileSidebar={setMobileOpen}
+      />
       {sidebarOverlays ? (
         <MobileSidebarDrawer open={mobileOpen} onClose={() => setMobileOpen(false)}>
           {sidebarElement}

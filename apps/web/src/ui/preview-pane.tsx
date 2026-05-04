@@ -65,7 +65,10 @@ export function PreviewPaneView({
   showHeader?: boolean;
 }) {
   return (
-    <div className={`flex h-full flex-col ${showHeader ? 'gap-3 p-4 sm:gap-4 sm:p-6' : ''}`}>
+    <div
+      className={`flex h-full flex-col ${showHeader ? 'gap-3 p-4 sm:gap-4 sm:p-6' : ''}`}
+      data-onboarding="preview-pane"
+    >
       {showHeader ? (
         <PreviewPaneHeader
           controls={controls}

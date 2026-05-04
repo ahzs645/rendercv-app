@@ -1,0 +1,42 @@
+.driver-popover {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.24);
+}
+
+.driver-popover-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.driver-popover-description {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.driver-popover-progress-text {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.driver-popover button {
+  border-radius: 0.5rem;
+  text-shadow: none;
+}
+
+.driver-popover-next-btn,
+.driver-popover-done-btn {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.driver-popover-prev-btn,
+.driver-popover-close-btn {
+  background: var(--background) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+}

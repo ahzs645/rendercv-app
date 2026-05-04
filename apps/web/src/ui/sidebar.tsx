@@ -7,6 +7,7 @@ import {
   FilePlus2,
   FileText,
   GitCompareArrows,
+  HelpCircle,
   Link as LinkIcon,
   Lock,
   Monitor,
@@ -19,6 +20,7 @@ import type { CvFile } from '@rendercv/contracts';
 import { fileStore, reviewStore } from '@rendercv/core';
 import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
+import { onboardingTour } from '../features/onboarding/tour-state';
 import { PdfImportButton } from './pdf-import-button';
 import { YamlImportButton } from './yaml-import-button';
 import type { PreparedYamlImport } from './yaml-import-button';
@@ -114,7 +116,10 @@ export function Sidebar({
       data-sidebar-mode={mode}
     >
       <SidebarBrand compact={isCompact} mini={isMini} />
-      <div className={`space-y-2 border-b border-sidebar-border px-2 pb-3 ${isMini ? 'pt-0' : 'pt-1'}`}>
+      <div
+        className={`space-y-2 border-b border-sidebar-border px-2 pb-3 ${isMini ? 'pt-0' : 'pt-1'}`}
+        data-onboarding="create-import"
+      >
         <button
           className={`inline-flex w-full items-center rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
             isMini ? 'h-10 justify-center px-0' : 'h-10 justify-start gap-2 px-3'
@@ -245,6 +250,17 @@ export function Sidebar({
           </p>
         ) : null}
         <nav className={`grid gap-1 ${isMini ? 'grid-cols-2' : ''}`}>
+          <button
+            className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+              isMini ? 'justify-center px-0 py-2' : isCompact ? 'justify-center px-2 py-2' : 'gap-2 px-2 py-2 text-left'
+            }`}
+            onClick={() => onboardingTour.start()}
+            title="Start product tour"
+            type="button"
+          >
+            <HelpCircle className="size-4 shrink-0" />
+            {isCompact ? <span className="sr-only">Product Tour</span> : <span>Product Tour</span>}
+          </button>
           <SidebarLinkButton compact={isCompact} icon={<Shield className="size-4" />} mini={isMini} to="/privacy-policy">
             Privacy Policy
           </SidebarLinkButton>

@@ -17,4 +17,5 @@ export interface UserPreferences {
   wordWrap: boolean;
   entriesExpanded: boolean;
   selectedModel: string;
+  onboardingCompletedAt?: string | null;
 }

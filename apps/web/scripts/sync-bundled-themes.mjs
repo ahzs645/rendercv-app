@@ -19,6 +19,27 @@ const THEME_SOURCES = [
     packageDir: 'ahmadstyle',
     submodulePath: path.join(projectRoot, 'themes/resume'),
     themeKey: 'ahmadstyle'
+  },
+  {
+    archiveBaseName: 'phd-jakes-resume',
+    design: 'design:\n  theme: phdjakes\n',
+    packageDir: 'phdjakes',
+    submodulePath: path.join(projectRoot, 'themes/resume'),
+    themeKey: 'phdjakes'
+  },
+  {
+    archiveBaseName: 'phd-deedy-resume',
+    design: 'design:\n  theme: phddeedy\n',
+    packageDir: 'phddeedy',
+    submodulePath: path.join(projectRoot, 'themes/resume'),
+    themeKey: 'phddeedy'
+  },
+  {
+    archiveBaseName: 'phd-research-cv',
+    design: 'design:\n  theme: phdresearch\n',
+    packageDir: 'phdresearch',
+    submodulePath: path.join(projectRoot, 'themes/resume'),
+    themeKey: 'phdresearch'
   }
 ];
 
@@ -41,10 +62,13 @@ async function assertThemeSourceReady(themeSource) {
 }
 
 function createZipFromSubmodule(submodulePath) {
-  const archiveBuffer = execSync('git archive --format=zip HEAD', {
+  const archiveBuffer = execSync(
+    "zip -q -X -r - . -x '.git/*' '.venv/*' '*/__pycache__/*' '.DS_Store'",
+    {
     cwd: submodulePath,
     maxBuffer: 50 * 1024 * 1024
-  });
+    }
+  );
   return Buffer.from(archiveBuffer);
 }
 

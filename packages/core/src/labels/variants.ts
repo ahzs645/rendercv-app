@@ -8,6 +8,9 @@ export const THEME_LABELS: Record<string, string> = {
   ink: 'Ink',
   moderncv: 'ModernCV',
   opal: 'Opal',
+  phddeedy: 'PhD Deedy',
+  phdjakes: 'PhD Jake',
+  phdresearch: 'PhD Research CV',
   sb2nov: 'Sb2nov'
 };
 

@@ -43,6 +43,7 @@ export function WorkspaceAiEditor({
               : 'border border-border bg-card text-foreground'
           } disabled:cursor-not-allowed disabled:opacity-50`}
           disabled={disabled}
+          data-onboarding="ai-chat"
           type="button"
         >
           AI Editor
@@ -50,7 +51,10 @@ export function WorkspaceAiEditor({
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-background/45 backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed inset-y-4 left-4 right-4 z-50 outline-none md:left-auto md:w-[28rem]">
+        <Dialog.Content
+          className="fixed inset-y-4 left-4 right-4 z-50 outline-none md:left-auto md:w-[28rem]"
+          data-onboarding="ai-chat"
+        >
           <Dialog.Title className="sr-only">AI Editor</Dialog.Title>
           <Dialog.Description className="sr-only">
             Ask for rewrites, bullet tightening, or section-level guidance.

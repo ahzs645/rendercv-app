@@ -7,6 +7,7 @@ import { reviewStore } from '@rendercv/core';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { api, API_ENABLED, ApiUnavailableError } from './api';
+import { initPostHog } from './analytics/posthog-client';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 
 const FILE_STORAGE_KEY = 'rendercv_guest_files';
@@ -123,6 +124,7 @@ export function WorkspaceBootstrap() {
       return;
     }
     bootstrapped.current = true;
+    initPostHog(import.meta.env.VITE_POSTHOG_KEY, import.meta.env.VITE_POSTHOG_HOST);
 
     try {
       const rawPreferences = localStorage.getItem(PREFERENCE_STORAGE_KEY);

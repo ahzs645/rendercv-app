@@ -97,7 +97,7 @@ export function SectionTabs({
   );
 
   return (
-    <div className="shrink-0 border-b border-border px-3 pt-2 sm:px-2 sm:pt-1">
+    <div className="shrink-0 border-b border-border px-3 pt-2 sm:px-2 sm:pt-1" data-onboarding="section-tabs">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:flex-1 sm:px-0">
           <div className="inline-flex min-h-11 min-w-max items-center justify-center rounded-lg bg-transparent p-[3px] text-muted-foreground sm:h-9 sm:min-h-0">
