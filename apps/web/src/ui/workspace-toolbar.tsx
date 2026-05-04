@@ -1,9 +1,10 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RefObject, ReactNode } from 'react';
 import {
   AppWindow,
   Bold,
+  ChevronDown,
   ChevronsDownUp,
   Copy,
   Download,
@@ -84,12 +85,15 @@ export function WorkspaceToolbar({
   const isDark =
     preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
 
-  const canFormat = preferences.yamlEditor;
+  const isReadOnly = Boolean(selectedFile?.isLocked);
+  const canFormat = preferences.yamlEditor && !isReadOnly;
   const canPreviewActions = Boolean(sections);
   const canLinkActions = Boolean(selectedFile && sections);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [reviewerDialogOpen, setReviewerDialogOpen] = useState(false);
   const showMobileEditorControls = mobilePane === 'editor';
   const hasSharedOrigin = Boolean(selectedFile?.sharedOrigin);
@@ -338,24 +342,28 @@ export function WorkspaceToolbar({
               Resume workspace
             </p>
           </div>
-          <ToolbarIconButton
-            ariaLabel="Undo"
-            disabled={!fileSnapshot.canUndo}
-            onClick={() => {
-              fileStore.undo();
-            }}
-          >
-            <Undo2 className="size-4" />
-          </ToolbarIconButton>
-          <ToolbarIconButton
-            ariaLabel="Redo"
-            disabled={!fileSnapshot.canRedo}
-            onClick={() => {
-              fileStore.redo();
-            }}
-          >
-            <Redo2 className="size-4" />
-          </ToolbarIconButton>
+          {!isReadOnly ? (
+            <>
+              <ToolbarIconButton
+                ariaLabel="Undo"
+                disabled={!fileSnapshot.canUndo}
+                onClick={() => {
+                  fileStore.undo();
+                }}
+              >
+                <Undo2 className="size-4" />
+              </ToolbarIconButton>
+              <ToolbarIconButton
+                ariaLabel="Redo"
+                disabled={!fileSnapshot.canRedo}
+                onClick={() => {
+                  fileStore.redo();
+                }}
+              >
+                <Redo2 className="size-4" />
+              </ToolbarIconButton>
+            </>
+          ) : null}
           <Dialog.Root open={mobileActionsOpen} onOpenChange={setMobileActionsOpen}>
             <Dialog.Trigger asChild>
               <ToolbarIconButton ariaLabel="More actions" onClick={() => setMobileActionsOpen(true)}>
@@ -385,36 +393,38 @@ export function WorkspaceToolbar({
                           onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
                         />
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <MobileSheetButton
-                          disabled={preferences.yamlEditor}
-                          label={preferences.entriesExpanded ? 'Collapse' : 'Expand'}
-                          onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
-                        >
-                          <ChevronsDownUp className="size-4" />
-                        </MobileSheetButton>
-                        <MobileSheetButton
-                          disabled={!canFormat}
-                          label="Bold"
-                          onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
-                        >
-                          <Bold className="size-4" />
-                        </MobileSheetButton>
-                        <MobileSheetButton
-                          disabled={!canFormat}
-                          label="Link"
-                          onClick={() => editorRef.current?.insertMarkdownLink()}
-                        >
-                          <LinkIcon className="size-4" />
-                        </MobileSheetButton>
-                        <MobileSheetButton
-                          disabled={!canFormat}
-                          label="Italic"
-                          onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
-                        >
-                          <Italic className="size-4" />
-                        </MobileSheetButton>
-                      </div>
+                      {!isReadOnly ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          <MobileSheetButton
+                            disabled={preferences.yamlEditor}
+                            label={preferences.entriesExpanded ? 'Collapse' : 'Expand'}
+                            onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
+                          >
+                            <ChevronsDownUp className="size-4" />
+                          </MobileSheetButton>
+                          <MobileSheetButton
+                            disabled={!canFormat}
+                            label="Bold"
+                            onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
+                          >
+                            <Bold className="size-4" />
+                          </MobileSheetButton>
+                          <MobileSheetButton
+                            disabled={!canFormat}
+                            label="Link"
+                            onClick={() => editorRef.current?.insertMarkdownLink()}
+                          >
+                            <LinkIcon className="size-4" />
+                          </MobileSheetButton>
+                          <MobileSheetButton
+                            disabled={!canFormat}
+                            label="Italic"
+                            onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
+                          >
+                            <Italic className="size-4" />
+                          </MobileSheetButton>
+                        </div>
+                      ) : null}
                     </section>
                   ) : null}
 
@@ -611,58 +621,62 @@ export function WorkspaceToolbar({
             {selectedFile?.name ?? 'RenderCV'}
           </p>
         </div>
-        <ToolbarIconButton
-          ariaLabel="Undo"
-          disabled={!fileSnapshot.canUndo}
-          onClick={() => {
-            fileStore.undo();
-          }}
-        >
-          <Undo2 className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Redo"
-          disabled={!fileSnapshot.canRedo}
-          onClick={() => {
-            fileStore.redo();
-          }}
-        >
-          <Redo2 className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel={preferences.entriesExpanded ? 'Collapse all entries' : 'Expand all entries'}
-          disabled={preferences.yamlEditor}
-          onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
-        >
-          <ChevronsDownUp className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Bold"
-          disabled={!canFormat}
-          onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
-        >
-          <Bold className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Italic"
-          disabled={!canFormat}
-          onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
-        >
-          <Italic className="size-4" />
-        </ToolbarIconButton>
-        <ToolbarIconButton
-          ariaLabel="Insert link"
-          disabled={!canFormat}
-          onClick={() => editorRef.current?.insertMarkdownLink()}
-        >
-          <LinkIcon className="size-4" />
-        </ToolbarIconButton>
+        {!isReadOnly ? (
+          <>
+            <ToolbarIconButton
+              ariaLabel="Undo"
+              disabled={!fileSnapshot.canUndo}
+              onClick={() => {
+                fileStore.undo();
+              }}
+            >
+              <Undo2 className="size-4" />
+            </ToolbarIconButton>
+            <ToolbarIconButton
+              ariaLabel="Redo"
+              disabled={!fileSnapshot.canRedo}
+              onClick={() => {
+                fileStore.redo();
+              }}
+            >
+              <Redo2 className="size-4" />
+            </ToolbarIconButton>
+            <ToolbarIconButton
+              ariaLabel={preferences.entriesExpanded ? 'Collapse all entries' : 'Expand all entries'}
+              disabled={preferences.yamlEditor}
+              onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
+            >
+              <ChevronsDownUp className="size-4" />
+            </ToolbarIconButton>
+            <ToolbarIconButton
+              ariaLabel="Bold"
+              disabled={!canFormat}
+              onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
+            >
+              <Bold className="size-4" />
+            </ToolbarIconButton>
+            <ToolbarIconButton
+              ariaLabel="Italic"
+              disabled={!canFormat}
+              onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
+            >
+              <Italic className="size-4" />
+            </ToolbarIconButton>
+            <ToolbarIconButton
+              ariaLabel="Insert link"
+              disabled={!canFormat}
+              onClick={() => editorRef.current?.insertMarkdownLink()}
+            >
+              <LinkIcon className="size-4" />
+            </ToolbarIconButton>
+          </>
+        ) : null}
         <YamlToggle
           checked={preferences.yamlEditor}
           label="YAML"
           onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
         />
-        <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} />
+        {!isReadOnly ? <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} /> : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <ToolbarControlGroup>
@@ -701,14 +715,26 @@ export function WorkspaceToolbar({
           >
             <AppWindow className="size-4" />
           </ToolbarIconButton>
-          <ToolbarActionButton
-            ariaLabel="Open download and share actions"
-            onClick={() => setDownloadDialogOpen(true)}
-          >
-            <Download className="size-4" />
-            <span className="whitespace-nowrap">Download &amp; share</span>
-          </ToolbarActionButton>
-          {hasSharedOrigin && sections ? (
+        </ToolbarControlGroup>
+        <ShareComboButton
+          disabled={!canLinkActions}
+          menuOpen={shareMenuOpen}
+          onCopyPdfLink={() => void copyPdfLink()}
+          onCopyShareLink={() => void copyShareLink()}
+          onMenuOpenChange={setShareMenuOpen}
+          onOpenShareDialog={() => setDownloadDialogOpen(true)}
+          onSharePdf={() => void sharePdf()}
+        />
+        <DownloadComboButton
+          disabled={!canPreviewActions}
+          menuOpen={downloadMenuOpen}
+          onDownloadPdf={() => void downloadPdf()}
+          onDownloadTypst={() => void downloadTypst()}
+          onMenuOpenChange={setDownloadMenuOpen}
+          onOpenExportDialog={() => setDownloadDialogOpen(true)}
+        />
+        {hasSharedOrigin && sections ? (
+          <ToolbarControlGroup>
             <ToolbarIconButton
               ariaLabel="View changes from original"
               active={changesOpen}
@@ -717,8 +743,8 @@ export function WorkspaceToolbar({
             >
               <GitCompareArrows className="size-4" />
             </ToolbarIconButton>
-          ) : null}
-        </ToolbarControlGroup>
+          </ToolbarControlGroup>
+        ) : null}
         <ToolbarControlGroup>
           {isDark ? (
             <ToolbarIconButton
@@ -882,27 +908,244 @@ function ToolbarControlGroup({ children }: { children: ReactNode }) {
   );
 }
 
-function ToolbarActionButton({
-  ariaLabel,
-  children,
+function ShareComboButton({
   disabled = false,
+  menuOpen,
+  onCopyPdfLink,
+  onCopyShareLink,
+  onMenuOpenChange,
+  onOpenShareDialog,
+  onSharePdf
+}: {
+  disabled?: boolean;
+  menuOpen: boolean;
+  onCopyPdfLink: () => void | Promise<void>;
+  onCopyShareLink: () => void | Promise<void>;
+  onMenuOpenChange: (open: boolean) => void;
+  onOpenShareDialog: () => void;
+  onSharePdf: () => void | Promise<void>;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function onClickOutside(event: MouseEvent) {
+      if (
+        menuRef.current && !menuRef.current.contains(event.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(event.target as Node)
+      ) {
+        onMenuOpenChange(false);
+      }
+    }
+
+    function onEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onMenuOpenChange(false);
+      }
+    }
+
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [menuOpen, onMenuOpenChange]);
+
+  return (
+    <div className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm">
+      <button
+        type="button"
+        aria-label="Share PDF"
+        disabled={disabled}
+        onClick={() => void onSharePdf()}
+        className="inline-flex h-8 items-center gap-2 rounded-l-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+      >
+        <Share2 className="size-4" />
+        <span className="whitespace-nowrap">Share</span>
+      </button>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label="More share options"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        disabled={disabled}
+        onClick={() => onMenuOpenChange(!menuOpen)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-r-md border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+      >
+        <ChevronDown className="size-3.5" />
+      </button>
+      {menuOpen ? (
+        <div
+          ref={menuRef}
+          className="absolute right-0 top-full z-50 mt-1 min-w-52 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          role="menu"
+        >
+          <ToolbarMenuItem
+            icon={<Share2 className="size-4" />}
+            label="Share PDF"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onSharePdf();
+            }}
+          />
+          <ToolbarMenuItem
+            icon={<Copy className="size-4" />}
+            label="Copy share link"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onCopyShareLink();
+            }}
+          />
+          <ToolbarMenuItem
+            icon={<FileDown className="size-4" />}
+            label="Copy PDF download link"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onCopyPdfLink();
+            }}
+          />
+          <div className="my-1 h-px bg-border/60" />
+          <ToolbarMenuItem
+            icon={<Share2 className="size-4" />}
+            label="More share options"
+            onClick={() => {
+              onMenuOpenChange(false);
+              onOpenShareDialog();
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DownloadComboButton({
+  disabled = false,
+  menuOpen,
+  onDownloadPdf,
+  onDownloadTypst,
+  onMenuOpenChange,
+  onOpenExportDialog
+}: {
+  disabled?: boolean;
+  menuOpen: boolean;
+  onDownloadPdf: () => void | Promise<void>;
+  onDownloadTypst: () => void | Promise<void>;
+  onMenuOpenChange: (open: boolean) => void;
+  onOpenExportDialog: () => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function onClickOutside(event: MouseEvent) {
+      if (
+        menuRef.current && !menuRef.current.contains(event.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(event.target as Node)
+      ) {
+        onMenuOpenChange(false);
+      }
+    }
+
+    function onEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onMenuOpenChange(false);
+      }
+    }
+
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [menuOpen, onMenuOpenChange]);
+
+  return (
+    <div className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm">
+      <button
+        type="button"
+        aria-label="Download PDF"
+        disabled={disabled}
+        onClick={() => void onDownloadPdf()}
+        className="inline-flex h-8 items-center gap-2 rounded-l-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+      >
+        <Download className="size-4" />
+        <span className="whitespace-nowrap">Download</span>
+      </button>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label="More download options"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        disabled={disabled}
+        onClick={() => onMenuOpenChange(!menuOpen)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-r-md border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+      >
+        <ChevronDown className="size-3.5" />
+      </button>
+      {menuOpen ? (
+        <div
+          ref={menuRef}
+          className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          role="menu"
+        >
+          <ToolbarMenuItem
+            icon={<Download className="size-4" />}
+            label="Download PDF"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onDownloadPdf();
+            }}
+          />
+          <ToolbarMenuItem
+            icon={<FileCode2 className="size-4" />}
+            label="Download source (.typ)"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onDownloadTypst();
+            }}
+          />
+          <div className="my-1 h-px bg-border/60" />
+          <ToolbarMenuItem
+            icon={<FileDown className="size-4" />}
+            label="More export options"
+            onClick={() => {
+              onMenuOpenChange(false);
+              onOpenExportDialog();
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ToolbarMenuItem({
+  icon,
+  label,
   onClick
 }: {
-  ariaLabel: string;
-  children: ReactNode;
-  disabled?: boolean;
-  onClick: () => void | Promise<void>;
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      aria-label={ariaLabel}
-      aria-haspopup="dialog"
-      disabled={disabled}
-      onClick={() => void onClick()}
-      className="inline-flex h-8 items-center gap-2 rounded-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+      role="menuitem"
+      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      onClick={onClick}
     >
-      {children}
+      {icon}
+      <span>{label}</span>
     </button>
   );
 }

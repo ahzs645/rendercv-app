@@ -265,6 +265,11 @@ function CollapsibleChoiceRow({
     setExpanded(!value);
   }, [value]);
 
+  const resolvedOptions =
+    value && !options.some((option) => option.value === value)
+      ? [{ value, label: value, extra: 'custom' }, ...options]
+      : options;
+
   return (
     <div className={STACKED_ROW_CLASSNAME}>
       <span className={STACKED_LABEL_CLASSNAME}>
@@ -272,7 +277,7 @@ function CollapsibleChoiceRow({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap gap-1">
-          {options
+          {resolvedOptions
             .filter((option) => expanded || !value || option.value === value)
             .map((option) => (
               <button
@@ -302,6 +307,7 @@ function CollapsibleChoiceRow({
                 }}
               >
                 {option.label}
+                {option.extra ? <span className="ml-1 text-[9px] text-muted-foreground">{option.extra}</span> : null}
               </button>
             ))}
         </div>

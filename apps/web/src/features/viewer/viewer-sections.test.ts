@@ -173,4 +173,36 @@ describe('prepareViewerSections', () => {
     expect(sections.cv).toContain('fontawesome_icon: location-dot');
     expect(sections.cv).toContain('placeholder: 3333 University Way, Prince George, BC');
   });
+
+  it('normalizes legacy social entries into supported social networks and custom connections', () => {
+    const sections = prepareViewerSections({
+      cv: `cv:
+  name: Ahmad Jalil
+  social:
+    - network: LinkedIn
+      username: ahmad-jalil-b00669197
+      url: https://www.linkedin.com/in/ahmad-jalil-b00669197/
+    - network: GitHub
+      username: ahzs645
+      url: https://github.com/ahzs645
+    - network: Facebook
+      username: ahzs645
+      url: https://www.facebook.com/ahzs645
+`,
+      design: `design:
+  theme: classic
+`,
+      locale: '',
+      settings: ''
+    });
+
+    expect(sections.cv).not.toContain('social:');
+    expect(sections.cv).toContain('social_networks:');
+    expect(sections.cv).toContain('network: LinkedIn');
+    expect(sections.cv).toContain('network: GitHub');
+    expect(sections.cv).toContain('custom_connections:');
+    expect(sections.cv).toContain('fontawesome_icon: facebook-f');
+    expect(sections.cv).toContain('placeholder: ahzs645');
+    expect(sections.cv).toContain('url: https://www.facebook.com/ahzs645');
+  });
 });

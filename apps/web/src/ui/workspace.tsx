@@ -11,6 +11,7 @@ import { useIsMobile } from '../lib/use-mobile';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
 import {
+  normalizeCompatibilityCvYaml,
   repairFlattenedPositionDatesInCvYaml,
   stripPositionMarkersFromCvYaml
 } from '../features/viewer/normalize-compat-cv';
@@ -61,11 +62,13 @@ function looksLikeLegacyDesignSchema(design: string) {
 }
 
 function normalizeCompatibilitySections(sections: ImportedSections): ImportedSections {
+  const normalizedCv = sections.cv ? normalizeCompatibilityCvYaml(sections.cv) : sections.cv;
   const normalizedDesign = sections.design
     ? normalizeLegacyDesignYaml(sections.design)
     : sections.design;
   return {
     ...sections,
+    cv: normalizedCv,
     design: normalizedDesign
   };
 }
@@ -356,6 +359,11 @@ export function Workspace() {
         const normalizedDesign = normalizeLegacyDesignYaml(rawSections.design);
         if (normalizedDesign && normalizedDesign !== rawSections.design) {
           fileStore.updateSection('design', normalizedDesign);
+        }
+
+        const normalizedCv = normalizeCompatibilityCvYaml(rawSections.cv);
+        if (normalizedCv !== rawSections.cv) {
+          fileStore.updateSection('cv', normalizedCv);
         }
 
         registerSharedThemeDesign(selectedFile.selectedTheme, selectedFile.designs[selectedFile.selectedTheme]);

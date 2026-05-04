@@ -121,7 +121,7 @@ export function SectionTabs({
 
         {showVariantControls ? (
           <div
-            className="-mx-1 flex flex-nowrap items-center gap-1 overflow-hidden px-1 sm:ml-3 sm:shrink-0 sm:gap-0.5 sm:px-0"
+            className="-mx-1 flex flex-nowrap items-center gap-1 overflow-visible px-1 sm:ml-3 sm:shrink-0 sm:gap-0.5 sm:px-0"
             data-testid="variant-selector"
           >
             {null}

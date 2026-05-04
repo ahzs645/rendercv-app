@@ -91,7 +91,11 @@ HEADER_CONNECTION_ICON_HELPER = """
   "whatsapp",
   "x-twitter",
   "bluesky",
+  "facebook-f",
   "reddit",
+  "discord",
+  "slack",
+  "medium",
 )
 
 #let rendercv-header-connection-with-icon(icon-name, body) = {

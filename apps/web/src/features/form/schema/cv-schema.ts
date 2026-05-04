@@ -65,10 +65,29 @@ export const customConnectionTemplate: EntryTemplate = {
     {
       path: ['fontawesome_icon'],
       label: 'FontAwesome Icon',
-      type: 'string',
+      type: 'select',
       required: true,
       defaultValue: '',
-      placeholder: 'calendar-days (see fontawesome.com)'
+      options: [
+        { value: 'link', label: 'Link' },
+        { value: 'globe', label: 'Website' },
+        { value: 'envelope', label: 'Email' },
+        { value: 'phone', label: 'Phone' },
+        { value: 'location-dot', label: 'Location' },
+        { value: 'calendar-days', label: 'Calendar' },
+        { value: 'file-pdf', label: 'PDF' },
+        { value: 'book', label: 'Book' },
+        { value: 'graduation-cap', label: 'Education' },
+        { value: 'building', label: 'Organization' },
+        { value: 'briefcase', label: 'Work' },
+        { value: 'award', label: 'Award' },
+        { value: 'facebook-f', label: 'Facebook' },
+        { value: 'reddit', label: 'Reddit' },
+        { value: 'discord', label: 'Discord' },
+        { value: 'slack', label: 'Slack' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'stack-overflow', label: 'Stack Overflow' }
+      ]
     },
     {
       path: ['url'],

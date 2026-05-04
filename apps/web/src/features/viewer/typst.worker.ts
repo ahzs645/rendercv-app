@@ -8,6 +8,13 @@ interface TypstModule {
   setRendererInitOptions: (opts: unknown) => void;
 }
 
+interface TypstSnippetConstructor {
+  new (options: { compiler: unknown; renderer: unknown }): TypstModule;
+  buildGlobalCompiler: unknown;
+  buildGlobalRenderer: unknown;
+  fetchPackageRegistry: () => unknown;
+}
+
 const BASE_URL = import.meta.env.BASE_URL;
 
 let typst: TypstModule | null = null;
@@ -124,8 +131,18 @@ async function loadTypstRuntime() {
 
 async function initTypst(fontUrls: string[]) {
   const [, options] = await loadTypstRuntime();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  typst = (self as any).$typst as TypstModule;
+  const TypstSnippet = (self as typeof self & { TypstSnippet?: TypstSnippetConstructor }).TypstSnippet;
+  if (!TypstSnippet) {
+    throw new Error('Typst runtime did not register TypstSnippet.');
+  }
+
+  typst = new TypstSnippet({
+    compiler: TypstSnippet.buildGlobalCompiler,
+    renderer: TypstSnippet.buildGlobalRenderer
+  });
+  (typst as TypstModule & { use: (...providers: unknown[]) => void }).use(
+    TypstSnippet.fetchPackageRegistry()
+  );
   typst.setCompilerInitOptions({
     getModule: () => assetUrl('cdn/typst/typst_ts_web_compiler_bg.wasm'),
     beforeBuild: [options.preloadRemoteFonts(fontUrls)]

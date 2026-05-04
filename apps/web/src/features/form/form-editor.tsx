@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { CvFileSections, SectionKey } from '@rendercv/contracts';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import YAML from 'yaml';
 import { preferencesStore, themeLabel } from '@rendercv/core';
 import {
@@ -213,39 +213,23 @@ function ThemeRow({
   return (
     <div className="mt-6">
       <div className="flex items-center py-1.5">
-        <span className="shrink-0 text-xs text-muted-foreground" style={{ width: '5rem' }}>
+        <span className="shrink-0 text-xs text-muted-foreground" style={{ width: 'var(--label-width, 8rem)' }}>
           Theme
         </span>
         <div className="flex min-w-0 items-center gap-1">
           <button
             type="button"
-            aria-label="Previous"
+            aria-label="Previous theme"
             className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             disabled={!canCycle || currentIndex <= 0}
             onClick={goPrev}
           >
             <ChevronLeft className="size-3.5" />
           </button>
-          <div className="flex flex-wrap gap-1">
-            <button
-              type="button"
-              className="inline-grid cursor-pointer text-sm text-foreground hover:text-primary"
-              data-value={value}
-              onClick={goNext}
-            >
-              {options.map((option) => (
-                <span
-                  key={option}
-                  className={`col-start-1 row-start-1 flex h-6 items-center${option !== value ? ' invisible' : ''}`}
-                >
-                  {themeLabel(option)}
-                </span>
-              ))}
-            </button>
-          </div>
+          <ThemeDropdown options={options} value={value} onChange={onChange} />
           <button
             type="button"
-            aria-label="Next"
+            aria-label="Next theme"
             className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             disabled={!canCycle || currentIndex >= options.length - 1}
             onClick={goNext}
@@ -255,6 +239,96 @@ function ThemeRow({
         </div>
       </div>
       <div className="h-px bg-border/40" />
+    </div>
+  );
+}
+
+function ThemeDropdown({
+  options,
+  value,
+  onChange
+}: {
+  options: string[];
+  value?: string;
+  onChange: (theme: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onClickOutside(event: MouseEvent) {
+      if (
+        menuRef.current && !menuRef.current.contains(event.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(event.target as Node)
+      ) {
+        close();
+      }
+    }
+
+    function onEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') close();
+    }
+
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [open, close]);
+
+  return (
+    <div className="relative min-w-0">
+      <button
+        ref={triggerRef}
+        aria-label="Theme"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex h-6 min-w-32 max-w-full items-center gap-1 rounded-md px-2 text-sm text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="inline-grid min-w-0 flex-1 text-left">
+          {options.map((option) => (
+            <span
+              key={option}
+              className={`col-start-1 row-start-1 truncate${option !== value ? ' invisible' : ''}`}
+            >
+              {themeLabel(option)}
+            </span>
+          ))}
+        </span>
+        <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+      </button>
+      {open ? (
+        <div
+          ref={menuRef}
+          className="absolute left-0 top-full z-50 mt-1 min-w-44 max-h-[min(300px,50vh)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          role="menu"
+        >
+          {options.map((option) => (
+            <button
+              key={option}
+              className={`flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs outline-none transition-colors hover:bg-accent hover:text-accent-foreground ${
+                option === value ? 'text-primary' : 'text-popover-foreground'
+              }`}
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                onChange(option);
+                close();
+              }}
+            >
+              {option === value ? <Check className="size-3" /> : <span className="size-3" />}
+              {themeLabel(option)}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
