@@ -24,7 +24,6 @@ export const EVENTS = {
   PDF_IMPORT_COMPLETED: 'pdf_import_completed',
   PDF_IMPORT_FAILED: 'pdf_import_failed',
   UPGRADE_PROMPT_SHOWN: 'upgrade_prompt_shown',
-  PRICING_PAGE_VIEWED: 'pricing_page_viewed',
   CHECKOUT_STARTED: 'checkout_started',
   PUBLIC_CV_VIEWED: 'public_cv_viewed',
   GITHUB_SYNC_CONNECTED: 'github_sync_connected',

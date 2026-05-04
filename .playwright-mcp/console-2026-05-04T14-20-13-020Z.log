@@ -345,3 +345,27 @@ See https://react.dev/link/invalid-hook-call for tips about how to debug and fix
 [ 2149165ms] [LOG] totalMs 787.5 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
 [ 2149165ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
 [ 2149165ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2267966ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5174/rendercv-app/src/routes/pricing-page.tsx?t=1777906680577:0
+[ 2267968ms] [ERROR] [vite] Failed to reload /src/routes/pricing-page.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5174/rendercv-app/@vite/client:808
+[ 2268157ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/rendercv-app/node_modules/.vite/deps/react-dom_client.js?v=ceba5193:20102
+[ 2269401ms] [LOG] Loading micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2269449ms] [LOG] Loaded micropip, typing-inspection @ http://localhost:5174/rendercv-app/cdn/pyodide/v0.29.3/full/pyodide.asm.js:7
+[ 2271347ms] [LOG] totalMs 3124.2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2271347ms] [LOG] workerLifecycle module @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2271857ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 17543, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2272023ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2272025ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/824d9c4a-486d-4162-9904-65cc518be638:6436
+[ 2272032ms] [WARNING] using deprecated parameters for the initialization function; pass a single object instead @ blob:http://localhost:5174/824d9c4a-486d-4162-9904-65cc518be638:3140
+[ 2272463ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2272463ms] [LOG] pyodideMs 494.6 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2272463ms] [LOG] svgMs 438.5 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2272463ms] [LOG] totalMs 933.9 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2272463ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2272463ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2277746ms] [LOG] [RenderCV worker] first render result {keys: Array(3), hasNormalizedCvInResult: true, normalizedCvFromResultLength: 11268, normalizedCvFromGlobalsLength: null, errorCount: 0} @ http://localhost:5174/rendercv-app/src/features/viewer/pyodide.worker.ts?worker_file&type=module:437
+[ 2277887ms] [LOG] validationSource worker @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2277887ms] [LOG] pyodideMs 142.2 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2277887ms] [LOG] svgMs 140 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2277887ms] [LOG] totalMs 282.8 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23
+[ 2277887ms] [LOG] typstSvgCache miss @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:19
+[ 2277887ms] [LOG] pageCount 3 @ http://localhost:5174/rendercv-app/src/features/viewer/use-viewer-renderer.ts?t=1777902470910:23

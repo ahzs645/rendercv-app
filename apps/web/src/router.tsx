@@ -1,8 +1,7 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { AppDocument } from './routes/app-document';
 import { WorkspaceLayout } from './routes/workspace-layout';
 import { HomeRoute } from './routes/home-route';
-import { PricingPage } from './routes/pricing-page';
 import { PrivacyPolicyPage } from './routes/privacy-policy-page';
 import { TermsOfServicePage } from './routes/terms-of-service-page';
 import { MigratePage } from './routes/migrate-page';
@@ -25,13 +24,13 @@ export const router = createBrowserRouter(
           element: <WorkspaceLayout />,
           children: [
             { index: true, element: <HomeRoute /> },
-            { path: 'pricing', element: <PricingPage /> },
             { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
             { path: 'terms-of-service', element: <TermsOfServicePage /> },
             { path: 'migrate', element: <MigratePage /> },
             { path: 'portal', element: <PortalPage /> }
           ]
         },
+        { path: 'pricing', element: <Navigate to="/" replace /> },
         { path: 'preview', element: <PreviewPage /> },
         { path: 'share', element: <EncodedSharePage /> },
         { path: 'review-import', element: <ReviewImportPage /> },

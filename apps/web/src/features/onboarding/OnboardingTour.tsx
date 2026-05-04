@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { driver, type Driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import './tour-popover.css';
@@ -20,7 +19,6 @@ export function OnboardingTour({
   onMobilePaneChange: (pane: 'editor' | 'preview') => void;
   onSendAiMessage?: (content: string) => void;
 }) {
-  const navigate = useNavigate();
   const { isRunning } = useStore(onboardingTour);
   const driverRef = useRef<Driver | null>(null);
 
@@ -36,7 +34,7 @@ export function OnboardingTour({
       animate: true,
       showProgress: true,
       showButtons: ['next', 'previous', 'close'],
-      doneBtnText: 'See Plans',
+      doneBtnText: 'Done',
       allowClose: true,
       overlayColor: 'black',
       overlayOpacity: 0.7,
@@ -46,7 +44,6 @@ export function OnboardingTour({
       onCloseClick: () => {
         tour.destroy();
         onboardingTour.skip();
-        navigate('/pricing?title=Get+Started');
       },
       steps: buildTourSteps(
         {
@@ -62,7 +59,6 @@ export function OnboardingTour({
           onComplete: () => {
             tour.destroy();
             onboardingTour.complete();
-            navigate('/pricing?title=Get+Started');
           }
         },
         () => tour
@@ -77,7 +73,7 @@ export function OnboardingTour({
         tour.destroy();
       }
     };
-  }, [isMobile, isRunning, navigate, onMobilePaneChange, onOpenMobileSidebar, onSendAiMessage]);
+  }, [isMobile, isRunning, onMobilePaneChange, onOpenMobileSidebar, onSendAiMessage]);
 
   return null;
 }
