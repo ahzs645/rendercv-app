@@ -12,7 +12,15 @@ const STANDARD = ['Regular', 'Bold', 'Italic', 'BoldItalic'];
 export const FONT_VARIANTS: Record<string, string[]> = {
   'Open Sans': STANDARD,
   'Gentium Book Plus': STANDARD,
-  Lato: STANDARD,
+  Lato: [
+    'Hairline',
+    'HairlineItalic',
+    'Light',
+    'LightItalic',
+    ...STANDARD,
+    'Black',
+    'BlackItalic'
+  ],
   'Source Sans 3': STANDARD,
   'EB Garamond': STANDARD,
   'Open Sauce Sans': STANDARD,

@@ -1,6 +1,7 @@
 import { createUIMessageStream, createUIMessageStreamResponse, type UIMessage } from 'ai';
 import { Hono } from 'hono';
 import type { CvFileSections } from '@rendercv/contracts';
+import { coverLetterTemplate, type CoverLetterData } from '@rendercv/core';
 import { jsonError } from '../errors';
 import { persistState, serverState } from '../persistence';
 
@@ -28,6 +29,7 @@ export const chatRouter = new Hono().post('/', async (context) => {
   persistState();
 
   const responseText = createAssistantReply(prompt, fileContext, payload.model ?? 'gpt-5-mini');
+  const generatedDocument = maybeGenerateCoverLetter(prompt, fileContext);
   const usage = { ...serverState.aiUsage };
 
   const stream = createUIMessageStream({
@@ -43,6 +45,12 @@ export const chatRouter = new Hono().post('/', async (context) => {
       }
 
       writer.write({ type: 'text-end', id: textId });
+      if (generatedDocument) {
+        writer.write({
+          type: 'data-document',
+          data: generatedDocument
+        } as Parameters<typeof writer.write>[0]);
+      }
       writer.write({ type: 'data-usage', data: usage });
       writer.write({ type: 'finish' });
     }
@@ -79,6 +87,15 @@ function createAssistantReply(prompt: string, fileContext: CvFileSections, model
   const sectionNames = extractSectionNames(fileContext.cv);
   const promptLower = prompt.toLowerCase();
   const intro = `Using ${model}, here is a focused pass on ${name}.`;
+
+  if (promptLower.includes('cover letter')) {
+    const companyName = inferCompanyName(prompt) || 'Target Company';
+    return [
+      intro,
+      '',
+      `I generated a Typst cover letter draft for ${companyName}. Download it from the document card below, then adjust the recipient details and job-specific claims before sending.`
+    ].join('\n');
+  }
 
   if (promptLower.includes('headline')) {
     const basis = headline || inferRoleFromSections(sectionNames) || 'technical leadership';
@@ -127,6 +144,52 @@ function createAssistantReply(prompt: string, fileContext: CvFileSections, model
     '- improve my experience bullets',
     '- suggest a better section order'
   ].join('\n');
+}
+
+function maybeGenerateCoverLetter(prompt: string, fileContext: CvFileSections) {
+  if (!prompt.toLowerCase().includes('cover letter')) {
+    return null;
+  }
+
+  const senderName = extractScalar(fileContext.cv, 'name') || 'Your Name';
+  const companyName = inferCompanyName(prompt) || 'Target Company';
+  const data: CoverLetterData = {
+    senderName,
+    senderEmail: extractScalar(fileContext.cv, 'email') || undefined,
+    senderPhone: extractScalar(fileContext.cv, 'phone') || undefined,
+    senderAddress: extractScalar(fileContext.cv, 'location') || undefined,
+    companyName,
+    date: new Intl.DateTimeFormat('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(new Date()),
+    subject: `Application for ${inferRoleFromPrompt(prompt) || 'the open role'}`,
+    salutation: 'Dear Hiring Manager,',
+    paragraphs: [
+      `I am writing to express my interest in ${inferRoleFromPrompt(prompt) || 'the open role'} at ${companyName}. My background aligns with the role through a combination of focused execution, clear communication, and measurable impact.`,
+      `In my recent work, I have built experience across ${extractSectionNames(fileContext.cv).slice(0, 3).join(', ') || 'relevant projects and professional experience'}. I would bring that same structured approach to your team.`,
+      `I would welcome the opportunity to discuss how my experience can support ${companyName}'s goals. Thank you for your time and consideration.`
+    ],
+    closing: 'Sincerely,'
+  };
+
+  return {
+    label: coverLetterTemplate.label,
+    filename: `${coverLetterTemplate.defaultFilename(data)}.typ`,
+    mediaType: 'text/plain;charset=utf-8',
+    content: coverLetterTemplate.render(data)
+  };
+}
+
+function inferCompanyName(prompt: string) {
+  const match = prompt.match(/\b(?:at|for|with)\s+([A-Z][A-Za-z0-9&.,' -]{1,50})(?:[.!?\n]|$)/);
+  return match?.[1]?.trim().replace(/\s+(role|job|position)$/i, '') ?? '';
+}
+
+function inferRoleFromPrompt(prompt: string) {
+  const match = prompt.match(/\b(?:for|as)\s+(?:a|an|the)?\s*([A-Za-z][A-Za-z0-9 /+-]{2,60}?(?:engineer|designer|manager|scientist|researcher|developer|analyst|role|position))/i);
+  return match?.[1]?.trim() ?? '';
 }
 
 function extractScalar(yaml: string, key: string) {

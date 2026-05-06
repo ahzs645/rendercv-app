@@ -2,9 +2,36 @@ import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { fileStore } from '@rendercv/core';
-import { api } from '../lib/api';
+import { ApiRequestError, api } from '../lib/api';
 
 const MAX_PDF_SIZE = 5 * 1024 * 1024;
+
+function getPdfImportErrorMessage(error: unknown) {
+  if (error instanceof ApiRequestError) {
+    if (error.status === 402 || error.code === 'quota_exceeded') {
+      return 'AI usage limit reached. Upgrade or wait for your quota to reset before importing another PDF.';
+    }
+
+    if (
+      error.status === 400 ||
+      error.code === 'invalid_pdf' ||
+      error.code === 'incomplete_pdf' ||
+      error.code === 'pdf_parse_error'
+    ) {
+      return 'This PDF could not be read. It may be corrupted, password-protected, or not a valid PDF file.';
+    }
+
+    if (error.status === 422) {
+      return 'The PDF could not be converted into a valid CV. Try a simpler PDF or edit the imported content manually.';
+    }
+
+    if (error.status === 502) {
+      return 'The AI could not extract content from this PDF. Please try a different file.';
+    }
+  }
+
+  return error instanceof Error ? error.message : 'Failed to import PDF. Please try again.';
+}
 
 export function PdfImportButton({ mode = 'full' }: { mode?: 'full' | 'compact' | 'mini' }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,7 +60,7 @@ export function PdfImportButton({ mode = 'full' }: { mode?: 'full' | 'compact' |
         inputRef.current.value = '';
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to import PDF.');
+      toast.error(getPdfImportErrorMessage(error));
     } finally {
       setPending(false);
     }

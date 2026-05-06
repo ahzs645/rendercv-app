@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChat, type UIMessage } from '@ai-sdk/react';
 import type { CvFileSections, SectionKey } from '@rendercv/contracts';
 import { EVENTS, fileStore } from '@rendercv/core';
+import ReactMarkdown from 'react-markdown';
 import {
   Check,
   FileText,
   Paperclip,
-  Pencil,
   SendHorizontal,
   Sparkles,
   Trash2,
@@ -14,12 +14,17 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { capture } from '../lib/analytics/posthog-client';
-import { api } from '../lib/api';
+import { ApiRequestError, api } from '../lib/api';
 import {
   applyEditProposalToSection,
   extractEditProposals,
   type AiEditProposal
 } from '../features/ai-chat-parity/proposals';
+import { ActivityBlock } from '../features/ai-chat-presentation/ActivityBlock';
+import { DataPartRenderer } from '../features/ai-chat-presentation/DataPartRenderer';
+import { AI_MODELS } from '../features/ai-chat-presentation/models';
+import { segmentize } from '../features/ai-chat-presentation/segmentize';
+import { UpgradeWarningCard } from '../features/ai-chat-presentation/UpgradeWarningCard';
 
 const MAX_ATTACHMENTS = 4;
 const MAX_SELECTIONS = 4;
@@ -46,37 +51,11 @@ type SelectionAttachment = {
   text: string;
 };
 
-const MODEL_OPTIONS = [
-  { id: 'gpt-5-mini', label: 'GPT-5 Mini', gated: false },
-  { id: 'gpt-5', label: 'GPT-5', gated: true }
-];
-
 function getMessageText(message: UIMessage) {
   return message.parts
     .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
     .map((part) => part.text)
     .join('');
-}
-
-function getToolParts(message: UIMessage) {
-  return message.parts.filter((part) => {
-    if (!part || typeof part !== 'object' || !('type' in part)) return false;
-    return part.type === 'dynamic-tool' || (typeof part.type === 'string' && part.type.startsWith('tool-'));
-  });
-}
-
-function getToolLabel(part: unknown) {
-  if (!part || typeof part !== 'object') return 'Tool';
-  const record = part as Record<string, unknown>;
-  if (record.type === 'dynamic-tool' && typeof record.toolName === 'string') return record.toolName;
-  if (typeof record.type === 'string' && record.type.startsWith('tool-')) return record.type.slice('tool-'.length);
-  return 'Tool';
-}
-
-function getToolState(part: unknown) {
-  if (!part || typeof part !== 'object') return 'pending';
-  const state = (part as Record<string, unknown>).state;
-  return typeof state === 'string' ? state.replace(/-/g, ' ') : 'pending';
 }
 
 async function fileToAttachment(file: File): Promise<ChatAttachment> {
@@ -113,7 +92,45 @@ function buildSelectionPrompt(selections: SelectionAttachment[], text: string) {
   return `[The user selected this CV content for reference:]\n\n${selectionText}\n\n${text}`;
 }
 
-export function AiChatParityPanel({
+function isQuotaError(error: Error | undefined) {
+  if (!error) return false;
+  if (error instanceof ApiRequestError && (error.status === 402 || error.code === 'quota_exceeded')) {
+    return true;
+  }
+  return /quota_exceeded|usage limit|402/i.test(error.message);
+}
+
+function AssistantMessageContent({ message }: { message: UIMessage }) {
+  const segments = segmentize(message.parts);
+
+  return (
+    <div className="space-y-2">
+      {segments.map((segment, index) => {
+        if (segment.type === 'text') {
+          return (
+            <div key={`text-${index}`} className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-ol:my-2">
+              <ReactMarkdown>{segment.text}</ReactMarkdown>
+            </div>
+          );
+        }
+
+        if (segment.type === 'activity') {
+          return <ActivityBlock key={`activity-${index}`} entries={segment.entries} />;
+        }
+
+        return (
+          <DataPartRenderer
+            key={`data-${segment.partType}-${segment.partId || index}`}
+            partType={segment.partType}
+            data={segment.data}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+export function EnhancedAiChatPanel({
   fileId,
   sections,
   model,
@@ -138,7 +155,7 @@ export function AiChatParityPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentsRef = useRef<ChatAttachment[]>([]);
   const { messages, sendMessage, status, error } = useChat({
-    id: `cv-parity-${fileId}`,
+    id: `cv-enhanced-${fileId}`,
     messages: initialMessages
   });
 
@@ -275,9 +292,9 @@ export function AiChatParityPanel({
                 value={model}
                 onChange={(event) => onModelChange?.(event.target.value)}
               >
-                {MODEL_OPTIONS.map((option) => (
-                  <option key={option.id} disabled={option.gated} value={option.id}>
-                    {option.label}{option.gated ? ' (locked)' : ''}
+                {AI_MODELS.map((option) => (
+                  <option key={option.id} disabled={option.minTier !== 'free'} value={option.id}>
+                    {option.label}{option.minTier !== 'free' ? ' (locked)' : ''}
                   </option>
                 ))}
               </select>
@@ -297,6 +314,9 @@ export function AiChatParityPanel({
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-3">
+        {isQuotaError(error) ? (
+          <UpgradeWarningCard message="Upgrade for more AI prompts, or retry after the workspace quota resets." />
+        ) : null}
         {messages.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
             Attach a job description, select CV context, or ask for an edit.
@@ -314,18 +334,11 @@ export function AiChatParityPanel({
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
                 {message.role === 'user' ? 'You' : 'Assistant'}
               </p>
-              <p className="whitespace-pre-wrap leading-6">{getMessageText(message)}</p>
-              {getToolParts(message).length > 0 ? (
-                <div className="mt-3 space-y-1">
-                  {getToolParts(message).map((part, index) => (
-                    <div key={index} className="flex items-center gap-2 rounded-lg bg-background/70 px-2 py-1 text-xs">
-                      <Pencil className="size-3.5" />
-                      <span className="font-medium">{getToolLabel(part)}</span>
-                      <span className="text-muted-foreground">{getToolState(part)}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+              {message.role === 'user' ? (
+                <p className="whitespace-pre-wrap leading-6">{getMessageText(message)}</p>
+              ) : (
+                <AssistantMessageContent message={message} />
+              )}
             </article>
           ))
         )}
@@ -448,7 +461,7 @@ export function AiChatParityPanel({
             </button>
           </div>
         </div>
-        {error ? <p className="mt-2 text-sm text-destructive">{error.message}</p> : null}
+        {error && !isQuotaError(error) ? <p className="mt-2 text-sm text-destructive">{error.message}</p> : null}
         <div className="mt-2 flex justify-between text-xs text-muted-foreground">
           <span>{attachments.length}/{MAX_ATTACHMENTS} files</span>
           <button

@@ -27,6 +27,20 @@ export class ApiUnavailableError extends Error {
   }
 }
 
+export class ApiRequestError extends Error {
+  code: string;
+  status: number;
+  details?: unknown;
+
+  constructor(message: string, code: string, status: number, details?: unknown) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+}
+
 function apiUrl(path: string) {
   return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
 }
@@ -50,7 +64,12 @@ async function request<T>(input: string, init?: RequestInit): Promise<T> {
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as ApiErrorResponse | null;
-    throw new Error(error?.error.message ?? `${response.status} ${response.statusText}`);
+    throw new ApiRequestError(
+      error?.error.message ?? `${response.status} ${response.statusText}`,
+      error?.error.code ?? 'request_failed',
+      response.status,
+      error?.error.details
+    );
   }
 
   return (await response.json()) as T;

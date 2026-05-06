@@ -8,26 +8,26 @@ export type BundledTheme = {
 
 export const BUNDLED_THEMES: BundledTheme[] = [
   {
-    "archiveName": "ahzs645-resume-2a0d361a4202.zip",
-    "archivePath": "cdn/themes/ahzs645-resume-2a0d361a4202.zip",
+    "archiveName": "ahzs645-resume-8add7a655b00.zip",
+    "archivePath": "cdn/themes/ahzs645-resume-8add7a655b00.zip",
     "design": "design:\n  theme: ahmadstyle\n",
     "themeKey": "ahmadstyle"
   },
   {
-    "archiveName": "phd-jakes-resume-2a0d361a4202.zip",
-    "archivePath": "cdn/themes/phd-jakes-resume-2a0d361a4202.zip",
+    "archiveName": "phd-jakes-resume-8add7a655b00.zip",
+    "archivePath": "cdn/themes/phd-jakes-resume-8add7a655b00.zip",
     "design": "design:\n  theme: phdjakes\n",
     "themeKey": "phdjakes"
   },
   {
-    "archiveName": "phd-deedy-resume-2a0d361a4202.zip",
-    "archivePath": "cdn/themes/phd-deedy-resume-2a0d361a4202.zip",
+    "archiveName": "phd-deedy-resume-8add7a655b00.zip",
+    "archivePath": "cdn/themes/phd-deedy-resume-8add7a655b00.zip",
     "design": "design:\n  theme: phddeedy\n",
     "themeKey": "phddeedy"
   },
   {
-    "archiveName": "phd-research-cv-2a0d361a4202.zip",
-    "archivePath": "cdn/themes/phd-research-cv-2a0d361a4202.zip",
+    "archiveName": "phd-research-cv-8add7a655b00.zip",
+    "archivePath": "cdn/themes/phd-research-cv-8add7a655b00.zip",
     "design": "design:\n  theme: phdresearch\n",
     "themeKey": "phdresearch"
   }

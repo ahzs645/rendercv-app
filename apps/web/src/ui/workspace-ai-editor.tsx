@@ -3,32 +3,32 @@ import type { UIMessage } from '@ai-sdk/react';
 import { fileStore, preferencesStore } from '@rendercv/core';
 import type { CvFileSections } from '@rendercv/contracts';
 import { useEffect, useState } from 'react';
-import { ENABLE_AI_CHAT_PARITY, ENABLE_AI_EDITOR } from '../lib/feature-flags';
+import { ENABLE_AI_EDITOR, ENABLE_ENHANCED_AI_CHAT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { AiChatPanel } from './ai-chat-panel';
-import { AiChatParityPanel } from './ai-chat-parity-panel';
+import { EnhancedAiChatPanel } from './ai-chat-panel-enhanced';
 
-const AI_PARITY_OPEN_STORAGE_KEY = 'rendercv.aiEditorOpenByFile.v1';
+const ENHANCED_AI_CHAT_OPEN_STORAGE_KEY = 'rendercv.aiEditorOpenByFile.v1';
 
-function readParityOpenState() {
+function readEnhancedChatOpenState() {
   if (typeof window === 'undefined') {
     return {};
   }
 
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(AI_PARITY_OPEN_STORAGE_KEY) ?? '{}');
+    const parsed = JSON.parse(window.localStorage.getItem(ENHANCED_AI_CHAT_OPEN_STORAGE_KEY) ?? '{}');
     return parsed && typeof parsed === 'object' ? (parsed as Record<string, boolean>) : {};
   } catch {
     return {};
   }
 }
 
-function writeParityOpenState(value: Record<string, boolean>) {
+function writeEnhancedChatOpenState(value: Record<string, boolean>) {
   if (typeof window === 'undefined') {
     return;
   }
 
-  window.localStorage.setItem(AI_PARITY_OPEN_STORAGE_KEY, JSON.stringify(value));
+  window.localStorage.setItem(ENHANCED_AI_CHAT_OPEN_STORAGE_KEY, JSON.stringify(value));
 }
 
 export function WorkspaceAiEditor({
@@ -44,17 +44,17 @@ export function WorkspaceAiEditor({
 
   const preferences = useStore(preferencesStore);
   const fileSnapshot = useStore(fileStore);
-  const [parityOpenByFile, setParityOpenByFile] = useState<Record<string, boolean>>({});
+  const [enhancedOpenByFile, setEnhancedOpenByFile] = useState<Record<string, boolean>>({});
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileId);
   const initialMessages = (selectedFile?.chatMessages as UIMessage[] | undefined) ?? [];
   const disabled = !fileId || !sections;
   const open = !disabled && (
-    ENABLE_AI_CHAT_PARITY && fileId ? Boolean(parityOpenByFile[fileId]) : preferences.aiEditorOpen
+    ENABLE_ENHANCED_AI_CHAT && fileId ? Boolean(enhancedOpenByFile[fileId]) : preferences.aiEditorOpen
   );
 
   useEffect(() => {
-    if (ENABLE_AI_CHAT_PARITY) {
-      setParityOpenByFile(readParityOpenState());
+    if (ENABLE_ENHANCED_AI_CHAT) {
+      setEnhancedOpenByFile(readEnhancedChatOpenState());
     }
   }, []);
 
@@ -63,10 +63,10 @@ export function WorkspaceAiEditor({
       return;
     }
 
-    if (ENABLE_AI_CHAT_PARITY && fileId && parityOpenByFile[fileId]) {
-      setParityOpenByFile((current) => {
+    if (ENABLE_ENHANCED_AI_CHAT && fileId && enhancedOpenByFile[fileId]) {
+      setEnhancedOpenByFile((current) => {
         const next = { ...current, [fileId]: false };
-        writeParityOpenState(next);
+        writeEnhancedChatOpenState(next);
         return next;
       });
       return;
@@ -75,13 +75,13 @@ export function WorkspaceAiEditor({
     if (preferences.aiEditorOpen) {
       preferencesStore.patch({ aiEditorOpen: false });
     }
-  }, [disabled, fileId, parityOpenByFile, preferences.aiEditorOpen]);
+  }, [disabled, fileId, enhancedOpenByFile, preferences.aiEditorOpen]);
 
   function setOpen(open: boolean) {
-    if (ENABLE_AI_CHAT_PARITY && fileId) {
-      setParityOpenByFile((current) => {
+    if (ENABLE_ENHANCED_AI_CHAT && fileId) {
+      setEnhancedOpenByFile((current) => {
         const next = { ...current, [fileId]: open };
-        writeParityOpenState(next);
+        writeEnhancedChatOpenState(next);
         return next;
       });
       return;
@@ -120,8 +120,8 @@ export function WorkspaceAiEditor({
             Ask for rewrites, bullet tightening, or section-level guidance.
           </Dialog.Description>
           {fileId && sections ? (
-            ENABLE_AI_CHAT_PARITY ? (
-              <AiChatParityPanel
+            ENABLE_ENHANCED_AI_CHAT ? (
+              <EnhancedAiChatPanel
                 className="shadow-2xl"
                 fileId={fileId}
                 initialMessages={initialMessages}
