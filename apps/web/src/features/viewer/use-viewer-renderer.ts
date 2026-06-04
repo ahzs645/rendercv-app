@@ -26,6 +26,7 @@ export interface ViewerValidationResult {
   normalizedCv?: string | null;
   effectiveDesign?: string | null;
   usedFallbackTheme?: boolean;
+  warnings?: string[] | null;
 }
 
 interface WorkerErrorPayload {
@@ -263,6 +264,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const [svgPages, setSvgPages] = useState<string[]>([]);
   const [sectionMap, setSectionMap] = useState<SectionMapResult>({ sections: [], preambleLines: 0 });
   const [renderErrors, setRenderErrors] = useState<RenderError[]>([]);
+  const [renderWarnings, setRenderWarnings] = useState<string[]>([]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | undefined>();
   const [renderVersion, setRenderVersion] = useState(0);
@@ -525,6 +527,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
                 yaml_location: error.yaml_location || null
               }))
             );
+            setRenderWarnings(result.warnings ?? []);
             continue;
           }
 
@@ -534,6 +537,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
           if (!typst) {
             setSvgPages([]);
             setRenderErrors([]);
+            setRenderWarnings(result.warnings ?? []);
             continue;
           }
 
@@ -560,6 +564,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
             });
             // Reuse existing SVG blob URLs — no work needed
             setRenderErrors([]);
+            setRenderWarnings(result.warnings ?? []);
             continue;
           }
 
@@ -613,6 +618,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
           pageUrls.current = urls;
           setSvgPages(urls);
           setRenderErrors([]);
+          setRenderWarnings(result.warnings ?? []);
           window.setTimeout(() => {
             revokePageUrls(previousUrls);
           }, 0);
@@ -718,6 +724,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       svgPages,
       sectionMap,
       renderErrors,
+      renderWarnings,
       isInitializing,
       initError,
       zoomFactor,
@@ -737,6 +744,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       svgPages,
       sectionMap,
       renderErrors,
+      renderWarnings,
       isInitializing,
       initError,
       zoomFactor,

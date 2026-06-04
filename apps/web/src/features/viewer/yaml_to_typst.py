@@ -61,6 +61,161 @@ TOP_LEVEL_SOCIAL_FIELD_MAP = {
 POSITION_SPACING_SAME_MARKER = "RCVSPACINGSAME:"
 POSITION_SPACING_DIFF_MARKER = "RCVSPACINGDIFF:"
 ARCHIVED_TAG = "archived"
+KNOWN_CV_TOP_LEVEL_FIELDS = {
+    "name",
+    "headline",
+    "location",
+    "email",
+    "photo",
+    "phone",
+    "website",
+    "social_networks",
+    "custom_connections",
+    "sections",
+}
+ENTRY_META_FIELDS = {
+    "start_date",
+    "end_date",
+    "date",
+    "location",
+    "highlights",
+    "summary",
+    "tags",
+    "itags",
+    "flavors",
+    "spacing_after",
+    "show_date_in_position",
+    "url",
+    "doi",
+}
+TITLE_FIELD_CANDIDATES = (
+    "name",
+    "title",
+    "course",
+    "topic",
+    "subject",
+    "event",
+    "project",
+    "role",
+    "company",
+    "institution",
+    "organization",
+    "label",
+)
+compatibility_warnings: list[str] = []
+
+
+def add_warning(message):
+    if message and message not in compatibility_warnings:
+        compatibility_warnings.append(message)
+
+
+def entry_matches_known_type(entry):
+    """Return True if entry already satisfies a built-in RenderCV entry type."""
+    if isinstance(entry, str):
+        return True
+    if not isinstance(entry, dict):
+        return False
+
+    has = lambda *keys: all(entry.get(key) not in (None, "") for key in keys)
+    return (
+        has("name")
+        or has("company", "position")
+        or has("institution", "area")
+        or has("label", "details")
+        or has("title", "authors")
+        or has("bullet")
+        or has("number")
+        or has("reversed_number")
+    )
+
+
+def coerce_unknown_entry(entry, section_name):
+    """Best-effort: turn an unknown-shaped entry into a NormalEntry so it still renders."""
+    if not isinstance(entry, dict):
+        return entry
+
+    coerced = dict(entry)
+    title_value = None
+    title_source = None
+    for candidate in TITLE_FIELD_CANDIDATES:
+        value = coerced.get(candidate)
+        if value not in (None, "") and not isinstance(value, (list, dict)):
+            title_value = str(value).strip()
+            title_source = candidate
+            break
+
+    if title_value is None:
+        # Fall back to first non-meta, non-collection string value
+        for key, value in coerced.items():
+            if key in ENTRY_META_FIELDS:
+                continue
+            if value in (None, "") or isinstance(value, (list, dict)):
+                continue
+            title_value = str(value).strip()
+            title_source = key
+            break
+
+    if title_value is None:
+        add_warning(
+            f"Skipped an entry in section '{section_name}' because it has no recognizable title field."
+        )
+        return None
+
+    coerced["name"] = title_value
+    if title_source and title_source != "name":
+        coerced.pop(title_source, None)
+
+    summary_parts = []
+    if coerced.get("summary"):
+        summary_parts.append(str(coerced["summary"]))
+
+    for key in list(coerced.keys()):
+        if key in {"name", "summary", "highlights", "start_date", "end_date", "date", "location", "url", "doi"}:
+            continue
+        value = coerced[key]
+        if value in (None, "", []) or isinstance(value, (list, dict)):
+            continue
+        label = key.replace("_", " ").strip()
+        summary_parts.append(f"{label}: {value}")
+        coerced.pop(key, None)
+
+    if summary_parts:
+        coerced["summary"] = " · ".join(summary_parts)
+
+    add_warning(
+        f"Section '{section_name}' contains entries with fields this theme doesn't recognize; "
+        f"they were rendered as generic entries (kept: name, summary, dates, location, highlights)."
+    )
+    return clean_mapping(coerced)
+
+
+def normalize_unknown_entries(entries, section_name):
+    normalized = []
+    for entry in entries:
+        if entry_matches_known_type(entry):
+            normalized.append(entry)
+            continue
+        coerced = coerce_unknown_entry(entry, section_name)
+        if coerced is not None:
+            normalized.append(coerced)
+    return normalized
+
+
+def strip_unknown_top_level_cv_fields(cv_data):
+    for key in list(cv_data.keys()):
+        if key in KNOWN_CV_TOP_LEVEL_FIELDS:
+            continue
+        value = cv_data.pop(key)
+        display_value = ""
+        if value not in (None, "") and not isinstance(value, (list, dict)):
+            display_value = f" (value: {value})"
+        add_warning(
+            f"Removed unsupported top-level CV field '{key}'{display_value}. "
+            f"Move it into a 'sections' entry to display it."
+        )
+
+
 MONTH_NAMES = {
     "01": "January",
     "02": "February",
@@ -555,6 +710,7 @@ def patch_header_connection_icons(typst_content):
 
 
 def normalize_cv_yaml(yaml_text):
+    compatibility_warnings.clear()
     parsed = safe_load_yaml(yaml_text)
     if not isinstance(parsed, dict):
         return yaml_text
@@ -565,6 +721,7 @@ def normalize_cv_yaml(yaml_text):
 
     normalize_social_connections(cv_data)
     normalize_address_connection(cv_data)
+    strip_unknown_top_level_cv_fields(cv_data)
 
     sections = cv_data.get("sections")
     if isinstance(sections, dict):
@@ -583,7 +740,7 @@ def normalize_cv_yaml(yaml_text):
             normalized_entries = []
             for entry in entries:
                 normalized_entries.extend(expand_nested_positions(entry))
-            sections[section_name] = normalized_entries
+            sections[section_name] = normalize_unknown_entries(normalized_entries, section_name)
 
     return safe_dump_yaml(stringify_numbers(parsed))
 
@@ -647,6 +804,7 @@ except RenderCVUserValidationError as e:
         "content": None,
         "errors": formatted_errors,
         "normalized_cv": normalized_yaml_input_cv,
+        "warnings": list(compatibility_warnings),
     }
 except Exception as e:
     result = {
@@ -661,6 +819,7 @@ except Exception as e:
             }
         ],
         "normalized_cv": normalized_yaml_input_cv,
+        "warnings": list(compatibility_warnings),
     }
 else:
     typst_content = render_full_template(model, "typst")
@@ -668,6 +827,7 @@ else:
         "content": patch_header_connection_icons(typst_content),
         "errors": None,
         "normalized_cv": normalized_yaml_input_cv,
+        "warnings": list(compatibility_warnings),
     }
 
 result

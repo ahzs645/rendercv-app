@@ -452,6 +452,18 @@ function PreviewCanvas({
             data-zoom-layer
             style={{ width: `${viewer.zoomFactor * 100}%` }}
           >
+            {viewer.renderWarnings.length > 0 ? (
+              <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <p className="font-medium">
+                  This theme doesn't support some fields in your CV — they were rendered as generic entries or removed.
+                </p>
+                <ul className="list-inside list-disc space-y-0.5">
+                  {viewer.renderWarnings.map((warning, index) => (
+                    <li key={`${warning}-${index}`}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {viewer.svgPages.map((page, pageIndex) => (
               <div
                 key={pageIndex}
