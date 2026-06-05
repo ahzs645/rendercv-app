@@ -158,6 +158,15 @@ def entry_matches_known_type(entry):
     if not isinstance(entry, dict):
         return False
 
+    position_value = entry.get("position")
+    if isinstance(position_value, str) and (
+        position_value.startswith(POSITION_SPACING_SAME_MARKER)
+        or position_value.startswith(POSITION_SPACING_DIFF_MARKER)
+    ):
+        # Continuation row produced by expand_nested_positions: company is
+        # intentionally blanked to render under the previous employer.
+        return True
+
     has = lambda *keys: all(entry.get(key) not in (None, "") for key in keys)
     return (
         has("name")
