@@ -61,6 +61,203 @@ TOP_LEVEL_SOCIAL_FIELD_MAP = {
 POSITION_SPACING_SAME_MARKER = "RCVSPACINGSAME:"
 POSITION_SPACING_DIFF_MARKER = "RCVSPACINGDIFF:"
 ARCHIVED_TAG = "archived"
+KNOWN_CV_TOP_LEVEL_FIELDS = {
+    "name",
+    "headline",
+    "location",
+    "email",
+    "photo",
+    "phone",
+    "website",
+    "social_networks",
+    "custom_connections",
+    "sections",
+}
+ENTRY_META_FIELDS = {
+    "start_date",
+    "end_date",
+    "date",
+    "location",
+    "highlights",
+    "summary",
+    "tags",
+    "itags",
+    "flavors",
+    "spacing_after",
+    "show_date_in_position",
+    "url",
+    "doi",
+}
+TITLE_FIELD_CANDIDATES = (
+    "name",
+    "title",
+    "course",
+    "topic",
+    "subject",
+    "event",
+    "project",
+    "role",
+    "company",
+    "institution",
+    "organization",
+    "label",
+)
+compatibility_warnings: list[str] = []
+active_theme_label: str = "this theme"
+
+
+def add_warning(message):
+    if message and message not in compatibility_warnings:
+        compatibility_warnings.append(message)
+
+
+ENTRY_FIELD_SYNONYMS = {
+    "name": ("title", "course", "topic", "subject", "event", "project", "program"),
+    "title": ("paper",),
+    "authors": ("author",),
+    "company": ("organization", "employer", "funder", "agency", "host"),
+    "position": ("role", "job_title", "job"),
+    "institution": ("school", "university", "college"),
+    "area": ("field", "major", "department"),
+    "label": ("key", "category", "term"),
+    "details": ("value", "description"),
+}
+
+
+def apply_field_synonyms(entry, section_name):
+    """Fill in canonical required fields from common synonyms (e.g. organization -> company)."""
+    if not isinstance(entry, dict):
+        return entry
+
+    updated = dict(entry)
+    aliases_applied = []
+    for canonical, synonyms in ENTRY_FIELD_SYNONYMS.items():
+        if updated.get(canonical) not in (None, ""):
+            continue
+        for synonym in synonyms:
+            value = updated.get(synonym)
+            if value in (None, "") or isinstance(value, (list, dict)) and not value:
+                continue
+            updated[canonical] = value
+            aliases_applied.append((synonym, canonical))
+            break
+
+    if aliases_applied:
+        mappings = ", ".join(f"`{src}` → `{dst}`" for src, dst in aliases_applied)
+        add_warning(
+            f"Section '{section_name}': mapped {mappings} so {active_theme_label} could render the entries."
+        )
+
+    return updated
+
+
+def entry_matches_known_type(entry):
+    """Return True if entry already satisfies a built-in RenderCV entry type."""
+    if isinstance(entry, str):
+        return True
+    if not isinstance(entry, dict):
+        return False
+
+    has = lambda *keys: all(entry.get(key) not in (None, "") for key in keys)
+    return (
+        has("name")
+        or has("company", "position")
+        or has("institution", "area")
+        or has("label", "details")
+        or has("title", "authors")
+        or has("bullet")
+        or has("number")
+        or has("reversed_number")
+    )
+
+
+def coerce_unknown_entry(entry, section_name):
+    """Best-effort: turn an unknown-shaped entry into a NormalEntry so it still renders."""
+    if not isinstance(entry, dict):
+        return entry
+
+    coerced = dict(entry)
+    title_value = None
+    title_source = None
+    for candidate in TITLE_FIELD_CANDIDATES:
+        value = coerced.get(candidate)
+        if value not in (None, "") and not isinstance(value, (list, dict)):
+            title_value = str(value).strip()
+            title_source = candidate
+            break
+
+    if title_value is None:
+        # Fall back to first non-meta, non-collection string value
+        for key, value in coerced.items():
+            if key in ENTRY_META_FIELDS:
+                continue
+            if value in (None, "") or isinstance(value, (list, dict)):
+                continue
+            title_value = str(value).strip()
+            title_source = key
+            break
+
+    if title_value is None:
+        add_warning(
+            f"Skipped an entry in section '{section_name}' because it has no recognizable title field."
+        )
+        return None
+
+    coerced["name"] = title_value
+    if title_source and title_source != "name":
+        coerced.pop(title_source, None)
+
+    summary_parts = []
+    if coerced.get("summary"):
+        summary_parts.append(str(coerced["summary"]))
+
+    for key in list(coerced.keys()):
+        if key in {"name", "summary", "highlights", "start_date", "end_date", "date", "location", "url", "doi"}:
+            continue
+        value = coerced[key]
+        if value in (None, "", []) or isinstance(value, (list, dict)):
+            continue
+        label = key.replace("_", " ").strip()
+        summary_parts.append(f"{label}: {value}")
+        coerced.pop(key, None)
+
+    if summary_parts:
+        coerced["summary"] = " · ".join(summary_parts)
+
+    add_warning(
+        f"Section '{section_name}': {active_theme_label} doesn't recognize the entry shape, "
+        f"so it was rendered as a generic entry (kept: name, summary, dates, location, highlights)."
+    )
+    return clean_mapping(coerced)
+
+
+def normalize_unknown_entries(entries, section_name):
+    normalized = []
+    for entry in entries:
+        adjusted = apply_field_synonyms(entry, section_name)
+        if entry_matches_known_type(adjusted):
+            normalized.append(adjusted)
+            continue
+        coerced = coerce_unknown_entry(adjusted, section_name)
+        if coerced is not None:
+            normalized.append(coerced)
+    return normalized
+
+
+def strip_unknown_top_level_cv_fields(cv_data):
+    for key in list(cv_data.keys()):
+        if key in KNOWN_CV_TOP_LEVEL_FIELDS:
+            continue
+        value = cv_data.pop(key)
+        display_value = ""
+        if value not in (None, "") and not isinstance(value, (list, dict)):
+            display_value = f" (value: {value})"
+        add_warning(
+            f"{active_theme_label} doesn't render the top-level CV field '{key}'{display_value}; "
+            f"it was removed. Move it into a 'sections' entry to keep it visible."
+        )
+
+
 MONTH_NAMES = {
     "01": "January",
     "02": "February",
@@ -555,6 +752,7 @@ def patch_header_connection_icons(typst_content):
 
 
 def normalize_cv_yaml(yaml_text):
+    compatibility_warnings.clear()
     parsed = safe_load_yaml(yaml_text)
     if not isinstance(parsed, dict):
         return yaml_text
@@ -565,6 +763,7 @@ def normalize_cv_yaml(yaml_text):
 
     normalize_social_connections(cv_data)
     normalize_address_connection(cv_data)
+    strip_unknown_top_level_cv_fields(cv_data)
 
     sections = cv_data.get("sections")
     if isinstance(sections, dict):
@@ -583,10 +782,16 @@ def normalize_cv_yaml(yaml_text):
             normalized_entries = []
             for entry in entries:
                 normalized_entries.extend(expand_nested_positions(entry))
-            sections[section_name] = normalized_entries
+            sections[section_name] = normalize_unknown_entries(normalized_entries, section_name)
 
     return safe_dump_yaml(stringify_numbers(parsed))
 
+
+design_parsed = safe_load_yaml(yaml_input_design)
+theme_name = ""
+if isinstance(design_parsed, dict) and isinstance(design_parsed.get("design"), dict):
+    theme_name = str(design_parsed["design"].get("theme", ""))
+active_theme_label = f"the '{theme_name}' theme" if theme_name else "this theme"
 
 normalized_yaml_input_cv = normalize_cv_yaml(yaml_input_cv)
 
@@ -621,11 +826,6 @@ def strip_position_markers(cv_yaml_text):
     return safe_dump_yaml(parsed)
 
 
-design_parsed = safe_load_yaml(yaml_input_design)
-theme_name = ""
-if isinstance(design_parsed, dict) and isinstance(design_parsed.get("design"), dict):
-    theme_name = str(design_parsed["design"].get("theme", ""))
-
 if theme_name != "ahmadstyle":
     normalized_yaml_input_cv = strip_position_markers(normalized_yaml_input_cv)
 
@@ -647,6 +847,7 @@ except RenderCVUserValidationError as e:
         "content": None,
         "errors": formatted_errors,
         "normalized_cv": normalized_yaml_input_cv,
+        "warnings": list(compatibility_warnings),
     }
 except Exception as e:
     result = {
@@ -661,6 +862,7 @@ except Exception as e:
             }
         ],
         "normalized_cv": normalized_yaml_input_cv,
+        "warnings": list(compatibility_warnings),
     }
 else:
     typst_content = render_full_template(model, "typst")
@@ -668,6 +870,7 @@ else:
         "content": patch_header_connection_icons(typst_content),
         "errors": None,
         "normalized_cv": normalized_yaml_input_cv,
+        "warnings": list(compatibility_warnings),
     }
 
 result
