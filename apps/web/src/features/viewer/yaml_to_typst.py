@@ -103,11 +103,52 @@ TITLE_FIELD_CANDIDATES = (
     "label",
 )
 compatibility_warnings: list[str] = []
+active_theme_label: str = "this theme"
 
 
 def add_warning(message):
     if message and message not in compatibility_warnings:
         compatibility_warnings.append(message)
+
+
+ENTRY_FIELD_SYNONYMS = {
+    "name": ("title", "course", "topic", "subject", "event", "project", "program"),
+    "title": ("paper",),
+    "authors": ("author",),
+    "company": ("organization", "employer", "funder", "agency", "host"),
+    "position": ("role", "job_title", "job"),
+    "institution": ("school", "university", "college"),
+    "area": ("field", "major", "department"),
+    "label": ("key", "category", "term"),
+    "details": ("value", "description"),
+}
+
+
+def apply_field_synonyms(entry, section_name):
+    """Fill in canonical required fields from common synonyms (e.g. organization -> company)."""
+    if not isinstance(entry, dict):
+        return entry
+
+    updated = dict(entry)
+    aliases_applied = []
+    for canonical, synonyms in ENTRY_FIELD_SYNONYMS.items():
+        if updated.get(canonical) not in (None, ""):
+            continue
+        for synonym in synonyms:
+            value = updated.get(synonym)
+            if value in (None, "") or isinstance(value, (list, dict)) and not value:
+                continue
+            updated[canonical] = value
+            aliases_applied.append((synonym, canonical))
+            break
+
+    if aliases_applied:
+        mappings = ", ".join(f"`{src}` → `{dst}`" for src, dst in aliases_applied)
+        add_warning(
+            f"Section '{section_name}': mapped {mappings} so {active_theme_label} could render the entries."
+        )
+
+    return updated
 
 
 def entry_matches_known_type(entry):
@@ -184,8 +225,8 @@ def coerce_unknown_entry(entry, section_name):
         coerced["summary"] = " · ".join(summary_parts)
 
     add_warning(
-        f"Section '{section_name}' contains entries with fields this theme doesn't recognize; "
-        f"they were rendered as generic entries (kept: name, summary, dates, location, highlights)."
+        f"Section '{section_name}': {active_theme_label} doesn't recognize the entry shape, "
+        f"so it was rendered as a generic entry (kept: name, summary, dates, location, highlights)."
     )
     return clean_mapping(coerced)
 
@@ -193,10 +234,11 @@ def coerce_unknown_entry(entry, section_name):
 def normalize_unknown_entries(entries, section_name):
     normalized = []
     for entry in entries:
-        if entry_matches_known_type(entry):
-            normalized.append(entry)
+        adjusted = apply_field_synonyms(entry, section_name)
+        if entry_matches_known_type(adjusted):
+            normalized.append(adjusted)
             continue
-        coerced = coerce_unknown_entry(entry, section_name)
+        coerced = coerce_unknown_entry(adjusted, section_name)
         if coerced is not None:
             normalized.append(coerced)
     return normalized
@@ -211,8 +253,8 @@ def strip_unknown_top_level_cv_fields(cv_data):
         if value not in (None, "") and not isinstance(value, (list, dict)):
             display_value = f" (value: {value})"
         add_warning(
-            f"Removed unsupported top-level CV field '{key}'{display_value}. "
-            f"Move it into a 'sections' entry to display it."
+            f"{active_theme_label} doesn't render the top-level CV field '{key}'{display_value}; "
+            f"it was removed. Move it into a 'sections' entry to keep it visible."
         )
 
 
@@ -745,6 +787,12 @@ def normalize_cv_yaml(yaml_text):
     return safe_dump_yaml(stringify_numbers(parsed))
 
 
+design_parsed = safe_load_yaml(yaml_input_design)
+theme_name = ""
+if isinstance(design_parsed, dict) and isinstance(design_parsed.get("design"), dict):
+    theme_name = str(design_parsed["design"].get("theme", ""))
+active_theme_label = f"the '{theme_name}' theme" if theme_name else "this theme"
+
 normalized_yaml_input_cv = normalize_cv_yaml(yaml_input_cv)
 
 
@@ -777,11 +825,6 @@ def strip_position_markers(cv_yaml_text):
 
     return safe_dump_yaml(parsed)
 
-
-design_parsed = safe_load_yaml(yaml_input_design)
-theme_name = ""
-if isinstance(design_parsed, dict) and isinstance(design_parsed.get("design"), dict):
-    theme_name = str(design_parsed["design"].get("theme", ""))
 
 if theme_name != "ahmadstyle":
     normalized_yaml_input_cv = strip_position_markers(normalized_yaml_input_cv)

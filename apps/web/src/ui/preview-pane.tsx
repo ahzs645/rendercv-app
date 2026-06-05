@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import { AppWindow, Download, Eye, EyeOff, FileCode2, Minus, Plus } from 'lucide-react';
+import { AppWindow, Download, Eye, EyeOff, FileCode2, Minus, Plus, X } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { preferencesStore } from '@rendercv/core';
 import { downloadBlob } from '../features/viewer/download';
@@ -430,6 +430,11 @@ function PreviewCanvas({
     preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
   const invertPreview = isDark && preferences.previewDarkMode;
 
+  const [dismissedWarningsKey, setDismissedWarningsKey] = useState<string | null>(null);
+  const warningsKey = viewer.renderWarnings.join(' ');
+  const showWarningsBanner =
+    viewer.renderWarnings.length > 0 && dismissedWarningsKey !== warningsKey;
+
   return (
     <div className={shellClassName}>
       <div
@@ -452,16 +457,24 @@ function PreviewCanvas({
             data-zoom-layer
             style={{ width: `${viewer.zoomFactor * 100}%` }}
           >
-            {viewer.renderWarnings.length > 0 ? (
-              <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            {showWarningsBanner ? (
+              <div className="relative space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 pr-9 text-xs text-amber-900">
                 <p className="font-medium">
-                  This theme doesn't support some fields in your CV — they were rendered as generic entries or removed.
+                  Some fields in your CV weren't directly supported — they were mapped, rendered as generic entries, or removed.
                 </p>
                 <ul className="list-inside list-disc space-y-0.5">
                   {viewer.renderWarnings.map((warning, index) => (
                     <li key={`${warning}-${index}`}>{warning}</li>
                   ))}
                 </ul>
+                <button
+                  type="button"
+                  onClick={() => setDismissedWarningsKey(warningsKey)}
+                  aria-label="Dismiss warnings"
+                  className="absolute right-2 top-2 rounded p-1 text-amber-700 transition hover:bg-amber-100 hover:text-amber-900"
+                >
+                  <X className="size-3.5" />
+                </button>
               </div>
             ) : null}
             {viewer.svgPages.map((page, pageIndex) => (
