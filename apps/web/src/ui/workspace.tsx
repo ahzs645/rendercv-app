@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
 import { useIsMobile } from '../lib/use-mobile';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
 import {
   normalizeCompatibilityCvYaml,
@@ -34,6 +35,10 @@ const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
 const SIDEBAR_OVERLAY_BREAKPOINT = Math.ceil(SIDEBAR_MINI_WIDTH / (SIDEBAR_DEFAULT_SIZE / 100));
 const BUILT_IN_THEMES = new Set(Object.keys(defaultDesigns));
+const KNOWN_THEMES = new Set([
+  ...Object.keys(defaultDesigns),
+  ...BUNDLED_THEMES.map((theme) => theme.themeKey)
+]);
 const MonacoEditor = lazy(() =>
   import('./monaco-editor').then((module) => ({ default: module.MonacoEditor }))
 );
@@ -410,7 +415,7 @@ export function Workspace() {
           validationResult.usedFallbackTheme &&
           importedSections.selectedTheme &&
           importedSections.design &&
-          importedSections.selectedTheme !== 'classic'
+          !KNOWN_THEMES.has(importedSections.selectedTheme)
         ) {
           additionalDesigns[importedSections.selectedTheme] = importedSections.design;
           message = `YAML imported with compatibility mode. Preview will temporarily use classic until the ${importedSections.selectedTheme} theme zip is loaded.`;

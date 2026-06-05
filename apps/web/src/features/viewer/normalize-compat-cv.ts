@@ -59,6 +59,46 @@ const MONTH_NAMES: Record<string, string> = {
 const MONTH_NUMBERS_BY_NAME = Object.fromEntries(
   Object.entries(MONTH_NAMES).map(([month, name]) => [name, month])
 ) as Record<string, string>;
+const ENTRY_META_FIELDS = new Set([
+  'start_date',
+  'end_date',
+  'date',
+  'location',
+  'highlights',
+  'summary',
+  'tags',
+  'itags',
+  'flavors',
+  'spacing_after',
+  'show_date_in_position',
+  'url',
+  'doi'
+]);
+const TITLE_FIELD_CANDIDATES = [
+  'name',
+  'title',
+  'course',
+  'topic',
+  'subject',
+  'event',
+  'project',
+  'role',
+  'company',
+  'institution',
+  'organization',
+  'label'
+];
+const ENTRY_FIELD_SYNONYMS: Record<string, string[]> = {
+  name: ['title', 'course', 'topic', 'subject', 'event', 'project', 'program'],
+  title: ['paper'],
+  authors: ['author'],
+  company: ['organization', 'employer', 'funder', 'agency', 'host'],
+  position: ['role', 'job_title', 'job'],
+  institution: ['school', 'university', 'college'],
+  area: ['field', 'major', 'department'],
+  label: ['key', 'category', 'term'],
+  details: ['value', 'description']
+};
 
 type UnknownRecord = Record<string, unknown>;
 type NormalizeCompatibilityOptions = {
@@ -362,6 +402,186 @@ function normalizeExperienceEntry(entry: UnknownRecord) {
   delete normalizedRecord.number_of_students;
 
   return cleanMapping(normalizedRecord);
+}
+
+function applyFieldSynonyms(entry: unknown) {
+  if (!isRecord(entry)) {
+    return entry;
+  }
+
+  const updated: UnknownRecord = { ...entry };
+  for (const [canonical, synonyms] of Object.entries(ENTRY_FIELD_SYNONYMS)) {
+    if (updated[canonical] != null && updated[canonical] !== '') {
+      continue;
+    }
+
+    for (const synonym of synonyms) {
+      const value = updated[synonym];
+      if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) {
+        continue;
+      }
+
+      updated[canonical] = value;
+      if (synonym !== canonical) {
+        delete updated[synonym];
+      }
+      break;
+    }
+  }
+
+  return updated;
+}
+
+function entryMatchesKnownType(entry: unknown) {
+  if (typeof entry === 'string') {
+    return true;
+  }
+  if (!isRecord(entry)) {
+    return false;
+  }
+
+  const position = entry.position;
+  if (
+    typeof position === 'string' &&
+    (position.startsWith(POSITION_SPACING_SAME_MARKER) ||
+      position.startsWith(POSITION_SPACING_DIFF_MARKER))
+  ) {
+    return true;
+  }
+
+  const has = (...keys: string[]) =>
+    keys.every((key) => entry[key] != null && entry[key] !== '');
+
+  return (
+    has('name') ||
+    has('company', 'position') ||
+    has('institution', 'area') ||
+    has('label', 'details') ||
+    has('title', 'authors') ||
+    has('bullet') ||
+    has('number') ||
+    has('reversed_number')
+  );
+}
+
+function coerceUnknownEntry(entry: unknown) {
+  if (!isRecord(entry)) {
+    return typeof entry === 'string' ? entry : undefined;
+  }
+
+  const coerced: UnknownRecord = { ...entry };
+  let titleSource: string | undefined;
+  let titleValue: string | undefined;
+
+  for (const candidate of TITLE_FIELD_CANDIDATES) {
+    const value = coerced[candidate];
+    if (value == null || value === '' || Array.isArray(value) || isRecord(value)) {
+      continue;
+    }
+
+    titleSource = candidate;
+    titleValue = String(value).trim();
+    break;
+  }
+
+  if (!titleValue) {
+    for (const [key, value] of Object.entries(coerced)) {
+      if (ENTRY_META_FIELDS.has(key)) {
+        continue;
+      }
+      if (value == null || value === '' || Array.isArray(value) || isRecord(value)) {
+        continue;
+      }
+
+      titleSource = key;
+      titleValue = String(value).trim();
+      break;
+    }
+  }
+
+  if (!titleValue) {
+    return undefined;
+  }
+
+  coerced.name = titleValue;
+  if (titleSource && titleSource !== 'name') {
+    delete coerced[titleSource];
+  }
+
+  const summaryParts = coerced.summary ? [String(coerced.summary)] : [];
+  for (const [key, value] of Object.entries({ ...coerced })) {
+    if (
+      key === 'name' ||
+      key === 'summary' ||
+      key === 'highlights' ||
+      key === 'start_date' ||
+      key === 'end_date' ||
+      key === 'date' ||
+      key === 'location' ||
+      key === 'url' ||
+      key === 'doi'
+    ) {
+      continue;
+    }
+    if (value == null || value === '' || (Array.isArray(value) && value.length === 0) || isRecord(value)) {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      continue;
+    }
+
+    summaryParts.push(`${key.replaceAll('_', ' ')}: ${String(value)}`);
+    delete coerced[key];
+  }
+
+  if (summaryParts.length > 0) {
+    coerced.summary = summaryParts.join(' · ');
+  }
+
+  return cleanMapping(coerced);
+}
+
+function normalizeUnknownEntry(
+  entry: unknown,
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+) {
+  const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+  if (!prepared) {
+    return undefined;
+  }
+
+  const stripped = stripCompatFields(prepared);
+  if (entryMatchesKnownType(stripped)) {
+    const coerced = coerceUnknownEntry(stripped);
+    if (coerced && isRecord(coerced) && 'name' in coerced && isRecord(stripped)) {
+      return coerced;
+    }
+
+    return cleanMapping(stripped as UnknownRecord);
+  }
+
+  const coerced = coerceUnknownEntry(stripped);
+  if (coerced) {
+    return coerced;
+  }
+
+  const adjusted = applyFieldSynonyms(stripped);
+  if (entryMatchesKnownType(adjusted)) {
+    if (isRecord(adjusted)) {
+      if (adjusted.company != null && adjusted.position != null) {
+        return normalizeExperienceEntry(adjusted);
+      }
+      if (adjusted.institution != null && adjusted.area != null) {
+        return normalizeEducationEntry(adjusted);
+      }
+    }
+
+    return cleanMapping(adjusted as UnknownRecord);
+  }
+
+  return undefined;
 }
 
 function normalizeEducationEntry(entry: UnknownRecord) {
@@ -846,9 +1066,14 @@ function normalizeSectionEntries(
           return normalizedEntries;
         }
 
-        const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
-        if (prepared) {
-          normalizedEntries.push(cleanMapping(stripCompatFields(prepared) as UnknownRecord));
+        const normalized = normalizeUnknownEntry(
+          entry,
+          preferredFlavors,
+          selectedTags,
+          variantActive
+        );
+        if (normalized) {
+          normalizedEntries.push(normalized);
         }
 
         return normalizedEntries;

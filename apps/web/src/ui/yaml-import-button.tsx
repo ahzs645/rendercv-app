@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import YAML from 'yaml';
 import { defaultDesigns, fileStore } from '@rendercv/core';
 import type { CvFileSections } from '@rendercv/contracts';
+import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
 import { summarizeRenderErrors } from '../features/viewer/render-error-format';
 
@@ -21,6 +22,10 @@ export type PreparedYamlImport = {
 };
 
 const BUILT_IN_THEMES = new Set(Object.keys(defaultDesigns));
+const KNOWN_THEMES = new Set([
+  ...BUILT_IN_THEMES,
+  ...BUNDLED_THEMES.map((theme) => theme.themeKey)
+]);
 
 function stringifySection<T>(key: keyof CvFileSections, value: T | undefined) {
   if (value === undefined) {
@@ -63,7 +68,7 @@ function parseImportedYaml(content: string): ImportedYamlSections {
 }
 
 function looksLikeCompatibilityYaml(content: string, importedSections: ImportedYamlSections) {
-  if (importedSections.selectedTheme && !BUILT_IN_THEMES.has(importedSections.selectedTheme)) {
+  if (importedSections.selectedTheme && !KNOWN_THEMES.has(importedSections.selectedTheme)) {
     return true;
   }
 
@@ -148,7 +153,7 @@ export function YamlImportButton({
       });
       if (isCompatibilityYaml) {
         const themeNote =
-          nextSections.selectedTheme && !BUILT_IN_THEMES.has(nextSections.selectedTheme)
+          nextSections.selectedTheme && !KNOWN_THEMES.has(nextSections.selectedTheme)
             ? ` Import the ${nextSections.selectedTheme} theme zip if the preview reports a missing custom theme.`
             : '';
         toast.success(

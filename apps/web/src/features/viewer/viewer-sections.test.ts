@@ -205,4 +205,83 @@ describe('prepareViewerSections', () => {
     expect(sections.cv).toContain('placeholder: ahzs645');
     expect(sections.cv).toContain('url: https://www.facebook.com/ahzs645');
   });
+
+  it('coerces custom academic sections into RenderCV-safe generic entries', () => {
+    const sections = prepareViewerSections({
+      cv: `cv:
+  sections:
+    teaching:
+      - course: "Digital ENAC: Putting Coding into Context"
+        position: Co-teacher
+        course_level: Bachelor
+        organization: School of Architecture, Civil and Environmental Engineering, EPFL
+        start_date: 2023
+    grants:
+      - name: "SAURON: Standoff Aerosol measUrement Remote Optical Network"
+        role: Co-PI
+        funder: Intelligence Advanced Research Projects Activity
+        amount: "USD 376,932"
+        start_date: 2024-01
+        end_date: 2027-06
+        highlights:
+          - With Greg Rieker
+`,
+      design: `design:
+  theme: classic
+`,
+      locale: '',
+      settings: ''
+    });
+
+    expect(sections.cv).toContain('teaching:');
+    expect(sections.cv).toContain('name: "Digital ENAC: Putting Coding into Context"');
+    expect(sections.cv).toContain('position: Co-teacher');
+    expect(sections.cv).toContain('course level: Bachelor');
+    expect(sections.cv).toContain('organization: School');
+    expect(sections.cv).toContain('grants:');
+    expect(sections.cv).toContain('name: "SAURON: Standoff Aerosol measUrement Remote Optical Network"');
+    expect(sections.cv).toContain('role: Co-PI');
+    expect(sections.cv).toContain('funder: Intelligence Advanced Research Projects Activity');
+    expect(sections.cv).toContain('highlights:');
+  });
+
+  it('normalizes Takahama-style nested positions and numeric publication fields for ahmadstyle', () => {
+    const sections = prepareViewerSections({
+      cv: `cv:
+  sections:
+    experience:
+      - company: École Polytechnique Fédérale de Lausanne
+        position: Senior Scientist
+        location: Lausanne, Switzerland
+        positions:
+          - title: Senior Scientist
+            start_date: 2020-03
+            end_date: present
+          - title: Assistant Professor and Head of Laboratory
+            start_date: 2012-03
+            end_date: 2020-02
+    publications:
+      - title: Unraveling ice multiplication
+        authors:
+          - Takahama, S.
+        journal: npj Climate and Atmospheric Science
+        volume: 7
+        pages: "1-13"
+        date: 2024
+        doi: 10.1038/s41612-024-00671-9
+`,
+      design: `design:
+  theme: ahmadstyle
+`,
+      locale: '',
+      settings: ''
+    });
+
+    expect(sections.cv).toContain('position: RCVSPACINGSAME:Senior Scientist | March 2020 – Present');
+    expect(sections.cv).toContain('company: ""');
+    expect(sections.cv).toContain('position: Assistant Professor and Head of Laboratory | March 2012 – February 2020');
+    expect(sections.cv).not.toContain('positions:');
+    expect(sections.cv).toContain('journal: npj Climate and Atmospheric Science, 7');
+    expect(sections.cv).toContain('date: "2024"');
+  });
 });
