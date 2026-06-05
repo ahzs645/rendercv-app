@@ -441,6 +441,10 @@ function entryMatchesKnownType(entry: unknown) {
   }
 
   const position = entry.position;
+  if ('company' in entry && entry.company === '' && position != null && position !== '') {
+    return true;
+  }
+
   if (
     typeof position === 'string' &&
     (position.startsWith(POSITION_SPACING_SAME_MARKER) ||
@@ -758,19 +762,64 @@ function normalizePublications(
       journal = joinParts([item.institution, item.type]);
     }
 
+    const doi = item.doi;
+    const url = item.url ?? (doi ? `https://doi.org/${doi}` : undefined);
+
     return [
       cleanMapping({
-        title: item.title,
-        authors,
-        journal,
+        name: item.title,
         date: item.date,
-        doi: item.doi,
         summary: joinParts([
+          journal,
+          Array.isArray(authors) ? authors.map((author) => String(author)).join(', ') : undefined,
           item.summary,
           item.editor ? `Editor: ${item.editor}` : undefined,
           item.publisher,
-          item.pages ? `Pages: ${item.pages}` : undefined
+          item.pages ? `Pages: ${item.pages}` : undefined,
+          doi ? `DOI: ${doi}` : undefined,
+          url && !doi ? url : undefined
         ])
+      })
+    ];
+  });
+}
+
+function normalizeTeachingEntries(
+  entries: unknown[],
+  preferredFlavors: string[],
+  selectedTags: string[],
+  variantActive: boolean
+) {
+  return entries.flatMap((entry) => {
+    const prepared = prepareVariantRecord(entry, preferredFlavors, selectedTags, variantActive);
+    if (!prepared) {
+      return [];
+    }
+
+    const item = stripCompatFields(prepared);
+    if (!isRecord(item)) {
+      return [];
+    }
+
+    const course = item.course ?? item.name ?? item.title;
+    const company = course ?? item.organization ?? item.institution ?? item.company ?? 'Teaching';
+    const position = item.position ?? item.role ?? 'Instructor';
+    const organization = item.organization ?? item.institution ?? item.company;
+
+    return [
+      cleanMapping({
+        company,
+        position,
+        location: item.location,
+        date: item.date,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        summary: joinParts([
+          organization,
+          item.course_level ? `Level: ${item.course_level}` : undefined,
+          item.summary
+        ]),
+        highlights: item.highlights
       })
     ];
   });
@@ -1046,6 +1095,8 @@ function normalizeSectionEntries(
       });
     case 'publications':
       return normalizePublications(entries, preferredFlavors, selectedTags, variantActive);
+    case 'teaching':
+      return normalizeTeachingEntries(entries, preferredFlavors, selectedTags, variantActive);
     case 'supervisory_activities':
       return normalizeSupervisoryActivities(entries, preferredFlavors, selectedTags, variantActive);
     case 'media':
@@ -1334,6 +1385,11 @@ export function normalizeCompatibilityCvYaml(
         selectedTags,
         variantActive
       );
+
+      if (sectionName === 'publications') {
+        sections.research_publications = sections[sectionName];
+        delete sections[sectionName];
+      }
     }
   }
 

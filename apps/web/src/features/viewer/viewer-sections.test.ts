@@ -234,10 +234,11 @@ describe('prepareViewerSections', () => {
     });
 
     expect(sections.cv).toContain('teaching:');
-    expect(sections.cv).toContain('name: "Digital ENAC: Putting Coding into Context"');
+    expect(sections.cv).toContain('company: "Digital ENAC: Putting Coding into Context"');
     expect(sections.cv).toContain('position: Co-teacher');
-    expect(sections.cv).toContain('course level: Bachelor');
-    expect(sections.cv).toContain('organization: School');
+    expect(sections.cv).toContain('School of Architecture, Civil and Environmental Engineering, EPFL');
+    expect(sections.cv).toContain('Level: Bachelor');
+    expect(sections.cv).toContain('start_date: "2023"');
     expect(sections.cv).toContain('grants:');
     expect(sections.cv).toContain('name: "SAURON: Standoff Aerosol measUrement Remote Optical Network"');
     expect(sections.cv).toContain('role: Co-PI');
@@ -280,8 +281,12 @@ describe('prepareViewerSections', () => {
     expect(sections.cv).toContain('position: RCVSPACINGSAME:Senior Scientist | March 2020 – Present');
     expect(sections.cv).toContain('company: ""');
     expect(sections.cv).toContain('position: Assistant Professor and Head of Laboratory | March 2012 – February 2020');
+    expect(sections.cv).not.toContain('name: Assistant Professor and Head of Laboratory');
     expect(sections.cv).not.toContain('positions:');
-    expect(sections.cv).toContain('journal: npj Climate and Atmospheric Science, 7');
+    expect(sections.cv).toContain('research_publications:');
+    expect(sections.cv).not.toContain('    publications:');
+    expect(sections.cv).toContain('summary: "npj Climate and Atmospheric Science, 7');
+    expect(sections.cv).toContain('DOI: 10.1038/s41612-024-00671-9');
     expect(sections.cv).toContain('date: "2024"');
   });
 });

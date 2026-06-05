@@ -159,6 +159,12 @@ def entry_matches_known_type(entry):
         return False
 
     position_value = entry.get("position")
+    if "company" in entry and entry.get("company") == "" and position_value not in (None, ""):
+        # Continuation row for the previous employer. Ahmad Style strips the
+        # final spacing marker before rendering, but this is still an
+        # ExperienceEntry row and must keep its position field.
+        return True
+
     if isinstance(position_value, str) and (
         position_value.startswith(POSITION_SPACING_SAME_MARKER)
         or position_value.startswith(POSITION_SPACING_DIFF_MARKER)
@@ -585,22 +591,68 @@ def normalize_publications(entries):
         else:
             journal = join_parts([item.get("institution"), item.get("type")])
 
+        doi = item.get("doi")
+        url = item.get("url")
+        if not url and doi:
+            url = f"https://doi.org/{doi}"
+
         publication = {
-            "title": item.get("title"),
-            "authors": authors,
-            "journal": journal,
+            "name": item.get("title"),
             "date": item.get("date"),
-            "doi": item.get("doi"),
             "summary": join_parts(
                 [
+                    journal,
+                    ", ".join(str(author) for author in authors) if authors else None,
                     item.get("summary"),
                     f"Editor: {item['editor']}" if item.get("editor") else None,
                     item.get("publisher"),
                     f"Pages: {item['pages']}" if item.get("pages") else None,
+                    f"DOI: {doi}" if doi else None,
+                    url if url and not doi else None,
                 ]
             ),
         }
         normalized_entries.append(clean_mapping(publication))
+
+    return normalized_entries
+
+
+def normalize_teaching_entries(entries):
+    normalized_entries = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+
+        prepared_entry = normalize_flavored_fields(entry)
+        if not matches_entry_variant(prepared_entry):
+            continue
+
+        item = strip_compat_fields(prepared_entry)
+        course = item.get("course") or item.get("name") or item.get("title")
+        company = course or item.get("organization") or item.get("institution") or item.get("company") or "Teaching"
+        position = item.get("position") or item.get("role") or "Instructor"
+        organization = item.get("organization") or item.get("institution") or item.get("company")
+
+        normalized_entries.append(
+            clean_mapping(
+                {
+                    "company": company,
+                    "position": position,
+                    "location": item.get("location"),
+                    "date": item.get("date"),
+                    "start_date": item.get("start_date"),
+                    "end_date": item.get("end_date"),
+                    "summary": join_parts(
+                        [
+                            organization,
+                            f"Level: {item['course_level']}" if item.get("course_level") else None,
+                            item.get("summary"),
+                        ]
+                    ),
+                    "highlights": item.get("highlights"),
+                }
+            )
+        )
 
     return normalized_entries
 
@@ -781,7 +833,13 @@ def normalize_cv_yaml(yaml_text):
                 continue
 
             if section_name == "publications":
-                sections[section_name] = normalize_publications(entries)
+                sections["research_publications"] = normalize_publications(entries)
+                if "research_publications" != section_name:
+                    sections.pop(section_name, None)
+                continue
+
+            if section_name == "teaching":
+                sections[section_name] = normalize_teaching_entries(entries)
                 continue
 
             if section_name == "supervisory_activities":
@@ -874,6 +932,25 @@ except Exception as e:
         "warnings": list(compatibility_warnings),
     }
 else:
+    import rendercv.renderer.templater.entry_templates_from_input as _entry_templates
+
+    _original_process_url = _entry_templates.process_url
+    _original_process_doi = _entry_templates.process_doi
+
+    def _compat_process_url(entry):
+        try:
+            return _original_process_url(entry)
+        except Exception:
+            return ""
+
+    def _compat_process_doi(entry):
+        try:
+            return _original_process_doi(entry)
+        except Exception:
+            return ""
+
+    _entry_templates.process_url = _compat_process_url
+    _entry_templates.process_doi = _compat_process_doi
     typst_content = render_full_template(model, "typst")
     result = {
         "content": patch_header_connection_icons(typst_content),
