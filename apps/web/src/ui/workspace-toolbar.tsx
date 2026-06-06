@@ -271,7 +271,7 @@ export function WorkspaceToolbar({
         rootBaselineSections: payload.sections
       });
 
-      toast.success(`Imported "${fileName}". You can send changes back as a review proposal later.`);
+      toast.success(`Imported "${fileName}" as a review copy. Edit it, then send a proposal back.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to import file.');
     }
@@ -310,7 +310,7 @@ export function WorkspaceToolbar({
     try {
       const url = await buildReviewProposalUrl(proposalPackage);
       await navigator.clipboard.writeText(url);
-      toast.success(activeReviewProposal ? 'Forwarded review proposal link copied.' : 'Review proposal link copied.');
+      toast.success(activeReviewProposal ? 'Updated proposal link copied.' : 'Review proposal link copied.');
     } catch (error) {
       if (error instanceof ReviewProposalTooLargeError) {
         await exportReviewProposalPackage(proposalPackage);
@@ -615,7 +615,7 @@ export function WorkspaceToolbar({
             setReviewerDialogOpen(true);
           }}
           onSharePdf={() => void sharePdf()}
-          sendProposalLabel={activeReviewProposal ? 'Forward proposal' : 'Send proposal'}
+          sendProposalLabel={activeReviewProposal ? 'Send updated proposal' : 'Send proposal'}
           open={downloadDialogOpen}
         />
         {hasSharedOrigin && sections && selectedFile?.sharedOrigin ? (
@@ -811,7 +811,7 @@ export function WorkspaceToolbar({
           setReviewerDialogOpen(true);
         }}
         onSharePdf={() => void sharePdf()}
-        sendProposalLabel={activeReviewProposal ? 'Forward proposal' : 'Send proposal'}
+        sendProposalLabel={activeReviewProposal ? 'Send updated proposal' : 'Send proposal'}
         open={downloadDialogOpen}
       />
       {hasSharedOrigin && sections && selectedFile?.sharedOrigin ? (
@@ -1245,11 +1245,10 @@ function DownloadShareDialog({
           <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold text-foreground">
-                Share, export, and backup
+                Share and export
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                Export a finished file, copy a share link, or back up {fileName ?? 'this resume'}
-                for review and transfer.
+                Export {fileName ?? 'this resume'}, copy links, or exchange review packages.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -1264,7 +1263,7 @@ function DownloadShareDialog({
           </div>
 
           <div className="max-h-[calc(85vh-5.5rem)] overflow-auto px-6 py-5">
-            <div className="grid gap-4 xl:grid-cols-3">
+            <div className="grid gap-4 lg:grid-cols-2">
               <DialogActionSection
                 description="Finished files you can send or keep outside the app."
                 title="Export files"
@@ -1286,7 +1285,7 @@ function DownloadShareDialog({
               </DialogActionSection>
 
               <DialogActionSection
-                description="Links and quick-send actions for collaborators or other devices."
+                description="Links for viewing, editing a review copy, or downloading a PDF."
                 title="Share links"
               >
                 <DialogActionButton
@@ -1304,11 +1303,11 @@ function DownloadShareDialog({
                   title="Copy share link"
                 />
                 <DialogActionButton
-                  description="Copy an editable review copy link so a collaborator can send changes back."
+                  description="Copy an editable copy. The recipient can make changes and send a proposal back."
                   disabled={!canLinkActions}
                   icon={<GitCompareArrows className="size-4" />}
                   onClick={onCopyReviewLink}
-                  title="Copy review link"
+                  title="Copy review-copy link"
                 />
                 <DialogActionButton
                   description="Copy a direct link that downloads the PDF version."
@@ -1320,8 +1319,8 @@ function DownloadShareDialog({
               </DialogActionSection>
 
               <DialogActionSection
-                description="Move a resume between workspaces or keep a clean local backup for later edits."
-                title="Backup & review"
+                description="Move a resume between browsers or keep a local backup for later edits."
+                title="Backup files"
               >
                 <DialogActionButton
                   description="Download a backup file with the current resume contents."
@@ -1331,25 +1330,25 @@ function DownloadShareDialog({
                   title="Backup file"
                 />
                 <DialogActionButton
-                  description="Import a clean backup file into this workspace and keep it eligible for review proposals."
+                  description="Import a backup or review-copy file into this workspace."
                   icon={<FileUp className="size-4" />}
                   onClick={onImportJson}
-                  title="Import review copy"
+                  title="Import backup or review copy"
                 />
               </DialogActionSection>
               <DialogActionSection
-                description="Send edits back as a review proposal or import one into the local review inbox."
+                description="Use these after a review copy has been edited or when someone sends a proposal back."
                 title="Review proposals"
               >
                 <DialogActionButton
-                  description="Create a review proposal package from the current file and copy a proposal link when it fits."
+                  description="Package the current edits as a proposal and copy a link when it fits."
                   disabled={!canReviewActions}
                   icon={<Send className="size-4" />}
                   onClick={onSendProposal}
                   title={sendProposalLabel}
                 />
                 <DialogActionButton
-                  description="Download the current active review proposal as a file package."
+                  description="Download the active proposal as a file when a link is too large or files are preferred."
                   disabled={!canReviewActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onExportReviewPackage}

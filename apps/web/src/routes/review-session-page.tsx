@@ -77,14 +77,26 @@ export function ReviewSessionPage() {
 
   const currentSession = session;
 
-  const acceptedCount = activeProposal
-    ? Object.values(activeProposal.decisionStates).filter((value) => value === 'accepted').length
-    : 0;
-  const rejectedCount = activeProposal
-    ? Object.values(activeProposal.decisionStates).filter((value) => value === 'rejected').length
-    : 0;
   const totalCount = reviewChanges.reduce((sum, section) => sum + section.changes.length, 0);
+  const currentChangeIds = new Set(
+    reviewChanges.flatMap((section) => section.changes.map((change) => change.id))
+  );
+  const currentDecisions = activeProposal
+    ? Object.entries(activeProposal.decisionStates).filter(([changeId]) => currentChangeIds.has(changeId))
+    : [];
+  const acceptedCount = currentDecisions.filter(([, value]) => value === 'accepted').length;
+  const rejectedCount = currentDecisions.filter(([, value]) => value === 'rejected').length;
   const pendingCount = totalCount - acceptedCount - rejectedCount;
+  const resolveLabel =
+    acceptedCount > 0
+      ? `Apply ${acceptedCount} accepted change${acceptedCount === 1 ? '' : 's'}`
+      : 'Reject proposal';
+  const resolveHelpText =
+    pendingCount > 0
+      ? `${pendingCount} pending change${pendingCount === 1 ? '' : 's'} will stay unchanged.`
+      : acceptedCount > 0
+        ? 'All rejected changes will stay unchanged.'
+        : 'No accepted changes will be applied.';
 
   function buildTargetSections() {
     return mergedSections ?? currentSession.rootBaselineSections;
@@ -274,7 +286,7 @@ export function ReviewSessionPage() {
                   type="button"
                 >
                   <Check className="size-4" />
-                  Resolve review
+                  {resolveLabel}
                 </button>
               </>
             ) : null}
@@ -300,6 +312,10 @@ export function ReviewSessionPage() {
           </div>
           {activeProposal ? (
             <div className="max-h-[calc(100vh-10rem)] overflow-auto px-5 py-4">
+              <div className="mb-4 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-xs leading-5 text-muted-foreground">
+                Accept the changes you want to apply. Rejected and pending changes keep the original resume values when you finish.
+                <span className="mt-1 block font-medium text-foreground">{resolveHelpText}</span>
+              </div>
               <div className="space-y-5">
                 {reviewChanges.map((section) => (
                   <section key={section.key} className="space-y-3">
@@ -365,12 +381,12 @@ export function ReviewSessionPage() {
                               </div>
                               <div className="mt-3 grid gap-3 md:grid-cols-2">
                                 <ValueCard
-                                  title="Base"
+                                  title="Original"
                                   tone="base"
                                   value={change.baselineValue}
                                 />
                                 <ValueCard
-                                  title="Proposal"
+                                  title="Proposed"
                                   tone="proposal"
                                   value={change.proposedValue}
                                 />
@@ -430,9 +446,9 @@ export function ReviewSessionPage() {
         <div className="grid min-h-0 gap-4 xl:grid-cols-2">
           <div className="min-h-[28rem] rounded-3xl border border-border bg-background p-4">
             <div className="mb-3">
-              <h2 className="text-sm font-semibold text-foreground">Base resume</h2>
+              <h2 className="text-sm font-semibold text-foreground">Original resume</h2>
               <p className="text-xs text-muted-foreground">
-                Immutable baseline for this proposal chain.
+                The unchanged baseline used for every accept or reject decision.
               </p>
             </div>
             <div className="h-[calc(100%-3rem)]">
@@ -446,9 +462,9 @@ export function ReviewSessionPage() {
           </div>
           <div className="min-h-[28rem] rounded-3xl border border-border bg-background p-4">
             <div className="mb-3">
-              <h2 className="text-sm font-semibold text-foreground">Active proposal</h2>
+              <h2 className="text-sm font-semibold text-foreground">Proposed resume</h2>
               <p className="text-xs text-muted-foreground">
-                Proposed resume as submitted by the reviewer.
+                The resume with the active reviewer proposal applied.
               </p>
             </div>
             <div className="h-[calc(100%-3rem)]">

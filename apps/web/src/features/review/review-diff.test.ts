@@ -39,7 +39,7 @@ describe('computeReviewSectionChanges', () => {
     const cvChanges = computeReviewSectionChanges(baseline, proposed).find(
       (section) => section.key === 'cv'
     )!;
-    const nameChange = cvChanges.changes.find((change) => change.id === 'cv:name');
+    const nameChange = cvChanges.changes.find((change) => change.id === 'cv:set:name');
 
     expect(nameChange).toMatchObject({
       label: 'Name',
@@ -77,7 +77,7 @@ describe('computeReviewSectionChanges', () => {
 
     expect(cvChanges.changes).toHaveLength(1);
     expect(cvChanges.changes[0]).toMatchObject({
-      id: 'cv:sections.experience.0.position',
+      id: 'cv:set:sections.experience.0.position',
       label: 'Position',
       kind: 'set',
       baselineValue: 'Engineer',
@@ -111,7 +111,7 @@ describe('computeReviewSectionChanges', () => {
 
     expect(designChanges.changes).toEqual([
       expect.objectContaining({
-        id: 'design:columns.1',
+        id: 'design:set:columns.1',
         kind: 'set',
         baselineValue: { width: 0.65, align: 'right' },
         proposedValue: { width: 0.6, align: 'right' }
@@ -138,9 +138,9 @@ describe('applyAcceptedReviewChanges', () => {
 
     const sectionChanges = computeReviewSectionChanges(baseline, proposed);
     const merged = applyAcceptedReviewChanges(baseline, sectionChanges, {
-      'cv:name': 'accepted',
-      'cv:location': 'accepted',
-      'cv:label': 'rejected'
+      'cv:set:name': 'accepted',
+      'cv:remove:location': 'accepted',
+      'cv:set:label': 'rejected'
     });
     const mergedCv = YAML.parse(merged.cv).cv;
 
@@ -148,5 +148,39 @@ describe('applyAcceptedReviewChanges', () => {
       name: 'Jane Doe',
       label: 'Developer'
     });
+  });
+
+  it('keeps add and remove decisions independent when they share the same path', () => {
+    const baseline = makeSections({
+      cv: yamlSection('cv', {
+        sections: {
+          skills: [{ label: 'Tools', details: 'SQL, Python, Tableau' }]
+        }
+      })
+    });
+    const proposed = makeSections({
+      cv: yamlSection('cv', {
+        sections: {
+          skills: [{ name: 'Tools', summary: 'details: SQL, Python, Tableau' }]
+        }
+      })
+    });
+
+    const cvChanges = computeReviewSectionChanges(baseline, proposed).find(
+      (section) => section.key === 'cv'
+    )!;
+    const ids = cvChanges.changes.map((change) => change.id);
+
+    expect(ids).toEqual(['cv:remove:sections.skills.0', 'cv:add:sections.skills.0']);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    const merged = applyAcceptedReviewChanges(baseline, [{ ...cvChanges, changes: cvChanges.changes }], {
+      'cv:remove:sections.skills.0': 'accepted',
+      'cv:add:sections.skills.0': 'accepted'
+    });
+
+    expect(YAML.parse(merged.cv).cv.sections.skills).toEqual([
+      { name: 'Tools', summary: 'details: SQL, Python, Tableau' }
+    ]);
   });
 });

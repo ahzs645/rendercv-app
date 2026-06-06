@@ -378,7 +378,7 @@ function pushChange(
 ) {
   const description = describeChange(section, path, baselineRoot, proposedRoot);
   changes.push({
-    id: `${section}:${serializePath(path)}`,
+    id: `${section}:${kind}:${serializePath(path)}`,
     section,
     path,
     label: description.label,
