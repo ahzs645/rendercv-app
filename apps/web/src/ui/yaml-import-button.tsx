@@ -81,18 +81,13 @@ function looksLikeCompatibilityYaml(content: string, importedSections: ImportedY
   );
 }
 
-export function YamlImportButton({
-  mode = 'full',
-  prepareYamlImport,
-  validateYamlImport
-}: {
-  mode?: 'full' | 'compact' | 'mini';
+export type YamlImportOptions = {
   prepareYamlImport?: (sections: ImportedYamlSections) => Promise<PreparedYamlImport>;
   validateYamlImport?: (sections: ImportedYamlSections) => Promise<RenderError[]>;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
+};
+
+export function useYamlImport({ prepareYamlImport, validateYamlImport }: YamlImportOptions = {}) {
   const [pending, setPending] = useState(false);
-  const mini = mode === 'mini';
 
   async function importFile(file: File) {
     const isYamlFile = /\.ya?ml$/i.test(file.name);
@@ -163,15 +158,26 @@ export function YamlImportButton({
         toast.success(preparedImport.message ?? 'YAML imported into a new CV.');
       }
 
-      if (inputRef.current) {
-        inputRef.current.value = '';
-      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to import YAML.');
     } finally {
       setPending(false);
     }
   }
+
+  return { importFile, pending };
+}
+
+export function YamlImportButton({
+  mode = 'full',
+  prepareYamlImport,
+  validateYamlImport
+}: YamlImportOptions & {
+  mode?: 'full' | 'compact' | 'mini';
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { importFile, pending } = useYamlImport({ prepareYamlImport, validateYamlImport });
+  const mini = mode === 'mini';
 
   return (
     <>
@@ -183,7 +189,11 @@ export function YamlImportButton({
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) {
-            void importFile(file);
+            void importFile(file).finally(() => {
+              if (inputRef.current) {
+                inputRef.current.value = '';
+              }
+            });
           }
         }}
       />

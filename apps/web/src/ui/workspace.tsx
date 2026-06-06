@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { GitCompareArrows, Check, Pencil, X } from 'lucide-react';
+import { GitCompareArrows, Check, Pencil, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { classicTheme, defaultDesigns, fileStore, preferencesStore, resolveFileSections, reviewStore } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
 import { useIsMobile } from '../lib/use-mobile';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
+import type { RenderError } from '../features/viewer/use-viewer-renderer';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
 import {
@@ -30,6 +31,7 @@ import { FormEditor } from '../features/form/form-editor';
 import { WorkspaceToolbar } from './workspace-toolbar';
 import { OnboardingTour } from '../features/onboarding/OnboardingTour';
 import { onboardingTour } from '../features/onboarding/tour-state';
+import { useYamlImport } from './yaml-import-button';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
@@ -122,6 +124,8 @@ export function Workspace() {
   const sidebarOverlays = useIsMobile(SIDEBAR_OVERLAY_BREAKPOINT);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobilePane, setMobilePane] = useState<'editor' | 'preview'>('editor');
+  const [isDraggingYaml, setIsDraggingYaml] = useState(false);
+  const dragDepthRef = useRef(0);
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileSnapshot.selectedFileId);
   const rawSections = selectedFile ? resolveFileSections(selectedFile) : undefined;
   const viewerSections = selectedFile ? resolveViewerSections(selectedFile) : undefined;
@@ -395,9 +399,8 @@ export function Workspace() {
     };
   }, [rawSections, selectedFile, viewer]);
 
-  const sidebarElement = (
-    <Sidebar
-      prepareYamlImport={async (importedSections) => {
+  const prepareYamlImport = useCallback(
+    async (importedSections: ImportedSections) => {
         const normalizedSections = normalizeCompatibilitySections(importedSections);
         registerSharedThemeDesign(importedSections.selectedTheme, importedSections.design);
 
@@ -426,8 +429,12 @@ export function Workspace() {
           additionalDesigns,
           message
         };
-      }}
-      validateYamlImport={async (importedSections) => {
+    },
+    [viewer]
+  );
+
+  const validateYamlImport = useCallback(
+    async (importedSections: ImportedSections) => {
         const result = await viewer.validateSections(
           prepareViewerSections({
             cv: importedSections.cv ?? classicTheme.cv,
@@ -437,22 +444,33 @@ export function Workspace() {
           })
         );
 
-        return (result.errors ?? []).map((error) => ({
-          message: error.message || '',
-          schema_location: error.schema_location || [],
-          input: error.input || '',
-          yaml_source:
+        return (result.errors ?? []).map((error) => {
+          const yamlSource: RenderError['yaml_source'] =
             error.yaml_source === 'design_yaml_file'
               ? 'design'
               : error.yaml_source === 'locale_yaml_file'
                 ? 'locale'
                 : error.yaml_source === 'settings_yaml_file'
                   ? 'settings'
-                  : 'cv',
-          yaml_location: error.yaml_location || null
-        }));
-      }}
-    />
+                  : 'cv';
+          return {
+            message: error.message || '',
+            schema_location: error.schema_location || [],
+            input: error.input || '',
+            yaml_source: yamlSource,
+            yaml_location: error.yaml_location || null
+          };
+        });
+    },
+    [viewer]
+  );
+  const { importFile: importYamlFile, pending: yamlImportPending } = useYamlImport({
+    prepareYamlImport,
+    validateYamlImport
+  });
+
+  const sidebarElement = (
+    <Sidebar prepareYamlImport={prepareYamlImport} validateYamlImport={validateYamlImport} />
   );
 
   const sectionTabsElement = (
@@ -634,7 +652,50 @@ export function Workspace() {
   );
 
   return (
-    <div className="h-dvh overflow-hidden bg-background">
+    <div
+      className="relative h-dvh overflow-hidden bg-background"
+      onDragEnter={(event) => {
+        if (!Array.from(event.dataTransfer.types).includes('Files')) {
+          return;
+        }
+        event.preventDefault();
+        dragDepthRef.current += 1;
+        setIsDraggingYaml(true);
+      }}
+      onDragLeave={(event) => {
+        if (!Array.from(event.dataTransfer.types).includes('Files')) {
+          return;
+        }
+        event.preventDefault();
+        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+        if (dragDepthRef.current === 0) {
+          setIsDraggingYaml(false);
+        }
+      }}
+      onDragOver={(event) => {
+        if (!Array.from(event.dataTransfer.types).includes('Files')) {
+          return;
+        }
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }}
+      onDrop={(event) => {
+        if (!Array.from(event.dataTransfer.types).includes('Files')) {
+          return;
+        }
+        event.preventDefault();
+        dragDepthRef.current = 0;
+        setIsDraggingYaml(false);
+        const file =
+          Array.from(event.dataTransfer.files).find((draggedFile) =>
+            /\.ya?ml$/i.test(draggedFile.name)
+          ) ?? event.dataTransfer.files[0];
+        if (file) {
+          void importYamlFile(file);
+        }
+      }}
+    >
+      {isDraggingYaml ? <YamlDropOverlay pending={yamlImportPending} /> : null}
       <OnboardingTour
         isMobile={sidebarOverlays}
         onMobilePaneChange={setMobilePane}
@@ -705,6 +766,22 @@ export function Workspace() {
           </div>
         </Panel>
       </PanelGroup>
+    </div>
+  );
+}
+
+function YamlDropOverlay({ pending }: { pending: boolean }) {
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[80] flex items-center justify-center bg-background/70 p-6 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-lg border border-dashed border-primary bg-card px-6 py-8 text-center shadow-lg">
+        <div className="mb-3 flex size-11 items-center justify-center rounded-md bg-primary text-primary-foreground">
+          <Upload className="size-5" />
+        </div>
+        <p className="text-sm font-semibold text-foreground">
+          {pending ? 'Importing YAML...' : 'Drop cv.yaml to import'}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">A new CV will be created from the file.</p>
+      </div>
     </div>
   );
 }
