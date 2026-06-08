@@ -17,7 +17,9 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   wordWrap: true,
   entriesExpanded: true,
   selectedModel: DEFAULT_MODEL_ID,
-  onboardingCompletedAt: null
+  onboardingCompletedAt: null,
+  aiProvider: 'managed',
+  aiApiKeys: {}
 };
 
 export class PreferencesStore {

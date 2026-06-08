@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -27,6 +27,7 @@ import {
   socialNetworkTemplate
 } from './schema/cv-schema';
 import { EntryArrayEditor } from './entry-array-editor';
+import { SECTION_PRESETS, type SectionPreset } from './section-presets';
 import {
   asArray,
   asRecord,
@@ -103,11 +104,23 @@ function SectionMapEditor({
     useSensor(PointerSensor, { activationConstraint: { distance: 3 } })
   );
 
-  function addSection() {
+  function addBlankSection() {
     const key = createUniqueSectionKey(sections, 'new_section');
     onChange({
       ...sections,
       [key]: []
+    });
+  }
+
+  function addPresetSection(preset: SectionPreset) {
+    const baseKey = properSectionTitleToKey(preset.title) || preset.id;
+    const key = createUniqueSectionKey(sections, baseKey);
+    const initialEntries: unknown[] =
+      preset.entryKind === 'text' ? [''] : [createDefaultEntry(findTemplateByName(preset.entryKind)!)];
+
+    onChange({
+      ...sections,
+      [key]: initialEntries
     });
   }
 
@@ -160,14 +173,11 @@ function SectionMapEditor({
           </AnimatePresence>
         </SortableContext>
       </DndContext>
-      <button
-        type="button"
-        className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border/60 px-3 py-3 text-sm text-muted-foreground/80 transition-colors hover:border-border hover:text-foreground sm:min-h-0 sm:gap-1.5 sm:py-2.5 sm:text-xs sm:text-muted-foreground/70"
-        onClick={addSection}
-      >
-        <Plus className="size-4 sm:size-3.5" />
-        Add New Section
-      </button>
+      <AddSectionMenu
+        existingKeys={sectionKeys}
+        onAddCustom={addBlankSection}
+        onAddPreset={addPresetSection}
+      />
       <div className="h-[20vh]" />
     </section>
   );
@@ -296,6 +306,108 @@ function SectionEditor({
         />
       )}
     </article>
+  );
+}
+
+function AddSectionMenu({
+  existingKeys,
+  onAddCustom,
+  onAddPreset
+}: {
+  existingKeys: string[];
+  onAddCustom: () => void;
+  onAddPreset: (preset: SectionPreset) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const existingKeySet = new Set(existingKeys);
+  const availablePresets = SECTION_PRESETS.filter(
+    (preset) => !existingKeySet.has(properSectionTitleToKey(preset.title))
+  );
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function onEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative mt-4">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border/60 px-3 py-3 text-sm text-muted-foreground/80 transition-colors hover:border-border hover:text-foreground sm:min-h-0 sm:gap-1.5 sm:py-2.5 sm:text-xs sm:text-muted-foreground/70"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Plus className="size-4 sm:size-3.5" />
+        Add Section
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute left-0 right-0 z-30 mt-1 max-h-[60vh] overflow-auto rounded-md border border-border bg-popover p-2 shadow-lg"
+        >
+          {availablePresets.length > 0 ? (
+            <>
+              <p className="px-2 pt-1 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Presets
+              </p>
+              <ul className="space-y-0.5">
+                {availablePresets.map((preset) => (
+                  <li key={preset.id}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+                      onClick={() => {
+                        onAddPreset(preset);
+                        setOpen(false);
+                      }}
+                    >
+                      <span className="text-sm font-medium text-foreground">{preset.title}</span>
+                      <span className="text-[11px] leading-4 text-muted-foreground">
+                        {preset.description}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="my-2 h-px bg-border/60" />
+            </>
+          ) : null}
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
+            onClick={() => {
+              onAddCustom();
+              setOpen(false);
+            }}
+          >
+            <span className="text-sm font-medium text-foreground">Custom section…</span>
+            <span className="text-[11px] leading-4 text-muted-foreground">
+              Empty section. Choose an entry type after adding.
+            </span>
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

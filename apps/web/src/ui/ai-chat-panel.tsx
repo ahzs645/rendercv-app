@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useChat, type UIMessage } from '@ai-sdk/react';
 import type { CvFileSections } from '@rendercv/contracts';
 import { SendHorizontal, X } from 'lucide-react';
-import { fileStore } from '@rendercv/core';
+import { fileStore, preferencesStore } from '@rendercv/core';
 import { api } from '../lib/api';
+import { useStore } from '../lib/use-store';
 
 function getMessageText(message: UIMessage) {
   return message.parts
@@ -31,6 +32,14 @@ export function AiChatPanel({
 }) {
   const [input, setInput] = useState('');
   const [usageLabel, setUsageLabel] = useState<string>('Usage unavailable');
+  const preferences = useStore(preferencesStore);
+  const provider = preferences.aiProvider;
+  const apiKey =
+    provider === 'openai'
+      ? preferences.aiApiKeys.openai
+      : provider === 'anthropic'
+        ? preferences.aiApiKeys.anthropic
+        : undefined;
   const { messages, sendMessage, status, error } = useChat({
     id: `cv-${fileId}`,
     messages: initialMessages
@@ -134,7 +143,9 @@ export function AiChatPanel({
               body: {
                 fileId,
                 model,
-                fileContext: sections
+                fileContext: sections,
+                provider,
+                apiKey
               }
             }
           );
