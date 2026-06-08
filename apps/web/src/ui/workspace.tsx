@@ -23,6 +23,7 @@ import {
   resolveViewerSections
 } from '../features/viewer/viewer-sections';
 import { buildYamlEntrySearchTerms } from '../features/viewer/svg-click-map';
+import { autoFitDesignToPages } from '../features/design/auto-fit';
 import type { MonacoEditorHandle } from './monaco-editor';
 import { PreviewPaneView } from './preview-pane';
 import { SectionTabs } from './section-tabs';
@@ -148,6 +149,45 @@ export function Workspace() {
     },
     [activeSection]
   );
+
+  const [autoFitRunning, setAutoFitRunning] = useState(false);
+  const handleAutoFit = useCallback(async () => {
+    if (!viewerSections || autoFitRunning) return;
+    setAutoFitRunning(true);
+    const pending = toast.loading('Fitting resume to one page…');
+    try {
+      const result = await autoFitDesignToPages({
+        sections: viewerSections,
+        targetPages: 1,
+        render: (candidate) => viewer.renderToSvg(candidate)
+      });
+
+      if (!result) {
+        toast.error('Could not adjust the design — fix any preview errors and try again.', {
+          id: pending
+        });
+        return;
+      }
+
+      if (!result.applied) {
+        toast.success('Already fits on one page.', { id: pending });
+        return;
+      }
+
+      fileStore.updateSection('design', result.design);
+      if (result.fit) {
+        toast.success('Compacted the design to fit one page.', { id: pending });
+      } else {
+        toast.message(`Compacted to ${result.pages} pages — content is too long for one page.`, {
+          id: pending
+        });
+      }
+    } catch {
+      toast.error('Auto-fit failed. Please try again.', { id: pending });
+    } finally {
+      setAutoFitRunning(false);
+    }
+  }, [autoFitRunning, viewer, viewerSections]);
 
   const handlePreviewSectionClick = useCallback(
     (sectionKey: string, entryIndex: number) => {
@@ -635,6 +675,8 @@ export function Workspace() {
                 ? (theme: string) => fileStore.setTheme(selectedFile.id, theme)
                 : undefined
             }
+            onAutoFit={selectedFile && !selectedFile.isLocked ? handleAutoFit : undefined}
+            autoFitRunning={autoFitRunning}
           />
         )}
       </div>

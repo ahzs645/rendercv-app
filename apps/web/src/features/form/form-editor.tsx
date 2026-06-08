@@ -15,6 +15,8 @@ import { useStore } from '../../lib/use-store';
 import { FieldControl, FieldDescription } from './field-controls';
 import { Divider } from './primitives';
 import { CvSectionEditor } from './cv-section-editor';
+import { DesignQuickPanel } from './design-quick-panel';
+import type { DesignQuickFieldUpdate } from './design-quick-panel';
 import { DiffProvider } from './diff-context';
 import {
   getNestedValue,
@@ -31,7 +33,9 @@ export function FormEditor({
   themeOptions,
   currentTheme,
   onThemeChange,
-  readOnly
+  readOnly,
+  onAutoFit,
+  autoFitRunning
 }: {
   section: SectionKey;
   value: string;
@@ -41,6 +45,8 @@ export function FormEditor({
   currentTheme?: string;
   onThemeChange?: (theme: string) => void;
   readOnly?: boolean;
+  onAutoFit?: () => void;
+  autoFitRunning?: boolean;
 }) {
   const preferences = useStore(preferencesStore);
 
@@ -113,6 +119,17 @@ export function FormEditor({
     setPendingCommitVersion((currentVersion) => currentVersion + 1);
   }
 
+  function updateFields(updates: DesignQuickFieldUpdate[]) {
+    setDraftRootValue((currentValue) =>
+      updates.reduce(
+        (accumulator, update) =>
+          updateObjectField(accumulator, update.path, normalizeFieldValue(update.value)),
+        currentValue
+      )
+    );
+    setPendingCommitVersion((currentVersion) => currentVersion + 1);
+  }
+
   return (
     <DiffProvider section={section} origin={sharedOrigin}>
       <div className={`h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none] ${readOnly ? 'opacity-60 [&_button]:pointer-events-none [&_input]:pointer-events-none [&_textarea]:pointer-events-none [&_select]:pointer-events-none [&_[role=switch]]:pointer-events-none' : ''}`} data-form-editor>
@@ -121,6 +138,14 @@ export function FormEditor({
             options={themeOptions}
             value={currentTheme}
             onChange={onThemeChange}
+          />
+        ) : null}
+        {section === 'design' ? (
+          <DesignQuickPanel
+            design={draftRootValue}
+            onUpdateFields={updateFields}
+            onAutoFit={onAutoFit}
+            autoFitRunning={autoFitRunning}
           />
         ) : null}
         {schema ? (

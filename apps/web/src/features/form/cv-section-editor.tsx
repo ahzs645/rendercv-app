@@ -1,5 +1,20 @@
 import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
+import type { CSSProperties } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, Plus, X } from 'lucide-react';
 import {
   createDefaultEntry,
   detectEntryType,
@@ -21,6 +36,11 @@ import {
   removeRecordKey,
   moveRecordEntry
 } from './utils';
+
+type DragHandleProps = {
+  setActivatorNodeRef: (element: HTMLElement | null) => void;
+  listeners: ReturnType<typeof useSortable>['listeners'];
+};
 
 export function CvSectionEditor({
   entriesExpanded,
@@ -76,6 +96,11 @@ function SectionMapEditor({
   onChange: (sections: Record<string, unknown>) => void;
 }) {
   const sectionEntries = Object.entries(sections);
+  const sectionKeys = sectionEntries.map(([sectionKey]) => sectionKey);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } })
+  );
 
   function addSection() {
     const key = createUniqueSectionKey(sections, 'new_section');
@@ -97,14 +122,6 @@ function SectionMapEditor({
     onChange(removeRecordKey(sections, sectionKey));
   }
 
-  function moveSection(index: number, direction: -1 | 1) {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= sectionEntries.length) {
-      return;
-    }
-    onChange(moveRecordEntry(sections, index, nextIndex));
-  }
-
   function updateSectionEntries(sectionKey: string, nextEntries: unknown[]) {
     onChange({
       ...sections,
@@ -112,22 +129,34 @@ function SectionMapEditor({
     });
   }
 
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sectionKeys.indexOf(String(active.id));
+    const newIndex = sectionKeys.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    onChange(moveRecordEntry(sections, oldIndex, newIndex));
+  }
+
   return (
     <section>
-      {sectionEntries.map(([sectionKey, sectionValue], index) => (
-        <SectionEditor
-          key={sectionKey}
-          index={index}
-          total={sectionEntries.length}
-          sectionKey={sectionKey}
-          entries={asArray(sectionValue)}
-          entriesExpanded={entriesExpanded}
-          onDelete={() => deleteSection(sectionKey)}
-          onMove={(direction) => moveSection(index, direction)}
-          onRename={renameSection}
-          onChangeEntries={(nextEntries) => updateSectionEntries(sectionKey, nextEntries)}
-        />
-      ))}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={sectionKeys} strategy={verticalListSortingStrategy}>
+          {sectionEntries.map(([sectionKey, sectionValue]) => (
+            <SortableSectionEditor
+              key={sectionKey}
+              sectionKey={sectionKey}
+              entries={asArray(sectionValue)}
+              entriesExpanded={entriesExpanded}
+              onDelete={() => deleteSection(sectionKey)}
+              onRename={renameSection}
+              onChangeEntries={(nextEntries) => updateSectionEntries(sectionKey, nextEntries)}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
       <button
         type="button"
         className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border/60 px-3 py-3 text-sm text-muted-foreground/80 transition-colors hover:border-border hover:text-foreground sm:min-h-0 sm:gap-1.5 sm:py-2.5 sm:text-xs sm:text-muted-foreground/70"
@@ -141,26 +170,55 @@ function SectionMapEditor({
   );
 }
 
+function SortableSectionEditor(props: {
+  sectionKey: string;
+  entries: unknown[];
+  entriesExpanded: boolean;
+  onRename: (oldKey: string, nextTitle: string) => void;
+  onDelete: () => void;
+  onChangeEntries: (entries: unknown[]) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: props.sectionKey });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    zIndex: isDragging ? 10 : undefined,
+    position: 'relative'
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <SectionEditor {...props} dragHandle={{ setActivatorNodeRef, listeners }} />
+    </div>
+  );
+}
+
 function SectionEditor({
   sectionKey,
   entries,
   entriesExpanded,
-  index,
-  total,
   onRename,
   onDelete,
-  onMove,
-  onChangeEntries
+  onChangeEntries,
+  dragHandle
 }: {
   sectionKey: string;
   entries: unknown[];
   entriesExpanded: boolean;
-  index: number;
-  total: number;
   onRename: (oldKey: string, nextTitle: string) => void;
   onDelete: () => void;
-  onMove: (direction: -1 | 1) => void;
   onChangeEntries: (entries: unknown[]) => void;
+  dragHandle: DragHandleProps;
 }) {
   const [title, setTitle] = useState(dictionaryKeyToTitle(sectionKey));
   const detectedTemplate = detectEntryType(entries[0]);
@@ -183,25 +241,15 @@ function SectionEditor({
   }
 
   return (
-    <article className="form-section" data-section-key={sectionKey}>
+    <article className="form-section form-item-enter-anim" data-section-key={sectionKey}>
       <div className="group/section relative -mx-7 mt-3 mb-2 flex min-h-11 items-center px-7">
-        <div className="absolute top-1/2 left-0 flex -translate-y-1/2 flex-col opacity-90 transition-opacity sm:left-1 md:opacity-60 md:group-hover/section:opacity-100">
-          <button
-            type="button"
-            aria-label="Move section up"
-            className={`flex size-8 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:size-5 sm:rounded-none sm:hover:bg-transparent ${index === 0 ? 'invisible' : ''}`}
-            onClick={() => onMove(-1)}
-          >
-            <ArrowUp className="size-4 sm:size-3" />
-          </button>
-          <button
-            type="button"
-            aria-label="Move section down"
-            className={`flex size-8 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:size-5 sm:rounded-none sm:hover:bg-transparent ${index === total - 1 ? 'invisible' : ''}`}
-            onClick={() => onMove(1)}
-          >
-            <ArrowDown className="size-4 sm:size-3" />
-          </button>
+        <div
+          ref={dragHandle.setActivatorNodeRef}
+          {...dragHandle.listeners}
+          aria-label="Drag to reorder section"
+          className="form-item-control absolute top-1/2 left-0 flex size-9 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground/60 active:cursor-grabbing sm:left-1 sm:size-6 sm:rounded-none sm:text-muted-foreground/40"
+        >
+          <GripVertical className="size-4 sm:size-3.5" />
         </div>
         <input
           className="flex-1 border-b border-muted-foreground/40 bg-transparent py-2 text-base font-semibold text-foreground/80 outline-none sm:py-0 sm:text-[15px]"

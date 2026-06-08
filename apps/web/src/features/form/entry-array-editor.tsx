@@ -223,7 +223,7 @@ function SortableEntryArrayItem({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} data-section-key={sectionKey} data-entry-index={index}>
-      <div className="form-item-wrapper relative -mx-7 px-7">
+      <div className="form-item-wrapper form-item-enter-anim relative -mx-7 px-7">
         <div
           ref={setActivatorNodeRef}
           {...listeners}
