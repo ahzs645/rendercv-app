@@ -10,3 +10,6 @@ test-results
 .turbo
 static/cdn/themes/*.zip
 apps/api/data/
+
+# micropython-wasm probe scratch
+experiments/mpwasm/.mp-input/
