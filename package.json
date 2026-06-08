@@ -12,6 +12,8 @@
     "build:api": "pnpm --filter @rendercv/api build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "preview": "pnpm --filter @rendercv/web preview"
+    "preview": "pnpm --filter @rendercv/web preview",
+    "vendor:pyodide": "node scripts/vendor/vendor-pyodide.mjs",
+    "vendor:pyodide:check": "node scripts/vendor/vendor-pyodide.mjs --check"
   }
 }
