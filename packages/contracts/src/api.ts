@@ -37,6 +37,7 @@ export interface FileMetaPatch {
   isArchived?: boolean;
   isTrashed?: boolean;
   isPublic?: boolean;
+  hiddenEntries?: Record<string, string[]>;
 }
 
 export interface BillingSubscriptionResponse {

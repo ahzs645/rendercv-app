@@ -4,6 +4,7 @@ export * from './stores/store';
 export * from './stores/preferences-store';
 export * from './stores/file-store';
 export * from './stores/review-store';
+export * from './cv/hidden-entries';
 export * from './utils/uuid';
 export * from './preview/channel';
 export * from './labels/variants';

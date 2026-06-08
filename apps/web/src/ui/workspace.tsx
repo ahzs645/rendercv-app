@@ -1,8 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { GitCompareArrows, Check, Pencil, Upload, X } from 'lucide-react';
+import { GitCompareArrows, Check, Pencil, Upload, WandSparkles, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { classicTheme, defaultDesigns, fileStore, preferencesStore, resolveFileSections, reviewStore } from '@rendercv/core';
+import { classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, preferencesStore, resolveFileSections, reviewStore } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
@@ -23,7 +23,7 @@ import {
   resolveViewerSections
 } from '../features/viewer/viewer-sections';
 import { buildYamlEntrySearchTerms } from '../features/viewer/svg-click-map';
-import { autoFitDesignToPages } from '../features/design/auto-fit';
+import { FitToPageDialog } from './fit-to-page-dialog';
 import type { MonacoEditorHandle } from './monaco-editor';
 import { PreviewPaneView } from './preview-pane';
 import { SectionTabs } from './section-tabs';
@@ -150,44 +150,43 @@ export function Workspace() {
     [activeSection]
   );
 
-  const [autoFitRunning, setAutoFitRunning] = useState(false);
-  const handleAutoFit = useCallback(async () => {
-    if (!viewerSections || autoFitRunning) return;
-    setAutoFitRunning(true);
-    const pending = toast.loading('Fitting resume to one page…');
-    try {
-      const result = await autoFitDesignToPages({
-        sections: viewerSections,
-        targetPages: 1,
-        render: (candidate) => viewer.renderToSvg(candidate)
-      });
+  const [fitDialogOpen, setFitDialogOpen] = useState(false);
 
-      if (!result) {
-        toast.error('Could not adjust the design — fix any preview errors and try again.', {
-          id: pending
-        });
-        return;
-      }
+  // Render a candidate hidden-entry set and report its page count. Independent
+  // of the file's current hidden state so the search can probe freely.
+  const measureWithHidden = useCallback(
+    async (hidden: Record<string, string[]>) => {
+      if (!selectedFile) return null;
+      const raw = resolveFileSections(selectedFile);
+      const variant =
+        selectedFile.selectedVariant && selectedFile.variants?.[selectedFile.selectedVariant]
+          ? selectedFile.variants[selectedFile.selectedVariant]
+          : undefined;
+      const candidate = prepareViewerSections(
+        { ...raw, cv: filterHiddenEntriesFromCvYaml(raw.cv, hidden) },
+        variant
+      );
+      const pages = await viewer.renderToSvg(candidate);
+      return pages ? pages.length : null;
+    },
+    [selectedFile, viewer]
+  );
 
-      if (!result.applied) {
-        toast.success('Already fits on one page.', { id: pending });
-        return;
+  const handleApplyHidden = useCallback(
+    (hidden: Record<string, string[]>) => {
+      if (selectedFile) {
+        fileStore.setHiddenEntries(selectedFile.id, hidden);
       }
+    },
+    [selectedFile]
+  );
 
-      fileStore.updateSection('design', result.design);
-      if (result.fit) {
-        toast.success('Compacted the design to fit one page.', { id: pending });
-      } else {
-        toast.message(`Compacted to ${result.pages} pages — content is too long for one page.`, {
-          id: pending
-        });
-      }
-    } catch {
-      toast.error('Auto-fit failed. Please try again.', { id: pending });
-    } finally {
-      setAutoFitRunning(false);
+  const handleRestoreHidden = useCallback(() => {
+    if (selectedFile) {
+      fileStore.clearHiddenEntries(selectedFile.id);
+      toast.success('Restored all hidden entries.');
     }
-  }, [autoFitRunning, viewer, viewerSections]);
+  }, [selectedFile]);
 
   const handlePreviewSectionClick = useCallback(
     (sectionKey: string, entryIndex: number) => {
@@ -662,6 +661,13 @@ export function Workspace() {
             onChange={handleSectionChange}
             sharedOrigin={selectedFile?.sharedOrigin}
             readOnly={selectedFile?.isLocked}
+            hiddenEntries={selectedFile?.hiddenEntries}
+            onToggleEntryHidden={
+              selectedFile && !selectedFile.isLocked
+                ? (sectionKey: string, fingerprint: string) =>
+                    fileStore.toggleEntryHidden(selectedFile.id, sectionKey, fingerprint)
+                : undefined
+            }
             themeOptions={Array.from(
               new Set([
                 ...Object.keys(defaultDesigns),
@@ -675,22 +681,39 @@ export function Workspace() {
                 ? (theme: string) => fileStore.setTheme(selectedFile.id, theme)
                 : undefined
             }
-            onAutoFit={selectedFile && !selectedFile.isLocked ? handleAutoFit : undefined}
-            autoFitRunning={autoFitRunning}
           />
         )}
       </div>
     </div>
   );
 
+  const canFit = Boolean(selectedFile && !selectedFile.isLocked && rawSections?.cv);
+  const hiddenEntryCount = countHiddenEntries(selectedFile?.hiddenEntries);
   const previewPane = (
-    <PreviewPaneView
-      fileName={selectedFile?.name ?? 'RenderCV'}
-      sections={viewerSections}
-      showHeader={false}
-      viewer={viewer}
-      onSectionClick={handlePreviewSectionClick}
-    />
+    <div className="relative h-full">
+      <PreviewPaneView
+        fileName={selectedFile?.name ?? 'RenderCV'}
+        sections={viewerSections}
+        showHeader={false}
+        viewer={viewer}
+        onSectionClick={handlePreviewSectionClick}
+      />
+      {canFit ? (
+        <button
+          type="button"
+          onClick={() => setFitDialogOpen(true)}
+          className="absolute bottom-5 right-5 z-10 inline-flex items-center gap-2 rounded-full border border-border bg-background/90 px-4 py-2.5 text-sm font-medium text-foreground shadow-lg backdrop-blur transition-colors hover:bg-accent hover:text-accent-foreground sm:bottom-8 sm:right-8"
+        >
+          <WandSparkles className="size-4" />
+          Fit to page
+          {hiddenEntryCount > 0 ? (
+            <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+              {hiddenEntryCount} hidden
+            </span>
+          ) : null}
+        </button>
+      ) : null}
+    </div>
   );
 
   return (
@@ -738,6 +761,17 @@ export function Workspace() {
       }}
     >
       {isDraggingYaml ? <YamlDropOverlay pending={yamlImportPending} /> : null}
+      {selectedFile ? (
+        <FitToPageDialog
+          open={fitDialogOpen}
+          onOpenChange={setFitDialogOpen}
+          cvYaml={rawSections?.cv ?? ''}
+          hiddenEntries={selectedFile.hiddenEntries}
+          measure={measureWithHidden}
+          onApply={handleApplyHidden}
+          onRestore={handleRestoreHidden}
+        />
+      ) : null}
       <OnboardingTour
         isMobile={sidebarOverlays}
         onMobilePaneChange={setMobilePane}

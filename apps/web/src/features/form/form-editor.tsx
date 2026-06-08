@@ -18,6 +18,7 @@ import { CvSectionEditor } from './cv-section-editor';
 import { DesignQuickPanel } from './design-quick-panel';
 import type { DesignQuickFieldUpdate } from './design-quick-panel';
 import { DiffProvider } from './diff-context';
+import { HiddenEntriesProvider } from './hidden-entries-context';
 import {
   getNestedValue,
   normalizeFieldValue,
@@ -34,8 +35,8 @@ export function FormEditor({
   currentTheme,
   onThemeChange,
   readOnly,
-  onAutoFit,
-  autoFitRunning
+  hiddenEntries,
+  onToggleEntryHidden
 }: {
   section: SectionKey;
   value: string;
@@ -45,8 +46,8 @@ export function FormEditor({
   currentTheme?: string;
   onThemeChange?: (theme: string) => void;
   readOnly?: boolean;
-  onAutoFit?: () => void;
-  autoFitRunning?: boolean;
+  hiddenEntries?: Record<string, string[]>;
+  onToggleEntryHidden?: (sectionKey: string, fingerprint: string) => void;
 }) {
   const preferences = useStore(preferencesStore);
 
@@ -141,12 +142,7 @@ export function FormEditor({
           />
         ) : null}
         {section === 'design' ? (
-          <DesignQuickPanel
-            design={draftRootValue}
-            onUpdateFields={updateFields}
-            onAutoFit={onAutoFit}
-            autoFitRunning={autoFitRunning}
-          />
+          <DesignQuickPanel design={draftRootValue} onUpdateFields={updateFields} />
         ) : null}
         {schema ? (
           schema.groups.map((group, groupIndex) => (
@@ -176,16 +172,23 @@ export function FormEditor({
           ))
         ) : null}
         {section === 'cv' ? (
-          <CvSectionEditor
-            entriesExpanded={preferences.entriesExpanded}
-            rootValue={draftRootValue}
-            onChange={updateRoot}
-          />
+          <HiddenEntriesProvider
+            hidden={hiddenEntries ?? {}}
+            toggle={onToggleEntryHidden ?? noopToggle}
+          >
+            <CvSectionEditor
+              entriesExpanded={preferences.entriesExpanded}
+              rootValue={draftRootValue}
+              onChange={updateRoot}
+            />
+          </HiddenEntriesProvider>
         ) : null}
       </div>
     </DiffProvider>
   );
 }
+
+function noopToggle() {}
 
 function getSchema(section: SectionKey, documentValue: Record<string, unknown>): SectionSchema | null {
   switch (section) {

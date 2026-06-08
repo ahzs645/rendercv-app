@@ -19,10 +19,13 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronRight,
+  Eye,
+  EyeOff,
   GripVertical,
   Plus,
   X
 } from 'lucide-react';
+import { useEntryHidden } from './hidden-entries-context';
 import {
   createDefaultEntry,
   positionSubTemplate
@@ -213,6 +216,9 @@ function SortableEntryArrayItem({
     isDragging
   } = useSortable({ id });
 
+  const hiddenState = useEntryHidden(sectionKey, entry);
+  const isHidden = hiddenState?.hidden ?? false;
+
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -231,15 +237,32 @@ function SortableEntryArrayItem({
         >
           <GripVertical className="size-4 sm:size-3.5" />
         </div>
-        <button
-          type="button"
-          className="form-item-control absolute top-1/2 right-0 flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:right-3 sm:size-6 sm:rounded-none sm:hover:bg-transparent"
-          onClick={() => onRemove(index)}
-          aria-label="Remove"
-        >
-          <X className="size-4 sm:size-3" />
-        </button>
-        <div className="pr-10 sm:pr-7">
+        <div className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center sm:right-1">
+          {hiddenState ? (
+            <button
+              type="button"
+              className={`form-item-control flex size-9 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
+                isHidden
+                  ? 'text-amber-600 sm:text-amber-600'
+                  : 'text-muted-foreground/60 hover:text-foreground sm:text-muted-foreground/40'
+              }`}
+              onClick={hiddenState.toggle}
+              aria-label={isHidden ? 'Show in resume' : 'Hide from resume'}
+              title={isHidden ? 'Hidden from the resume — click to show' : 'Hide from the resume'}
+            >
+              {isHidden ? <EyeOff className="size-4 sm:size-3.5" /> : <Eye className="size-4 sm:size-3.5" />}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="form-item-control flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-6 sm:rounded-none sm:hover:bg-transparent"
+            onClick={() => onRemove(index)}
+            aria-label="Remove"
+          >
+            <X className="size-4 sm:size-3" />
+          </button>
+        </div>
+        <div className={`pr-16 sm:pr-12 ${isHidden ? 'opacity-45' : ''}`}>
           {template === 'text' ? (
             <TextRow
               value={typeof entry === 'string' ? entry : ''}

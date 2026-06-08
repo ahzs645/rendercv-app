@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Loader2, Sparkles, WandSparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import type { FieldDef } from './schema/types';
 import { FieldControl } from './field-controls';
 import { Divider } from './primitives';
@@ -60,14 +60,10 @@ const marginField: FieldDef = { path: ['page', 'top_margin'], label: 'Page margi
 
 export function DesignQuickPanel({
   design,
-  onUpdateFields,
-  onAutoFit,
-  autoFitRunning = false
+  onUpdateFields
 }: {
   design: Record<string, unknown>;
   onUpdateFields: (updates: DesignQuickFieldUpdate[]) => void;
-  onAutoFit?: () => void;
-  autoFitRunning?: boolean;
 }) {
   const [expanded, setExpanded] = useState(true);
 
@@ -123,22 +119,6 @@ export function DesignQuickPanel({
               {index < list.length - 1 ? <Divider /> : null}
             </Fragment>
           ))}
-
-          {onAutoFit ? (
-            <button
-              type="button"
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={onAutoFit}
-              disabled={autoFitRunning}
-            >
-              {autoFitRunning ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <WandSparkles className="size-3.5" />
-              )}
-              {autoFitRunning ? 'Fitting…' : 'Fit to one page'}
-            </button>
-          ) : null}
         </div>
       ) : null}
     </section>
