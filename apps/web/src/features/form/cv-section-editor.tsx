@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   DndContext,
   closestCenter,
@@ -144,17 +145,19 @@ function SectionMapEditor({
     <section>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={sectionKeys} strategy={verticalListSortingStrategy}>
-          {sectionEntries.map(([sectionKey, sectionValue]) => (
-            <SortableSectionEditor
-              key={sectionKey}
-              sectionKey={sectionKey}
-              entries={asArray(sectionValue)}
-              entriesExpanded={entriesExpanded}
-              onDelete={() => deleteSection(sectionKey)}
-              onRename={renameSection}
-              onChangeEntries={(nextEntries) => updateSectionEntries(sectionKey, nextEntries)}
-            />
-          ))}
+          <AnimatePresence initial={false}>
+            {sectionEntries.map(([sectionKey, sectionValue]) => (
+              <SortableSectionEditor
+                key={sectionKey}
+                sectionKey={sectionKey}
+                entries={asArray(sectionValue)}
+                entriesExpanded={entriesExpanded}
+                onDelete={() => deleteSection(sectionKey)}
+                onRename={renameSection}
+                onChangeEntries={(nextEntries) => updateSectionEntries(sectionKey, nextEntries)}
+              />
+            ))}
+          </AnimatePresence>
         </SortableContext>
       </DndContext>
       <button
@@ -197,9 +200,15 @@ function SortableSectionEditor(props: {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+      transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+    >
       <SectionEditor {...props} dragHandle={{ setActivatorNodeRef, listeners }} />
-    </div>
+    </motion.div>
   );
 }
 

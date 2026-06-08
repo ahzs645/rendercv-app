@@ -103,8 +103,8 @@ export function FitToPageDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[min(40rem,calc(100vh-2rem))] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-3xl border border-border bg-background shadow-2xl outline-none">
+        <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
+        <Dialog.Content className="dialog-content-pop fixed left-1/2 top-1/2 z-50 flex max-h-[min(40rem,calc(100vh-2rem))] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-3xl border border-border bg-background shadow-2xl outline-none">
           <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
             <div>
               <Dialog.Title className="text-lg font-semibold text-foreground">Fit to page</Dialog.Title>

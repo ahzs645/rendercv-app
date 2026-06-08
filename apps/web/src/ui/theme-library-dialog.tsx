@@ -166,8 +166,8 @@ export function ThemeLibraryDialog({
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed inset-x-4 top-1/2 z-50 max-h-[85vh] -translate-y-1/2 overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none md:left-1/2 md:w-[min(1100px,calc(100vw-3rem))] md:-translate-x-1/2">
+        <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
+        <Dialog.Content className="dialog-content-fade fixed inset-x-4 top-1/2 z-50 max-h-[85vh] -translate-y-1/2 overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none md:left-1/2 md:w-[min(1100px,calc(100vw-3rem))] md:-translate-x-1/2">
           <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold text-foreground">

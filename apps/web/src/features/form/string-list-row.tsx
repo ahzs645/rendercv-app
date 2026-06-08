@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   DndContext,
   closestCenter,
@@ -84,7 +85,13 @@ function SortableStringItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+      transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+    >
       <div className="form-item-wrapper relative -mx-7 border-b border-border/25 px-7 last:border-b-0">
         <div
           ref={setActivatorNodeRef}
@@ -109,7 +116,7 @@ function SortableStringItem({
           />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -304,17 +311,19 @@ export function StringListRow({
         {items.length > 0 ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-              {items.map((item, index) => (
-                <SortableStringItem
-                  key={itemIds[index]}
-                  id={itemIds[index]!}
-                  item={item}
-                  index={index}
-                  onUpdate={updateItem}
-                  onRemove={removeItem}
-                  placeholder={field.placeholder}
-                />
-              ))}
+              <AnimatePresence initial={false}>
+                {items.map((item, index) => (
+                  <SortableStringItem
+                    key={itemIds[index]}
+                    id={itemIds[index]!}
+                    item={item}
+                    index={index}
+                    onUpdate={updateItem}
+                    onRemove={removeItem}
+                    placeholder={field.placeholder}
+                  />
+                ))}
+              </AnimatePresence>
             </SortableContext>
           </DndContext>
         ) : null}

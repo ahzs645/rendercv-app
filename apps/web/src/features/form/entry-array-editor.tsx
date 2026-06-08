@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   DndContext,
   closestCenter,
@@ -154,7 +155,7 @@ export function EntryArrayEditor({
             {entries.length > 0 ? (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                  <div>{entryList}</div>
+                  <div><AnimatePresence initial={false}>{entryList}</AnimatePresence></div>
                 </SortableContext>
               </DndContext>
             ) : null}
@@ -166,7 +167,7 @@ export function EntryArrayEditor({
         <div className="pl-4">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-              {entryList}
+              <AnimatePresence initial={false}>{entryList}</AnimatePresence>
             </SortableContext>
           </DndContext>
           <button
@@ -228,7 +229,15 @@ function SortableEntryArrayItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} data-section-key={sectionKey} data-entry-index={index}>
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      data-section-key={sectionKey}
+      data-entry-index={index}
+      exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+      transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+    >
       <div className="form-item-wrapper form-item-enter-anim relative -mx-7 px-7">
         <div
           ref={setActivatorNodeRef}
@@ -293,7 +302,7 @@ function SortableEntryArrayItem({
           {index < entriesLength - 1 ? <Divider /> : null}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
