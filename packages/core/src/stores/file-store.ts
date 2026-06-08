@@ -519,6 +519,46 @@ export class FileStore {
     });
   }
 
+  /** Replace the full hidden-entries map for a file (used by Fit-to-page). */
+  setHiddenEntries(id: string, hiddenEntries: Record<string, string[]>) {
+    const normalized = Object.fromEntries(
+      Object.entries(hiddenEntries).filter(([, fingerprints]) => fingerprints.length > 0)
+    );
+    this.#updateMeta(id, { hiddenEntries: normalized });
+  }
+
+  /** Toggle a single entry's hidden state by its fingerprint. */
+  toggleEntryHidden(id: string, sectionKey: string, fingerprint: string) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file) {
+      return;
+    }
+
+    const current = file.hiddenEntries ?? {};
+    const sectionList = current[sectionKey] ?? [];
+    const nextSectionList = sectionList.includes(fingerprint)
+      ? sectionList.filter((value) => value !== fingerprint)
+      : [...sectionList, fingerprint];
+
+    const next: Record<string, string[]> = { ...current };
+    if (nextSectionList.length > 0) {
+      next[sectionKey] = nextSectionList;
+    } else {
+      delete next[sectionKey];
+    }
+
+    this.#updateMeta(id, { hiddenEntries: next });
+  }
+
+  /** Reveal every hidden entry. */
+  clearHiddenEntries(id: string) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file || !file.hiddenEntries || Object.keys(file.hiddenEntries).length === 0) {
+      return;
+    }
+    this.#updateMeta(id, { hiddenEntries: {} });
+  }
+
   setSelectedVariant(id: string, selectedVariant: string) {
     const file = this.files.find((current) => current.id === id);
     if (!file) {

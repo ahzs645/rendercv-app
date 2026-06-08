@@ -40,3 +40,74 @@
   animation: section-flash 1.2s ease-out;
   border-radius: 0.5rem;
 }
+
+@keyframes form-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Subtle fade/slide when sections and entries mount (add, tab switch). */
+.form-item-enter-anim {
+  animation: form-item-enter 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-item-enter-anim {
+    animation: none;
+  }
+}
+
+/* Radix dialog enter/exit. Radix keeps the node mounted while data-state is
+   "closed" until the animation finishes, so these double as exit animations. */
+@keyframes dialog-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialog-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes dialog-pop-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes dialog-pop-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+}
+
+.dialog-overlay-anim[data-state='open'] { animation: dialog-fade-in 150ms ease-out; }
+.dialog-overlay-anim[data-state='closed'] { animation: dialog-fade-out 130ms ease-in; }
+/* Transform-free — safe for any resting position (centered, inset, sheet). */
+.dialog-content-fade[data-state='open'] { animation: dialog-fade-in 160ms ease-out; }
+.dialog-content-fade[data-state='closed'] { animation: dialog-fade-out 130ms ease-in; }
+/* For dialogs centered via -translate-x-1/2 -translate-y-1/2 only. */
+.dialog-content-pop[data-state='open'] { animation: dialog-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+.dialog-content-pop[data-state='closed'] { animation: dialog-pop-out 140ms ease-in; }
+
+/* Bottom-sheet dialogs (no resting transform). */
+@keyframes dialog-sheet-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dialog-sheet-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(12px); }
+}
+.dialog-content-sheet[data-state='open'] { animation: dialog-sheet-in 200ms cubic-bezier(0.16, 1, 0.3, 1); }
+.dialog-content-sheet[data-state='closed'] { animation: dialog-sheet-out 150ms ease-in; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-overlay-anim[data-state],
+  .dialog-content-fade[data-state],
+  .dialog-content-pop[data-state],
+  .dialog-content-sheet[data-state] {
+    animation: none;
+  }
+}

@@ -33,7 +33,8 @@ const cvFileSchema = z.object({
     design: z.string(),
     locale: z.string(),
     settings: z.string()
-  }).optional()
+  }).optional(),
+  hiddenEntries: z.record(z.string(), z.array(z.string())).optional()
 }) satisfies z.ZodType<Omit<CvFile, 'isReadOnly'>>;
 
 const variantDefinitionSchema = z.object({
@@ -111,7 +112,8 @@ export const filesRouter = new Hono()
       isLocked: z.boolean().optional(),
       isArchived: z.boolean().optional(),
       isTrashed: z.boolean().optional(),
-      isPublic: z.boolean().optional()
+      isPublic: z.boolean().optional(),
+      hiddenEntries: z.record(z.string(), z.array(z.string())).optional()
     }).parse(await context.req.json());
 
     const file = serverState.files.find((entry) => entry.id === context.req.param('id'));

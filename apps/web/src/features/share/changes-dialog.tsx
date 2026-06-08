@@ -19,8 +19,8 @@ export function ChangesDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm" />
-        <Dialog.Content className="fixed inset-4 z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl outline-none sm:inset-8 lg:inset-12">
+        <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/60 backdrop-blur-sm" />
+        <Dialog.Content className="dialog-content-fade fixed inset-4 z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl outline-none sm:inset-8 lg:inset-12">
           <div className="flex items-center justify-between border-b border-border px-5 py-3">
             <Dialog.Title className="text-sm font-semibold text-foreground">
               Changes from original

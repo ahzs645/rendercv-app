@@ -46,5 +46,11 @@ export interface CvFile {
   lastEdited: number;
   /** Snapshot of the original sections when this file was imported from a share link. */
   sharedOrigin?: CvFileSections;
+  /**
+   * Entries hidden from rendering/export without deleting them from the CV.
+   * Keyed by CV section key; values are stable fingerprints of the hidden
+   * entries (see `entryFingerprint`). The editor always shows the full CV.
+   */
+  hiddenEntries?: Record<string, string[]>;
   readonly isReadOnly: boolean;
 }

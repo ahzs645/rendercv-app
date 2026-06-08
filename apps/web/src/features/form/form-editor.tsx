@@ -15,7 +15,10 @@ import { useStore } from '../../lib/use-store';
 import { FieldControl, FieldDescription } from './field-controls';
 import { Divider } from './primitives';
 import { CvSectionEditor } from './cv-section-editor';
+import { DesignQuickPanel } from './design-quick-panel';
+import type { DesignQuickFieldUpdate } from './design-quick-panel';
 import { DiffProvider } from './diff-context';
+import { HiddenEntriesProvider } from './hidden-entries-context';
 import {
   getNestedValue,
   normalizeFieldValue,
@@ -31,7 +34,9 @@ export function FormEditor({
   themeOptions,
   currentTheme,
   onThemeChange,
-  readOnly
+  readOnly,
+  hiddenEntries,
+  onToggleEntryHidden
 }: {
   section: SectionKey;
   value: string;
@@ -41,6 +46,8 @@ export function FormEditor({
   currentTheme?: string;
   onThemeChange?: (theme: string) => void;
   readOnly?: boolean;
+  hiddenEntries?: Record<string, string[]>;
+  onToggleEntryHidden?: (sectionKey: string, fingerprint: string) => void;
 }) {
   const preferences = useStore(preferencesStore);
 
@@ -113,6 +120,17 @@ export function FormEditor({
     setPendingCommitVersion((currentVersion) => currentVersion + 1);
   }
 
+  function updateFields(updates: DesignQuickFieldUpdate[]) {
+    setDraftRootValue((currentValue) =>
+      updates.reduce(
+        (accumulator, update) =>
+          updateObjectField(accumulator, update.path, normalizeFieldValue(update.value)),
+        currentValue
+      )
+    );
+    setPendingCommitVersion((currentVersion) => currentVersion + 1);
+  }
+
   return (
     <DiffProvider section={section} origin={sharedOrigin}>
       <div className={`h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none] ${readOnly ? 'opacity-60 [&_button]:pointer-events-none [&_input]:pointer-events-none [&_textarea]:pointer-events-none [&_select]:pointer-events-none [&_[role=switch]]:pointer-events-none' : ''}`} data-form-editor>
@@ -122,6 +140,9 @@ export function FormEditor({
             value={currentTheme}
             onChange={onThemeChange}
           />
+        ) : null}
+        {section === 'design' ? (
+          <DesignQuickPanel design={draftRootValue} onUpdateFields={updateFields} />
         ) : null}
         {schema ? (
           schema.groups.map((group, groupIndex) => (
@@ -151,16 +172,23 @@ export function FormEditor({
           ))
         ) : null}
         {section === 'cv' ? (
-          <CvSectionEditor
-            entriesExpanded={preferences.entriesExpanded}
-            rootValue={draftRootValue}
-            onChange={updateRoot}
-          />
+          <HiddenEntriesProvider
+            hidden={hiddenEntries ?? {}}
+            toggle={onToggleEntryHidden ?? noopToggle}
+          >
+            <CvSectionEditor
+              entriesExpanded={preferences.entriesExpanded}
+              rootValue={draftRootValue}
+              onChange={updateRoot}
+            />
+          </HiddenEntriesProvider>
         ) : null}
       </div>
     </DiffProvider>
   );
 }
+
+function noopToggle() {}
 
 function getSchema(section: SectionKey, documentValue: Record<string, unknown>): SectionSchema | null {
   switch (section) {

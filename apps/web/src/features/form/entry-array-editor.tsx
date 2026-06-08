@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   DndContext,
   closestCenter,
@@ -19,10 +20,13 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronRight,
+  Eye,
+  EyeOff,
   GripVertical,
   Plus,
   X
 } from 'lucide-react';
+import { useEntryHidden } from './hidden-entries-context';
 import {
   createDefaultEntry,
   positionSubTemplate
@@ -151,7 +155,7 @@ export function EntryArrayEditor({
             {entries.length > 0 ? (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                  <div>{entryList}</div>
+                  <div><AnimatePresence initial={false}>{entryList}</AnimatePresence></div>
                 </SortableContext>
               </DndContext>
             ) : null}
@@ -163,7 +167,7 @@ export function EntryArrayEditor({
         <div className="pl-4">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-              {entryList}
+              <AnimatePresence initial={false}>{entryList}</AnimatePresence>
             </SortableContext>
           </DndContext>
           <button
@@ -213,6 +217,9 @@ function SortableEntryArrayItem({
     isDragging
   } = useSortable({ id });
 
+  const hiddenState = useEntryHidden(sectionKey, entry);
+  const isHidden = hiddenState?.hidden ?? false;
+
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -222,8 +229,16 @@ function SortableEntryArrayItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} data-section-key={sectionKey} data-entry-index={index}>
-      <div className="form-item-wrapper relative -mx-7 px-7">
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      data-section-key={sectionKey}
+      data-entry-index={index}
+      exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+      transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+    >
+      <div className="form-item-wrapper form-item-enter-anim relative -mx-7 px-7">
         <div
           ref={setActivatorNodeRef}
           {...listeners}
@@ -231,15 +246,32 @@ function SortableEntryArrayItem({
         >
           <GripVertical className="size-4 sm:size-3.5" />
         </div>
-        <button
-          type="button"
-          className="form-item-control absolute top-1/2 right-0 flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:right-3 sm:size-6 sm:rounded-none sm:hover:bg-transparent"
-          onClick={() => onRemove(index)}
-          aria-label="Remove"
-        >
-          <X className="size-4 sm:size-3" />
-        </button>
-        <div className="pr-10 sm:pr-7">
+        <div className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center sm:right-1">
+          {hiddenState ? (
+            <button
+              type="button"
+              className={`form-item-control flex size-9 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
+                isHidden
+                  ? 'text-amber-600 sm:text-amber-600'
+                  : 'text-muted-foreground/60 hover:text-foreground sm:text-muted-foreground/40'
+              }`}
+              onClick={hiddenState.toggle}
+              aria-label={isHidden ? 'Show in resume' : 'Hide from resume'}
+              title={isHidden ? 'Hidden from the resume — click to show' : 'Hide from the resume'}
+            >
+              {isHidden ? <EyeOff className="size-4 sm:size-3.5" /> : <Eye className="size-4 sm:size-3.5" />}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="form-item-control flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-6 sm:rounded-none sm:hover:bg-transparent"
+            onClick={() => onRemove(index)}
+            aria-label="Remove"
+          >
+            <X className="size-4 sm:size-3" />
+          </button>
+        </div>
+        <div className={`pr-16 sm:pr-12 ${isHidden ? 'opacity-45' : ''}`}>
           {template === 'text' ? (
             <TextRow
               value={typeof entry === 'string' ? entry : ''}
@@ -270,7 +302,7 @@ function SortableEntryArrayItem({
           {index < entriesLength - 1 ? <Divider /> : null}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
