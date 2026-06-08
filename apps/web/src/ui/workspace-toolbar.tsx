@@ -33,6 +33,7 @@ import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { fileStore, preferencesStore, readThemeName, readLocaleName, reviewStore } from '@rendercv/core';
 import { toast } from 'sonner';
 import { downloadBlob } from '../features/viewer/download';
+import { cvYamlToJson, cvYamlToMarkdown } from '../features/viewer/format-exports';
 import { buildEncodedShareUrl, buildEncodedSharePdfUrl } from '../features/share/encoded-share';
 import { exportShareFile, importShareFile } from '../features/share/file-share';
 import { ChangesDialog } from '../features/share/changes-dialog';
@@ -228,6 +229,52 @@ export function WorkspaceToolbar({
       new Blob([typst], { type: 'application/octet-stream' }),
       `${selectedFile?.name ?? 'RenderCV'}.typ`
     );
+  }
+
+  async function downloadCvJson() {
+    if (!sections) {
+      return;
+    }
+
+    try {
+      const json = cvYamlToJson(sections.cv);
+      await downloadBlob(
+        new Blob([json], { type: 'application/json' }),
+        `${selectedFile?.name ?? 'RenderCV'}.json`
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export JSON.');
+    }
+  }
+
+  async function copyCvMarkdown() {
+    if (!sections) {
+      return;
+    }
+
+    try {
+      const markdown = cvYamlToMarkdown(sections.cv);
+      await navigator.clipboard.writeText(markdown);
+      toast.success('Markdown copied to clipboard.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to copy Markdown.');
+    }
+  }
+
+  async function downloadCvMarkdown() {
+    if (!sections) {
+      return;
+    }
+
+    try {
+      const markdown = cvYamlToMarkdown(sections.cv);
+      await downloadBlob(
+        new Blob([markdown], { type: 'text/markdown' }),
+        `${selectedFile?.name ?? 'RenderCV'}.md`
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export Markdown.');
+    }
   }
 
   async function exportJson() {
@@ -600,9 +647,12 @@ export function WorkspaceToolbar({
           canPreviewActions={canPreviewActions}
           canReviewActions={canSendProposal}
           fileName={selectedFile?.name}
+          onCopyMarkdown={() => void copyCvMarkdown()}
           onCopyPdfLink={() => void copyPdfLink()}
           onCopyReviewLink={() => void copyReviewLink()}
           onCopyShareLink={() => void copyShareLink()}
+          onDownloadJson={() => void downloadCvJson()}
+          onDownloadMarkdown={() => void downloadCvMarkdown()}
           onDownloadPdf={() => void downloadPdf()}
           onDownloadTypst={() => void downloadTypst()}
           onExportJson={() => void exportJson()}
@@ -755,6 +805,9 @@ export function WorkspaceToolbar({
           dataOnboarding="data-export"
           disabled={!canPreviewActions}
           menuOpen={downloadMenuOpen}
+          onCopyMarkdown={() => void copyCvMarkdown()}
+          onDownloadJson={() => void downloadCvJson()}
+          onDownloadMarkdown={() => void downloadCvMarkdown()}
           onDownloadPdf={() => void downloadPdf()}
           onDownloadTypst={() => void downloadTypst()}
           onMenuOpenChange={setDownloadMenuOpen}
@@ -796,9 +849,12 @@ export function WorkspaceToolbar({
         canPreviewActions={canPreviewActions}
         canReviewActions={canSendProposal}
         fileName={selectedFile?.name}
+        onCopyMarkdown={() => void copyCvMarkdown()}
         onCopyPdfLink={() => void copyPdfLink()}
         onCopyReviewLink={() => void copyReviewLink()}
         onCopyShareLink={() => void copyShareLink()}
+        onDownloadJson={() => void downloadCvJson()}
+        onDownloadMarkdown={() => void downloadCvMarkdown()}
         onDownloadPdf={() => void downloadPdf()}
         onDownloadTypst={() => void downloadTypst()}
         onExportJson={() => void exportJson()}
@@ -1070,6 +1126,9 @@ function DownloadComboButton({
   dataOnboarding,
   disabled = false,
   menuOpen,
+  onCopyMarkdown,
+  onDownloadJson,
+  onDownloadMarkdown,
   onDownloadPdf,
   onDownloadTypst,
   onMenuOpenChange,
@@ -1078,6 +1137,9 @@ function DownloadComboButton({
   dataOnboarding?: string;
   disabled?: boolean;
   menuOpen: boolean;
+  onCopyMarkdown: () => void | Promise<void>;
+  onDownloadJson: () => void | Promise<void>;
+  onDownloadMarkdown: () => void | Promise<void>;
   onDownloadPdf: () => void | Promise<void>;
   onDownloadTypst: () => void | Promise<void>;
   onMenuOpenChange: (open: boolean) => void;
@@ -1161,6 +1223,30 @@ function DownloadComboButton({
               void onDownloadTypst();
             }}
           />
+          <ToolbarMenuItem
+            icon={<FileDown className="size-4" />}
+            label="Download JSON"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onDownloadJson();
+            }}
+          />
+          <ToolbarMenuItem
+            icon={<FileDown className="size-4" />}
+            label="Download Markdown"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onDownloadMarkdown();
+            }}
+          />
+          <ToolbarMenuItem
+            icon={<Copy className="size-4" />}
+            label="Copy as Markdown"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onCopyMarkdown();
+            }}
+          />
           <div className="my-1 h-px bg-border/60" />
           <ToolbarMenuItem
             icon={<FileDown className="size-4" />}
@@ -1203,9 +1289,12 @@ function DownloadShareDialog({
   canPreviewActions,
   canReviewActions,
   fileName,
+  onCopyMarkdown,
   onCopyPdfLink,
   onCopyReviewLink,
   onCopyShareLink,
+  onDownloadJson,
+  onDownloadMarkdown,
   onDownloadPdf,
   onDownloadTypst,
   onExportJson,
@@ -1222,9 +1311,12 @@ function DownloadShareDialog({
   canPreviewActions: boolean;
   canReviewActions: boolean;
   fileName?: string;
+  onCopyMarkdown: () => void | Promise<void>;
   onCopyPdfLink: () => void | Promise<void>;
   onCopyReviewLink: () => void | Promise<void>;
   onCopyShareLink: () => void | Promise<void>;
+  onDownloadJson: () => void | Promise<void>;
+  onDownloadMarkdown: () => void | Promise<void>;
   onDownloadPdf: () => void | Promise<void>;
   onDownloadTypst: () => void | Promise<void>;
   onExportJson: () => void | Promise<void>;
@@ -1281,6 +1373,27 @@ function DownloadShareDialog({
                   icon={<FileCode2 className="size-4" />}
                   onClick={onDownloadTypst}
                   title="Export source (.typ)"
+                />
+                <DialogActionButton
+                  description="Save the CV data as JSON for programmatic use."
+                  disabled={!canPreviewActions}
+                  icon={<FileDown className="size-4" />}
+                  onClick={onDownloadJson}
+                  title="Export JSON"
+                />
+                <DialogActionButton
+                  description="Save a plain-text Markdown version of the CV."
+                  disabled={!canPreviewActions}
+                  icon={<FileDown className="size-4" />}
+                  onClick={onDownloadMarkdown}
+                  title="Export Markdown"
+                />
+                <DialogActionButton
+                  description="Copy the CV as Markdown to paste into emails or docs."
+                  disabled={!canPreviewActions}
+                  icon={<Copy className="size-4" />}
+                  onClick={onCopyMarkdown}
+                  title="Copy as Markdown"
                 />
               </DialogActionSection>
 

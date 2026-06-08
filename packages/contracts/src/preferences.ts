@@ -2,6 +2,13 @@ import type { SectionKey } from './cv';
 
 export type ColorMode = 'light' | 'dark' | 'system';
 
+export type AiProviderId = 'managed' | 'openai' | 'anthropic';
+
+export interface AiApiKeys {
+  openai?: string;
+  anthropic?: string;
+}
+
 export interface UserPreferences {
   yamlEditor: boolean;
   aiEditorOpen: boolean;
@@ -18,4 +25,6 @@ export interface UserPreferences {
   entriesExpanded: boolean;
   selectedModel: string;
   onboardingCompletedAt?: string | null;
+  aiProvider: AiProviderId;
+  aiApiKeys: AiApiKeys;
 }

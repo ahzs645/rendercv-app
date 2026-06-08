@@ -1,6 +1,6 @@
 import { createUIMessageStream, createUIMessageStreamResponse, type UIMessage } from 'ai';
 import { Hono } from 'hono';
-import type { CvFileSections } from '@rendercv/contracts';
+import type { AiProviderId, CvFileSections } from '@rendercv/contracts';
 import { coverLetterTemplate, type CoverLetterData } from '@rendercv/core';
 import { jsonError } from '../errors';
 import { persistState, serverState } from '../persistence';
@@ -9,13 +9,11 @@ type ChatPayload = {
   messages?: UIMessage[];
   fileContext?: Partial<CvFileSections>;
   model?: string;
+  provider?: AiProviderId;
+  apiKey?: string;
 };
 
 export const chatRouter = new Hono().post('/', async (context) => {
-  if (serverState.aiUsage.used >= serverState.aiUsage.limit) {
-    return jsonError(context, 'quota_exceeded', 'AI usage limit reached for this workspace.', 402);
-  }
-
   const payload = (await context.req.json().catch(() => ({}))) as ChatPayload;
   const messages = Array.isArray(payload.messages) ? payload.messages : [];
   const prompt = getLastUserMessage(messages);
@@ -24,11 +22,34 @@ export const chatRouter = new Hono().post('/', async (context) => {
     return jsonError(context, 'invalid_request', 'A user message is required to continue the chat.', 400);
   }
 
-  const fileContext = normalizeSections(payload.fileContext);
-  serverState.aiUsage.used += 1;
-  persistState();
+  const provider: AiProviderId = payload.provider ?? 'managed';
+  const isByok = provider !== 'managed' && Boolean(payload.apiKey);
 
-  const responseText = createAssistantReply(prompt, fileContext, payload.model ?? 'gpt-5-mini');
+  if (!isByok && serverState.aiUsage.used >= serverState.aiUsage.limit) {
+    return jsonError(context, 'quota_exceeded', 'AI usage limit reached for this workspace.', 402);
+  }
+
+  const fileContext = normalizeSections(payload.fileContext);
+  const model = payload.model ?? defaultModelForProvider(provider);
+
+  let responseText: string;
+  if (isByok) {
+    try {
+      responseText = await callBringYourOwn(provider, payload.apiKey!, model, prompt, fileContext);
+    } catch (error) {
+      return jsonError(
+        context,
+        'byok_provider_error',
+        error instanceof Error ? error.message : 'BYOK provider call failed.',
+        502
+      );
+    }
+  } else {
+    serverState.aiUsage.used += 1;
+    persistState();
+    responseText = createAssistantReply(prompt, fileContext, model);
+  }
+
   const generatedDocument = maybeGenerateCoverLetter(prompt, fileContext);
   const usage = { ...serverState.aiUsage };
 
@@ -246,4 +267,84 @@ function sleep(ms: number) {
 
 function escapeForRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function defaultModelForProvider(provider: AiProviderId): string {
+  switch (provider) {
+    case 'openai':
+      return 'gpt-4o-mini';
+    case 'anthropic':
+      return 'claude-haiku-4-5-20251001';
+    default:
+      return 'gpt-5-mini';
+  }
+}
+
+const BYOK_SYSTEM_PROMPT =
+  'You are an assistant inside a CV/resume editor. The user is editing a RenderCV YAML document. Be concise, give concrete rewrites, and prefer bullet-style suggestions.';
+
+async function callBringYourOwn(
+  provider: AiProviderId,
+  apiKey: string,
+  model: string,
+  prompt: string,
+  fileContext: CvFileSections
+): Promise<string> {
+  const contextSummary = `Current CV (YAML, may be truncated):\n${fileContext.cv.slice(0, 8000)}`;
+
+  if (provider === 'openai') {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: BYOK_SYSTEM_PROMPT },
+          { role: 'user', content: `${contextSummary}\n\nUser request: ${prompt}` }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI request failed: ${response.status} ${await response.text().catch(() => '')}`);
+    }
+    const json = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    return json.choices?.[0]?.message?.content?.trim() || '(empty response)';
+  }
+
+  if (provider === 'anthropic') {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1024,
+        system: BYOK_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: `${contextSummary}\n\nUser request: ${prompt}` }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anthropic request failed: ${response.status} ${await response.text().catch(() => '')}`);
+    }
+    const json = (await response.json()) as {
+      content?: Array<{ type: string; text?: string }>;
+    };
+    return (json.content ?? [])
+      .filter((part) => part.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text!)
+      .join('\n')
+      .trim() || '(empty response)';
+  }
+
+  throw new Error(`Unsupported BYOK provider: ${provider}`);
 }

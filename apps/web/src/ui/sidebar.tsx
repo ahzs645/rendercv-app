@@ -14,6 +14,7 @@ import {
   Monitor,
   Pencil,
   RotateCcw,
+  Settings,
   Shield,
   Trash2
 } from 'lucide-react';
@@ -24,6 +25,7 @@ import { toast } from 'sonner';
 import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { onboardingTour } from '../features/onboarding/tour-state';
+import { AiSettingsDialog } from './ai-settings-dialog';
 import { PdfImportButton } from './pdf-import-button';
 import { YamlImportButton } from './yaml-import-button';
 import type { PreparedYamlImport } from './yaml-import-button';
@@ -64,6 +66,7 @@ export function Sidebar({
   const location = useLocation();
   const [mode, setMode] = useState<SidebarMode>('full');
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const activeFiles = useMemo(
     () =>
       snapshot.files
@@ -372,6 +375,17 @@ export function Sidebar({
               <span>{isDownloadingAll ? 'Downloading...' : 'Download all data'}</span>
             )}
           </button>
+          <button
+            className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+              isMini ? 'justify-center px-0 py-2' : isCompact ? 'justify-center px-2 py-2' : 'gap-2 px-2 py-2 text-left'
+            }`}
+            onClick={() => setAiSettingsOpen(true)}
+            title="AI provider settings"
+            type="button"
+          >
+            <Settings className="size-4 shrink-0" />
+            {isCompact ? <span className="sr-only">AI providers</span> : <span>AI providers</span>}
+          </button>
           <SidebarLinkButton compact={isCompact} icon={<Shield className="size-4" />} mini={isMini} to="/privacy-policy">
             Privacy Policy
           </SidebarLinkButton>
@@ -380,6 +394,7 @@ export function Sidebar({
           </SidebarLinkButton>
         </nav>
       </footer>
+      <AiSettingsDialog open={aiSettingsOpen} onOpenChange={setAiSettingsOpen} />
     </aside>
   );
 }

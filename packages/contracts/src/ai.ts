@@ -1,4 +1,5 @@
 import type { CvFileSections } from './cv';
+import type { AiProviderId } from './preferences';
 
 export interface AiUsage {
   used: number;
@@ -11,6 +12,9 @@ export interface ChatRequest {
   model: string;
   fileContext: CvFileSections;
   message: string;
+  /** When provider !== 'managed', the request is BYOK and `apiKey` should be present. */
+  provider?: AiProviderId;
+  apiKey?: string;
 }
 
 export type ChatStreamEvent =

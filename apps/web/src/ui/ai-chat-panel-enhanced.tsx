@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChat, type UIMessage } from '@ai-sdk/react';
 import type { CvFileSections, SectionKey } from '@rendercv/contracts';
-import { EVENTS, fileStore } from '@rendercv/core';
+import { EVENTS, fileStore, preferencesStore } from '@rendercv/core';
 import ReactMarkdown from 'react-markdown';
 import {
   Check,
@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner';
 import { capture } from '../lib/analytics/posthog-client';
 import { ApiRequestError, api } from '../lib/api';
+import { useStore } from '../lib/use-store';
 import {
   applyEditProposalToSection,
   extractEditProposals,
@@ -152,6 +153,14 @@ export function EnhancedAiChatPanel({
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [selections, setSelections] = useState<SelectionAttachment[]>([]);
   const [proposalStates, setProposalStates] = useState<Record<string, AiEditProposal['status']>>({});
+  const preferences = useStore(preferencesStore);
+  const provider = preferences.aiProvider;
+  const apiKey =
+    provider === 'openai'
+      ? preferences.aiApiKeys.openai
+      : provider === 'anthropic'
+        ? preferences.aiApiKeys.anthropic
+        : undefined;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentsRef = useRef<ChatAttachment[]>([]);
   const { messages, sendMessage, status, error } = useChat({
@@ -264,7 +273,9 @@ export function EnhancedAiChatPanel({
           fileId,
           model,
           fileContext: sections,
-          chatSessionId: `cv-${fileId}`
+          chatSessionId: `cv-${fileId}`,
+          provider,
+          apiKey
         }
       }
     );
