@@ -33,6 +33,7 @@ import { WorkspaceToolbar } from './workspace-toolbar';
 import { OnboardingTour } from '../features/onboarding/OnboardingTour';
 import { onboardingTour } from '../features/onboarding/tour-state';
 import { useYamlImport } from './yaml-import-button';
+import { useUrlCvLoader } from './use-url-cv-loader';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
@@ -507,6 +508,8 @@ export function Workspace() {
     prepareYamlImport,
     validateYamlImport
   });
+
+  useUrlCvLoader(importYamlFile, !viewer.isInitializing && !viewer.initError);
 
   const sidebarElement = (
     <Sidebar prepareYamlImport={prepareYamlImport} validateYamlImport={validateYamlImport} />
