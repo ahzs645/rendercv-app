@@ -30,6 +30,36 @@ describe('fileStore', () => {
     expect(file.sharedOrigin).toBeUndefined();
   });
 
+  it('captures a source baseline when imported from a URL', () => {
+    const file = fileStore.createFile('From URL', {
+      cv: 'cv:\n  name: Julian',
+      sourceUrl: 'https://www.julianstokes.ca/CV.yaml'
+    });
+
+    expect(file.sourceUrl).toBe('https://www.julianstokes.ca/CV.yaml');
+    // The baseline mirrors the resolved sections so an unmodified file can be
+    // detected later by the share action.
+    expect(file.sourceBaseline).toEqual(resolveFileSections(file));
+  });
+
+  it('leaves sourceBaseline undefined without a sourceUrl', () => {
+    const file = fileStore.createFile('No Source', { cv: 'cv:\n  name: Local' });
+
+    expect(file.sourceUrl).toBeUndefined();
+    expect(file.sourceBaseline).toBeUndefined();
+  });
+
+  it('duplicateFile preserves the source URL and baseline', () => {
+    const original = fileStore.createFile('From URL', {
+      cv: 'cv:\n  name: Julian',
+      sourceUrl: 'https://www.julianstokes.ca/CV.yaml'
+    });
+    const duplicate = fileStore.duplicateFile(original.id);
+
+    expect(duplicate!.sourceUrl).toBe('https://www.julianstokes.ca/CV.yaml');
+    expect(duplicate!.sourceBaseline).toEqual(original.sourceBaseline);
+  });
+
   it('duplicateFile preserves sharedOrigin', () => {
     const origin: CvFileSections = {
       cv: 'cv:\n  name: Shared',

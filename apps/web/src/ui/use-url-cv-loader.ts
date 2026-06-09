@@ -2,38 +2,7 @@ import { useEffect, useRef } from 'react';
 import { fileStore } from '@rendercv/core';
 import { toast } from 'sonner';
 import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
-
-const MAX_REMOTE_YAML_SIZE = 1024 * 1024;
-
-function deriveName(url: string, fallback: string): string {
-  try {
-    const { pathname } = new URL(url);
-    const base = pathname.split('/').pop() ?? '';
-    const name = base.replace(/\.ya?ml$/i, '').trim();
-    return name || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-async function fetchYamlText(url: string, label: string): Promise<string> {
-  const response = await fetch(url, { headers: { Accept: 'text/yaml, text/plain, */*' } });
-  if (!response.ok) {
-    throw new Error(`Failed to load ${label} (HTTP ${response.status}).`);
-  }
-
-  const size = Number(response.headers.get('content-length') ?? '0');
-  if (size > MAX_REMOTE_YAML_SIZE) {
-    throw new Error(`${label} is too large (max 1 MB).`);
-  }
-
-  const text = await response.text();
-  if (!text.trim()) {
-    throw new Error(`${label} is empty.`);
-  }
-
-  return text;
-}
+import { deriveName, fetchYamlText } from './cv-url-import';
 
 /**
  * Auto-loads a CV (and optional variants) from query params on first mount:
@@ -44,7 +13,7 @@ async function fetchYamlText(url: string, label: string): Promise<string> {
  * StrictMode double-invoke does not re-import.
  */
 export function useUrlCvLoader(
-  importYamlFile: (file: File) => Promise<void>,
+  importYamlFile: (file: File, source?: { url: string }) => Promise<void>,
   ready: boolean
 ): void {
   const startedRef = useRef(false);
@@ -79,7 +48,7 @@ export function useUrlCvLoader(
         const cvFile = new File([cvText], `${deriveName(cvUrl, 'CV')}.yaml`, {
           type: 'text/yaml'
         });
-        await importYamlFile(cvFile);
+        await importYamlFile(cvFile, { url: cvUrl });
 
         if (variantsUrl) {
           const variantsText = await fetchYamlText(variantsUrl, 'variants');

@@ -27,7 +27,7 @@ import { useStore } from '../lib/use-store';
 import { onboardingTour } from '../features/onboarding/tour-state';
 import { AiSettingsDialog } from './ai-settings-dialog';
 import { PdfImportButton } from './pdf-import-button';
-import { YamlImportButton } from './yaml-import-button';
+import { ImportComboButton } from './import-combo-button';
 import type { PreparedYamlImport } from './yaml-import-button';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
 import { downloadBlob } from '../features/viewer/download';
@@ -205,7 +205,7 @@ export function Sidebar({
           <FilePlus2 className="size-4 shrink-0" />
           {isMini ? <span className="sr-only">Create new CV</span> : <span>Create new CV</span>}
         </button>
-        <YamlImportButton
+        <ImportComboButton
           mode={mode}
           prepareYamlImport={prepareYamlImport}
           validateYamlImport={validateYamlImport}

@@ -89,7 +89,7 @@ export type YamlImportOptions = {
 export function useYamlImport({ prepareYamlImport, validateYamlImport }: YamlImportOptions = {}) {
   const [pending, setPending] = useState(false);
 
-  async function importFile(file: File) {
+  async function importFile(file: File, source?: { url: string }) {
     const isYamlFile = /\.ya?ml$/i.test(file.name);
     if (!isYamlFile) {
       toast.error('Choose a YAML file.');
@@ -144,7 +144,8 @@ export function useYamlImport({ prepareYamlImport, validateYamlImport }: YamlImp
             ? { [nextSections.selectedLocale]: nextSections.locale }
             : undefined,
         selectedTheme: nextSections.selectedTheme,
-        selectedLocale: nextSections.selectedLocale
+        selectedLocale: nextSections.selectedLocale,
+        sourceUrl: source?.url
       });
       if (isCompatibilityYaml) {
         const themeNote =

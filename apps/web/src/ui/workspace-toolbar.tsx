@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { downloadBlob } from '../features/viewer/download';
 import { cvYamlToJson, cvYamlToMarkdown } from '../features/viewer/format-exports';
 import { buildEncodedShareUrl, buildEncodedSharePdfUrl } from '../features/share/encoded-share';
+import { buildSourceShareUrl, sectionsMatch } from './cv-url-import';
 import { exportShareFile, importShareFile } from '../features/share/file-share';
 import { ChangesDialog } from '../features/share/changes-dialog';
 import {
@@ -123,6 +124,19 @@ export function WorkspaceToolbar({
     }
 
     try {
+      // If this CV was opened from a public URL and hasn't been edited since,
+      // share that source link directly — it's shorter and always reflects the
+      // latest version. Any local edit falls back to the encoded snapshot link.
+      if (
+        selectedFile.sourceUrl &&
+        selectedFile.sourceBaseline &&
+        sectionsMatch(sections, selectedFile.sourceBaseline)
+      ) {
+        await navigator.clipboard.writeText(buildSourceShareUrl(selectedFile.sourceUrl));
+        toast.success('Source link copied.');
+        return;
+      }
+
       const result = await buildEncodedShareUrl({
         version: 1,
         fileName: selectedFile.name,

@@ -34,6 +34,13 @@ const cvFileSchema = z.object({
     locale: z.string(),
     settings: z.string()
   }).optional(),
+  sourceUrl: z.string().optional(),
+  sourceBaseline: z.object({
+    cv: z.string(),
+    design: z.string(),
+    locale: z.string(),
+    settings: z.string()
+  }).optional(),
   hiddenEntries: z.record(z.string(), z.array(z.string())).optional()
 }) satisfies z.ZodType<Omit<CvFile, 'isReadOnly'>>;
 

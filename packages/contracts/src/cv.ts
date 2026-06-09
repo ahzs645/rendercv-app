@@ -46,6 +46,14 @@ export interface CvFile {
   lastEdited: number;
   /** Snapshot of the original sections when this file was imported from a share link. */
   sharedOrigin?: CvFileSections;
+  /** Public URL this file was imported from (e.g. `https://host/CV.yaml`), if any. */
+  sourceUrl?: string;
+  /**
+   * Snapshot of the sections at the moment of a URL import. Used to detect whether
+   * the file is still unmodified so the share action can hand back the source URL
+   * instead of an encoded link.
+   */
+  sourceBaseline?: CvFileSections;
   /**
    * Entries hidden from rendering/export without deleting them from the CV.
    * Keyed by CV section key; values are stable fingerprints of the hidden

@@ -30,7 +30,17 @@ type FileStateSnapshot = {
 type CreateFileOptions = Partial<
   Pick<
     CvFile,
-    'cv' | 'settings' | 'designs' | 'locales' | 'selectedTheme' | 'selectedLocale' | 'variants' | 'selectedVariant' | 'sharedOrigin'
+    | 'cv'
+    | 'settings'
+    | 'designs'
+    | 'locales'
+    | 'selectedTheme'
+    | 'selectedLocale'
+    | 'variants'
+    | 'selectedVariant'
+    | 'sharedOrigin'
+    | 'sourceUrl'
+    | 'sourceBaseline'
   >
 >;
 
@@ -390,7 +400,7 @@ export class FileStore {
   }
 
   createFile(name?: string, options?: CreateFileOptions) {
-    const file = withReadOnly({
+    const base = {
       id: generateId(),
       name: name ?? `CV ${this.activeFiles.length + 1}`,
       cv: options?.cv ?? classicTheme.cv,
@@ -408,6 +418,7 @@ export class FileStore {
       variants: options?.variants,
       selectedVariant: resolveSelectedVariant(options?.variants, options?.selectedVariant),
       sharedOrigin: options?.sharedOrigin,
+      sourceUrl: options?.sourceUrl,
       isLocked: false,
       isArchived: false,
       isTrashed: false,
@@ -415,7 +426,15 @@ export class FileStore {
       chatMessages: [],
       editCount: 0,
       lastEdited: Date.now()
-    });
+    };
+
+    // Snapshot the resolved sections as the baseline when this file is imported
+    // from a URL, so the share action can tell later whether it is unmodified.
+    const sourceBaseline = options?.sourceUrl
+      ? options.sourceBaseline ?? resolveFileSections(base as unknown as CvFile)
+      : options?.sourceBaseline;
+
+    const file = withReadOnly({ ...base, sourceBaseline });
 
     this.#store.update((current) => ({
       ...current,
@@ -639,7 +658,9 @@ export class FileStore {
       selectedLocale: file.selectedLocale,
       variants: file.variants ? { ...file.variants } : undefined,
       selectedVariant: file.selectedVariant,
-      sharedOrigin: file.sharedOrigin
+      sharedOrigin: file.sharedOrigin,
+      sourceUrl: file.sourceUrl,
+      sourceBaseline: file.sourceBaseline
     });
   }
 
