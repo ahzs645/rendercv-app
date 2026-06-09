@@ -19,8 +19,26 @@ interface TourContext {
 }
 
 export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): DriveStep[] {
+  // The AI Assistant step (index 4) is the sole member of group 3 and is dropped
+  // when the AI editor is disabled. Renumber the groups that actually appear so the
+  // counter stays contiguous (no skipped "3 of 5") and the total matches reality.
+  const presentGroups = STEP_GROUP_MAP.filter(
+    (group, index) => ctx.hasAiEditor || index !== 4
+  );
+  const groupTotal = new Set(presentGroups).size;
+  const groupRemap = new Map(
+    [...new Set(presentGroups)].map((group, index) => [group, index + 1])
+  );
+
   function trackStep(index: number) {
     capture(EVENTS.ONBOARDING_STEP_VIEWED, { step: index + 1, group: STEP_GROUP_MAP[index] });
+  }
+
+  function patchCounter(popover: { wrapper: HTMLElement }, stepIndex: number) {
+    const progress = popover.wrapper.querySelector('.driver-popover-progress-text');
+    if (progress) {
+      progress.textContent = `${groupRemap.get(STEP_GROUP_MAP[stepIndex])} of ${groupTotal}`;
+    }
   }
 
   const steps: Array<DriveStep | null> = [
@@ -164,11 +182,4 @@ export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): Drive
   ];
 
   return steps.filter((step): step is DriveStep => step !== null);
-}
-
-function patchCounter(popover: { wrapper: HTMLElement }, stepIndex: number) {
-  const progress = popover.wrapper.querySelector('.driver-popover-progress-text');
-  if (progress) {
-    progress.textContent = `${STEP_GROUP_MAP[stepIndex]} of 5`;
-  }
 }
