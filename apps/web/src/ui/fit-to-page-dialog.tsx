@@ -4,10 +4,12 @@ import { Loader2, RotateCcw, WandSparkles, X } from 'lucide-react';
 import { countHiddenEntries } from '@rendercv/core';
 import { fitContentToPages } from '../features/fit/fit-content';
 import {
+  buildDisabledHidden,
   buildFitEntries,
   defaultFitWeights,
   FIT_WEIGHT_OPTIONS,
-  listFitSections
+  listFitSections,
+  mergeHidden
 } from '../features/fit/fit-sections';
 import type { FitWeight } from '../features/fit/fit-sections';
 
@@ -53,12 +55,15 @@ export function FitToPageDialog({
 
   async function handleFit() {
     setRun({ phase: 'running', renders: 0 });
+    // Sections switched "Off" are hidden up front; the search only weighs the rest.
+    const disabledHidden = buildDisabledHidden(cvYaml, weights);
+    const disabledCount = countHiddenEntries(disabledHidden);
     const entries = buildFitEntries(cvYaml, weights);
 
     const result = await fitContentToPages({
       entries,
       targetPages,
-      measure,
+      measure: (hidden) => measure(mergeHidden(disabledHidden, hidden)),
       onProgress: (renders, pages) => setRun({ phase: 'running', renders, pages })
     });
 
@@ -71,30 +76,29 @@ export function FitToPageDialog({
       return;
     }
 
-    if (!result.applied) {
-      if (result.fit) {
-        setRun({
-          phase: 'done',
-          tone: 'info',
-          message: `Already fits in ${targetPages} page${targetPages > 1 ? 's' : ''}.`
-        });
-      } else {
-        setRun({
-          phase: 'done',
-          tone: 'info',
-          message: 'Every section is set to "Keep all" — nothing can be trimmed.'
-        });
-      }
+    // The search trimmed nothing and no section was turned off — leave as-is.
+    if (!result.applied && disabledCount === 0) {
+      setRun({
+        phase: 'done',
+        tone: 'info',
+        message: result.fit
+          ? `Already fits in ${targetPages} page${targetPages > 1 ? 's' : ''}.`
+          : 'Every section is set to "Keep all" — nothing can be trimmed.'
+      });
       return;
     }
 
-    onApply(result.hidden);
+    onApply(mergeHidden(disabledHidden, result.hidden));
+
+    const totalHidden = result.hiddenCount + disabledCount;
+    const entryLabel = `${totalHidden} ${totalHidden === 1 ? 'entry' : 'entries'}`;
+    const pageLabel = `${result.pages} page${result.pages > 1 ? 's' : ''}`;
     setRun({
       phase: 'done',
       tone: result.fit ? 'success' : 'info',
       message: result.fit
-        ? `Hid ${result.hiddenCount} ${result.hiddenCount === 1 ? 'entry' : 'entries'} to fit ${result.pages} page${result.pages > 1 ? 's' : ''}.`
-        : `Trimmed ${result.hiddenCount} entries down to ${result.pages} pages — content is too long for ${targetPages}.`
+        ? `Hid ${entryLabel} to fit ${pageLabel}.`
+        : `Hid ${entryLabel}, down to ${pageLabel} — still longer than ${targetPages} page${targetPages > 1 ? 's' : ''}.`
     });
   }
 
@@ -156,10 +160,12 @@ export function FitToPageDialog({
                     key={section.sectionKey}
                     className="flex flex-col gap-2 rounded-xl border border-border/70 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="min-w-0">
+                    <div className={`min-w-0 ${weights[section.sectionKey] === 'off' ? 'opacity-50' : ''}`}>
                       <p className="truncate text-sm font-medium text-foreground">{section.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {section.entryCount} {section.entryCount === 1 ? 'entry' : 'entries'}
+                        {weights[section.sectionKey] === 'off'
+                          ? 'Hidden'
+                          : `${section.entryCount} ${section.entryCount === 1 ? 'entry' : 'entries'}`}
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-0.5 rounded-lg bg-muted/60 p-0.5">

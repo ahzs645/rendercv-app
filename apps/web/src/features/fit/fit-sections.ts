@@ -2,10 +2,15 @@ import YAML from 'yaml';
 import { entryFingerprint } from '@rendercv/core';
 import type { FitEntry } from './fit-content';
 
-/** Priority a user assigns to a section when fitting. */
-export type FitWeight = 'pin' | 'high' | 'normal' | 'low';
+/**
+ * Priority a user assigns to a section when fitting.
+ * - `pin`: never dropped, always kept.
+ * - `high` / `normal` / `low`: relative priority; lower priority is dropped first.
+ * - `off`: the whole section is hidden up front, regardless of page count.
+ */
+export type FitWeight = 'pin' | 'high' | 'normal' | 'low' | 'off';
 
-export const FIT_WEIGHT_VALUE: Record<Exclude<FitWeight, 'pin'>, number> = {
+export const FIT_WEIGHT_VALUE: Record<Exclude<FitWeight, 'pin' | 'off'>, number> = {
   high: 3,
   normal: 2,
   low: 1
@@ -15,7 +20,8 @@ export const FIT_WEIGHT_OPTIONS: { value: FitWeight; label: string }[] = [
   { value: 'pin', label: 'Keep all' },
   { value: 'high', label: 'High' },
   { value: 'normal', label: 'Normal' },
-  { value: 'low', label: 'Low' }
+  { value: 'low', label: 'Low' },
+  { value: 'off', label: 'Off' }
 ];
 
 // Sections that are almost always the backbone of a resume — kept longest.
@@ -82,7 +88,11 @@ export function defaultFitWeights(sections: FitSectionInfo[]): Record<string, Fi
   );
 }
 
-/** Build the flat entry list the optimizer consumes. */
+/**
+ * Build the flat entry list the optimizer consumes. Sections set to `off` are
+ * excluded — they're hidden up front by {@link buildDisabledHidden} rather than
+ * being candidates the page-fit search weighs.
+ */
 export function buildFitEntries(
   cvYaml: string,
   weights: Record<string, FitWeight>
@@ -92,6 +102,9 @@ export function buildFitEntries(
 
   for (const [sectionKey, sectionEntries] of Object.entries(sections)) {
     const weight = weights[sectionKey] ?? 'normal';
+    if (weight === 'off') {
+      continue;
+    }
     const pinned = weight === 'pin';
     const numericWeight = pinned ? FIT_WEIGHT_VALUE.high : FIT_WEIGHT_VALUE[weight];
 
@@ -107,4 +120,41 @@ export function buildFitEntries(
   }
 
   return entries;
+}
+
+/**
+ * Hidden map for sections the user switched `off`: every entry in those sections
+ * is hidden regardless of page count. Combined with empty-section stripping,
+ * this removes the section header too.
+ */
+export function buildDisabledHidden(
+  cvYaml: string,
+  weights: Record<string, FitWeight>
+): Record<string, string[]> {
+  const sections = readSections(cvYaml);
+  const hidden: Record<string, string[]> = {};
+
+  for (const [sectionKey, sectionEntries] of Object.entries(sections)) {
+    if (weights[sectionKey] !== 'off' || sectionEntries.length === 0) {
+      continue;
+    }
+    hidden[sectionKey] = sectionEntries.map((entry) => entryFingerprint(entry));
+  }
+
+  return hidden;
+}
+
+/** Merge two hidden maps, de-duplicating fingerprints per section. */
+export function mergeHidden(
+  base: Record<string, string[]>,
+  extra: Record<string, string[]>
+): Record<string, string[]> {
+  const merged: Record<string, string[]> = {};
+  for (const [sectionKey, fingerprints] of [...Object.entries(base), ...Object.entries(extra)]) {
+    const set = new Set([...(merged[sectionKey] ?? []), ...fingerprints]);
+    if (set.size > 0) {
+      merged[sectionKey] = [...set];
+    }
+  }
+  return merged;
 }

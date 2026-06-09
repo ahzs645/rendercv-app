@@ -79,7 +79,52 @@ export function filterHiddenEntriesFromCvYaml(
     const hiddenSet = new Set(fingerprints);
     const kept = entries.filter((entry) => !hiddenSet.has(entryFingerprint(entry)));
     if (kept.length !== entries.length) {
-      sections[sectionKey] = kept;
+      // When hiding empties a section, drop the section entirely so the renderer
+      // doesn't emit a bare header with no content beneath it.
+      if (kept.length === 0) {
+        delete sections[sectionKey];
+      } else {
+        sections[sectionKey] = kept;
+      }
+      changed = true;
+    }
+  }
+
+  if (!changed) {
+    return cvYaml;
+  }
+
+  return YAML.stringify(parsed);
+}
+
+/**
+ * Remove sections that have no entries from a CV YAML string, so the renderer
+ * never emits a bare section header with nothing under it (e.g. after fitting
+ * hides every entry, or for sections the author left empty). Returns the input
+ * unchanged when there is nothing empty or the YAML can't be parsed.
+ */
+export function stripEmptySectionsFromCvYaml(cvYaml: string): string {
+  if (!cvYaml) {
+    return cvYaml;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(cvYaml);
+  } catch {
+    return cvYaml;
+  }
+
+  if (!isPlainObject(parsed) || !isPlainObject(parsed.cv) || !isPlainObject(parsed.cv.sections)) {
+    return cvYaml;
+  }
+
+  const sections = parsed.cv.sections as Record<string, unknown>;
+  let changed = false;
+
+  for (const [sectionKey, entries] of Object.entries(sections)) {
+    if (Array.isArray(entries) && entries.length === 0) {
+      delete sections[sectionKey];
       changed = true;
     }
   }

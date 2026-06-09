@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildFitEntries, defaultFitWeights, listFitSections } from './fit-sections';
+import {
+  buildDisabledHidden,
+  buildFitEntries,
+  defaultFitWeights,
+  listFitSections,
+  mergeHidden
+} from './fit-sections';
+import { entryFingerprint } from '@rendercv/core';
 
 const CV = `cv:
   name: Jane Doe
@@ -51,5 +58,30 @@ describe('buildFitEntries', () => {
     const entries = buildFitEntries(CV, { experience: 'pin', hobbies: 'normal' });
     const experience = entries.filter((entry) => entry.sectionKey === 'experience');
     expect(experience.every((entry) => entry.pinned)).toBe(true);
+  });
+
+  it('excludes "off" sections from the fit candidates', () => {
+    const entries = buildFitEntries(CV, { experience: 'high', hobbies: 'off' });
+    expect(entries.some((entry) => entry.sectionKey === 'hobbies')).toBe(false);
+    expect(entries).toHaveLength(2);
+  });
+});
+
+describe('buildDisabledHidden', () => {
+  it('hides every entry of sections set to "off"', () => {
+    const hidden = buildDisabledHidden(CV, { experience: 'high', hobbies: 'off' });
+    expect(hidden).toEqual({ hobbies: [entryFingerprint('Chess')] });
+  });
+
+  it('ignores sections that are not "off"', () => {
+    expect(buildDisabledHidden(CV, { experience: 'high', hobbies: 'low' })).toEqual({});
+  });
+});
+
+describe('mergeHidden', () => {
+  it('merges and de-duplicates fingerprints per section', () => {
+    const merged = mergeHidden({ a: ['1', '2'] }, { a: ['2', '3'], b: ['9'] });
+    expect(new Set(merged.a)).toEqual(new Set(['1', '2', '3']));
+    expect(merged.b).toEqual(['9']);
   });
 });

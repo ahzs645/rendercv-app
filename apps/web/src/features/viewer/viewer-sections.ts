@@ -1,5 +1,9 @@
 import type { CvFile, CvFileSections, CvVariantDefinition } from '@rendercv/contracts';
-import { filterHiddenEntriesFromCvYaml, resolveFileSections } from '@rendercv/core';
+import {
+  filterHiddenEntriesFromCvYaml,
+  resolveFileSections,
+  stripEmptySectionsFromCvYaml
+} from '@rendercv/core';
 import YAML from 'yaml';
 import {
   normalizeCompatibilityCvYaml,
@@ -132,13 +136,15 @@ export function prepareViewerSections(
   const normalizedCv = normalizeCompatibilityCvYaml(sections.cv, { variant: variant ?? undefined });
   const themeName = readThemeName(design);
   const strippedCv = stripPositionMarkersFromCvYaml(normalizedCv);
+  const repairedCv =
+    themeName === 'ahmadstyle'
+      ? restoreAhmadStylePositionMarkersInCvYaml(strippedCv)
+      : repairFlattenedPositionDatesInCvYaml(strippedCv);
 
   return {
     ...sections,
-    cv:
-      themeName === 'ahmadstyle'
-        ? restoreAhmadStylePositionMarkersInCvYaml(strippedCv)
-        : repairFlattenedPositionDatesInCvYaml(strippedCv),
+    // Never render a section header with no entries under it.
+    cv: stripEmptySectionsFromCvYaml(repairedCv),
     design
   };
 }

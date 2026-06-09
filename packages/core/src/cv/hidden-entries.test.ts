@@ -3,7 +3,8 @@ import YAML from 'yaml';
 import {
   countHiddenEntries,
   entryFingerprint,
-  filterHiddenEntriesFromCvYaml
+  filterHiddenEntriesFromCvYaml,
+  stripEmptySectionsFromCvYaml
 } from './hidden-entries';
 
 const CV = `cv:
@@ -75,9 +76,43 @@ describe('filterHiddenEntriesFromCvYaml', () => {
     ]);
   });
 
+  it('drops a section entirely when all its entries are hidden', () => {
+    const result = filterHiddenEntriesFromCvYaml(CV, {
+      skills: [entryFingerprint('Python'), entryFingerprint('Rust')]
+    });
+    const parsed = YAML.parse(result);
+    // No bare "skills" header should survive once it has no entries.
+    expect('skills' in parsed.cv.sections).toBe(false);
+    expect(parsed.cv.sections.experience).toHaveLength(2);
+  });
+
   it('returns the input unchanged on unparseable YAML', () => {
     const broken = 'cv: [oops';
     expect(filterHiddenEntriesFromCvYaml(broken, { skills: ['abc'] })).toBe(broken);
+  });
+});
+
+describe('stripEmptySectionsFromCvYaml', () => {
+  it('removes sections with no entries and keeps the rest', () => {
+    const cv = `cv:
+  name: Jane Doe
+  sections:
+    experience:
+      - company: Acme
+    awards: []
+    presentations: []
+`;
+    const parsed = YAML.parse(stripEmptySectionsFromCvYaml(cv));
+    expect(Object.keys(parsed.cv.sections)).toEqual(['experience']);
+  });
+
+  it('returns the input unchanged when no section is empty', () => {
+    expect(stripEmptySectionsFromCvYaml(CV)).toBe(CV);
+  });
+
+  it('returns the input unchanged on unparseable YAML', () => {
+    const broken = 'cv: [oops';
+    expect(stripEmptySectionsFromCvYaml(broken)).toBe(broken);
   });
 });
 
