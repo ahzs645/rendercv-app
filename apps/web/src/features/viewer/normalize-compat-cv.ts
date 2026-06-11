@@ -1387,7 +1387,13 @@ export function normalizeCompatibilityCvYaml(
       );
 
       if (sectionName === 'publications') {
-        sections.research_publications = sections[sectionName];
+        const existingResearchPublications = Array.isArray(sections.research_publications)
+          ? sections.research_publications
+          : [];
+        sections.research_publications = [
+          ...existingResearchPublications,
+          ...(Array.isArray(sections[sectionName]) ? sections[sectionName] : [])
+        ];
         delete sections[sectionName];
       }
     }

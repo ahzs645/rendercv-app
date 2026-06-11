@@ -1,4 +1,5 @@
 import type { CvFileSections, ReviewProposalPackage } from '@rendercv/contracts';
+import { SECTION_KEYS } from '@rendercv/contracts';
 import { createStore } from './store';
 import { generateId } from '../utils/uuid';
 
@@ -106,6 +107,10 @@ function isProposalDuplicate(proposals: ReviewProposal[], proposalId: string) {
   return proposals.some((proposal) => proposal.proposalId === proposalId);
 }
 
+function sectionsEqual(left: CvFileSections, right: CvFileSections) {
+  return SECTION_KEYS.every((key) => left[key] === right[key]);
+}
+
 export class ReviewStore {
   readonly #store = createStore<ReviewStateSnapshot>({ sessions: [] });
 
@@ -194,9 +199,16 @@ export class ReviewStore {
   }
 
   importProposal(pkg: ReviewProposalPackage, options?: ImportReviewProposalOptions) {
-    const session =
+    const matchedSession =
       this.findByThreadId(pkg.threadId) ??
-      this.findByRootFingerprint(pkg.rootFingerprint) ??
+      this.findByRootFingerprint(pkg.rootFingerprint);
+
+    if (matchedSession && !sectionsEqual(matchedSession.rootBaselineSections, pkg.rootBaselineSections)) {
+      throw new Error('Review proposal baseline does not match the existing review session.');
+    }
+
+    const session =
+      matchedSession ??
       this.ensureSession({
         linkedFileId: options?.linkedFileId,
         baseFileName: pkg.fileName,

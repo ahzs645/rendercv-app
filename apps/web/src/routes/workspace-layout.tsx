@@ -12,7 +12,7 @@ export function WorkspaceLayout() {
         <meta property="og:image" content="https://rendercv.com/og-image.png" />
       </Helmet>
       <div style={{ display: showWorkspace ? 'block' : 'none' }}>
-        <Workspace />
+        <Workspace active={showWorkspace} />
       </div>
       {!showWorkspace ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-sidebar">

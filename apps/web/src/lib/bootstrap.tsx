@@ -4,6 +4,7 @@ import { defaultDesigns } from '@rendercv/core';
 import { preferencesStore } from '@rendercv/core';
 import { resolveFileSections } from '@rendercv/core';
 import { reviewStore } from '@rendercv/core';
+import type { UserPreferences } from '@rendercv/contracts';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { api, API_ENABLED, ApiUnavailableError } from './api';
@@ -79,6 +80,11 @@ function reportApiFailure(label: string, error: unknown) {
 
   reportedApiFailures.add(label);
   toast.warning(`${label} failed. Your local browser copy is still saved.`);
+}
+
+function withoutCloudOnlyPreferences<T extends Partial<UserPreferences>>(preferences: T) {
+  const { aiApiKeys: _aiApiKeys, ...cloudPreferences } = preferences;
+  return cloudPreferences as Omit<T, 'aiApiKeys'>;
 }
 
 function persistWithRetry(label: string, operation: () => Promise<unknown>, attempt = 0) {
@@ -164,7 +170,7 @@ export function WorkspaceBootstrap() {
 
     if (CLOUD_SYNC_ENABLED) {
       api.getPreferences().then((response) => {
-        preferencesStore.patch(response.preferences);
+        preferencesStore.patch(withoutCloudOnlyPreferences(response.preferences));
         ensureBundledThemeLibraryEntries();
         if (response.preferences.selectedFileId) {
           fileStore.selectFile(response.preferences.selectedFileId);
@@ -193,7 +199,7 @@ export function WorkspaceBootstrap() {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       const isDark = snapshot.colorMode === 'dark' || (snapshot.colorMode === 'system' && prefersDark);
       document.documentElement.classList.toggle('dark', isDark);
-      persistWithRetry('Saving cloud preferences', () => api.patchPreferences(snapshot));
+      persistWithRetry('Saving cloud preferences', () => api.patchPreferences(withoutCloudOnlyPreferences(snapshot)));
     });
   }, []);
 

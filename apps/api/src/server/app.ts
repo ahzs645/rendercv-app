@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { ZodError } from 'zod';
 import type { ApiErrorResponse } from '@rendercv/contracts';
 import { filesRouter } from './routes/files';
@@ -14,6 +15,24 @@ import { metaRouter } from './routes/meta';
 import { publicCvRouter } from './routes/public-cv';
 
 export const app = new Hono();
+
+const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  '/api/*',
+  cors({
+    origin: (origin) => {
+      if (!origin) return origin;
+      if (allowedOrigins.length === 0) return origin;
+      return allowedOrigins.includes(origin) ? origin : null;
+    },
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type']
+  })
+);
 
 app.route('/api/files', filesRouter);
 app.route('/api/preferences', preferencesRouter);

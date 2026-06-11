@@ -162,6 +162,35 @@ function setIn(root: unknown, path: Array<string | number>, value: unknown): unk
   return next;
 }
 
+function insertIn(root: unknown, path: Array<string | number>, value: unknown): unknown {
+  if (path.length === 0) {
+    return cloneValue(value);
+  }
+
+  if (path.length === 1 && typeof path[0] === 'number' && Array.isArray(root)) {
+    const next = [...root];
+    next.splice(path[0], 0, cloneValue(value));
+    return next;
+  }
+
+  if (Array.isArray(root)) {
+    const [segment, ...rest] = path;
+    const index = Number(segment);
+    const next = [...root];
+    const currentChild = next[index] ?? (typeof rest[0] === 'number' ? [] : {});
+    next[index] = insertIn(currentChild, rest, value);
+    return next;
+  }
+
+  const objectRoot = isPlainObject(root) ? root : {};
+  const [segment, ...rest] = path;
+  const key = String(segment);
+  const next = { ...objectRoot };
+  const currentChild = next[key] ?? (typeof rest[0] === 'number' ? [] : {});
+  next[key] = insertIn(currentChild, rest, value);
+  return next;
+}
+
 function removeIn(root: unknown, path: Array<string | number>): unknown {
   if (path.length === 0) {
     return root;
@@ -686,7 +715,9 @@ export function applyAcceptedReviewChanges(
         continue;
       }
 
-      nextRoot = setIn(nextRoot, change.path, change.proposedValue);
+      nextRoot = change.kind === 'add'
+        ? insertIn(nextRoot, change.path, change.proposedValue)
+        : setIn(nextRoot, change.path, change.proposedValue);
     }
 
     nextSections[section.key] = stringifySectionRoot(section.key, nextRoot);

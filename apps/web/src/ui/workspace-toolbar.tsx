@@ -87,7 +87,7 @@ export function WorkspaceToolbar({
   const isDark =
     preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
 
-  const isReadOnly = Boolean(selectedFile?.isLocked);
+  const isReadOnly = Boolean(selectedFile?.isReadOnly);
   const canFormat = preferences.yamlEditor && !isReadOnly;
   const canPreviewActions = Boolean(sections);
   const canLinkActions = Boolean(selectedFile && sections);

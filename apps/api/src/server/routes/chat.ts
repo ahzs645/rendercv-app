@@ -7,6 +7,7 @@ import { persistState, serverState } from '../persistence';
 
 type ChatPayload = {
   messages?: UIMessage[];
+  message?: string;
   fileContext?: Partial<CvFileSections>;
   model?: string;
   provider?: AiProviderId;
@@ -16,7 +17,7 @@ type ChatPayload = {
 export const chatRouter = new Hono().post('/', async (context) => {
   const payload = (await context.req.json().catch(() => ({}))) as ChatPayload;
   const messages = Array.isArray(payload.messages) ? payload.messages : [];
-  const prompt = getLastUserMessage(messages);
+  const prompt = getLastUserMessage(messages) || payload.message?.trim() || '';
 
   if (!prompt) {
     return jsonError(context, 'invalid_request', 'A user message is required to continue the chat.', 400);

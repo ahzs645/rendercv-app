@@ -447,6 +447,11 @@ export class FileStore {
   }
 
   selectFile(id: string) {
+    if (!this.files.some((file) => file.id === id)) {
+      this.#ensureSelectedVisible();
+      return;
+    }
+
     this.#store.update((current) => ({ ...current, selectedFileId: id }));
     preferencesStore.patch({ selectedFileId: id });
   }
@@ -590,31 +595,31 @@ export class FileStore {
   }
 
   archiveFile(id: string) {
-    this.#updateMeta(id, { isArchived: true });
+    this.#updateMeta(id, { isArchived: true }, { allowReadOnly: true });
     this.#ensureSelectedVisible();
   }
 
   restoreFromArchive(id: string) {
-    this.#updateMeta(id, { isArchived: false });
+    this.#updateMeta(id, { isArchived: false }, { allowReadOnly: true });
     this.#ensureSelectedVisible();
   }
 
   trashFile(id: string) {
-    this.#updateMeta(id, { isTrashed: true });
+    this.#updateMeta(id, { isTrashed: true }, { allowReadOnly: true });
     this.#ensureSelectedVisible();
   }
 
   restoreFile(id: string) {
-    this.#updateMeta(id, { isTrashed: false });
+    this.#updateMeta(id, { isTrashed: false }, { allowReadOnly: true });
     this.#ensureSelectedVisible();
   }
 
   lockFile(id: string) {
-    this.#updateMeta(id, { isLocked: true });
+    this.#updateMeta(id, { isLocked: true }, { allowReadOnly: true });
   }
 
   unlockFile(id: string) {
-    this.#updateMeta(id, { isLocked: false });
+    this.#updateMeta(id, { isLocked: false }, { allowReadOnly: true });
   }
 
   makePublic(id: string) {
@@ -666,7 +671,7 @@ export class FileStore {
 
   replaceFileSections(id: string, sections: CvFileSections) {
     const file = this.files.find((current) => current.id === id);
-    if (!file) {
+    if (!file || file.isReadOnly) {
       return;
     }
 
@@ -696,6 +701,7 @@ export class FileStore {
 
     this.persistence?.onUpdateMeta?.(id, {
       designs: nextDesigns,
+      locales: nextLocales,
       selectedTheme: nextTheme,
       selectedLocale: nextLocale
     });
@@ -736,9 +742,9 @@ export class FileStore {
     return true;
   }
 
-  #updateMeta(id: string, patch: Record<string, unknown>) {
+  #updateMeta(id: string, patch: Record<string, unknown>, options?: { allowReadOnly?: boolean }) {
     const file = this.files.find((current) => current.id === id);
-    if (!file) {
+    if (!file || (file.isReadOnly && !options?.allowReadOnly)) {
       return;
     }
 

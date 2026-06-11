@@ -60,6 +60,23 @@ describe('RenderCV API', () => {
     expect(body.error.code).toBe('file_id_mismatch');
   });
 
+  it('rejects duplicate file ids on create', async () => {
+    const filesResponse = await app.request('/api/files');
+    const filesBody = (await filesResponse.json()) as { files: Array<Record<string, unknown> & { id: string }> };
+    const existing = filesBody.files[0];
+    expect(existing).toBeTruthy();
+
+    const response = await app.request('/api/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(existing)
+    });
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(body.error.code).toBe('duplicate_file_id');
+  });
+
   it('rejects migrate requests without a firebase uid', async () => {
     const response = await app.request('/api/migrate', {
       method: 'POST',
@@ -117,6 +134,18 @@ describe('RenderCV API', () => {
     expect(connectionBody.connection?.repoName).toBe('rendercv-test');
     expect(connectionBody.connection?.isPrivate).toBe(true);
     expect(connectionBody.connection?.lastSyncedAt).not.toBeNull();
+  });
+
+  it('rejects unsafe GitHub sync repository names', async () => {
+    const response = await app.request('/api/github/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoName: '../../outside' })
+    });
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe('invalid_repo');
   });
 
   it('rejects PDF import without an uploaded file', async () => {

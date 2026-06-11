@@ -9,9 +9,14 @@ export interface AiUsage {
 export interface ChatRequest {
   fileId?: string;
   chatSessionId?: string;
-  model: string;
-  fileContext: CvFileSections;
-  message: string;
+  model?: string;
+  fileContext?: Partial<CvFileSections>;
+  messages?: Array<{
+    role: 'system' | 'user' | 'assistant';
+    parts: Array<{ type: 'text'; text: string } | Record<string, unknown>>;
+  }>;
+  /** Legacy/simple prompt shape accepted by API clients that do not use AI SDK messages. */
+  message?: string;
   /** When provider !== 'managed', the request is BYOK and `apiKey` should be present. */
   provider?: AiProviderId;
   apiKey?: string;

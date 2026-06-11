@@ -62,6 +62,9 @@ export const filesRouter = new Hono()
   .get('/', (context) => context.json<FilesListResponse>({ files: serverState.files }))
   .post(async (context) => {
     const body = cvFileSchema.parse(await context.req.json());
+    if (serverState.files.some((file) => file.id === body.id)) {
+      return jsonError(context, 'duplicate_file_id', 'A file with this ID already exists.', 409);
+    }
 
     serverState.files.unshift(body);
     persistState();
@@ -71,6 +74,14 @@ export const filesRouter = new Hono()
     const body = z
       .object({ files: z.array(cvFileSchema).default([]) })
       .parse(await context.req.json().catch(() => ({ files: [] })));
+    const existingIds = new Set(serverState.files.map((file) => file.id));
+    const incomingIds = new Set<string>();
+    for (const file of body.files) {
+      if (existingIds.has(file.id) || incomingIds.has(file.id)) {
+        return jsonError(context, 'duplicate_file_id', 'Migrated files contain a duplicate ID.', 409);
+      }
+      incomingIds.add(file.id);
+    }
     serverState.files.unshift(...body.files);
     persistState();
     return context.json<FilesListResponse>({ files: serverState.files });

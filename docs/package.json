@@ -1,0 +1,21 @@
+{
+  "name": "@rendercv/docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "test": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.39.0",
+    "astro": "^6.0.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.5",
+    "typescript": "^5.9.2"
+  }
+}

@@ -112,7 +112,7 @@ function isInteractiveElementFocused(): boolean {
   return false;
 }
 
-export function Workspace() {
+export function Workspace({ active = true }: { active?: boolean }) {
   const navigate = useNavigate();
   const fileSnapshot = useStore(fileStore);
   const reviewSnapshot = useStore(reviewStore);
@@ -273,8 +273,8 @@ export function Workspace() {
 
       // Cmd+K → Toggle lock/unlock
       if (key === 'k') {
-        e.preventDefault();
         if (isInteractiveElementFocused()) return;
+        e.preventDefault();
         const file = fileSnapshot.files.find((f) => f.id === fileSnapshot.selectedFileId);
         if (!file) return;
         if (file.isLocked) {
@@ -362,13 +362,13 @@ export function Workspace() {
   }, [rawSections?.cv, selectedFile]);
 
   useEffect(() => {
-    if (!selectedFile || preferences.onboardingCompletedAt) {
+    if (!active || !selectedFile || preferences.onboardingCompletedAt) {
       return;
     }
 
     const timer = window.setTimeout(() => onboardingTour.start(), 800);
     return () => window.clearTimeout(timer);
-  }, [preferences.onboardingCompletedAt, selectedFile]);
+  }, [active, preferences.onboardingCompletedAt, selectedFile]);
 
   useEffect(() => {
     if (!selectedFile || selectedFile.selectedTheme === 'ahmadstyle' || !rawSections?.cv.includes(' | ')) {
@@ -653,7 +653,7 @@ export function Workspace() {
               ref={monacoRef}
               value={currentValue}
               onChange={handleSectionChange}
-              readOnly={selectedFile?.isLocked}
+              readOnly={selectedFile?.isReadOnly}
             />
           </Suspense>
         ) : (
@@ -663,10 +663,10 @@ export function Workspace() {
             value={currentValue}
             onChange={handleSectionChange}
             sharedOrigin={selectedFile?.sharedOrigin}
-            readOnly={selectedFile?.isLocked}
+            readOnly={selectedFile?.isReadOnly}
             hiddenEntries={selectedFile?.hiddenEntries}
             onToggleEntryHidden={
-              selectedFile && !selectedFile.isLocked
+              selectedFile && !selectedFile.isReadOnly
                 ? (sectionKey: string, fingerprint: string) =>
                     fileStore.toggleEntryHidden(selectedFile.id, sectionKey, fingerprint)
                 : undefined
@@ -680,7 +680,7 @@ export function Workspace() {
             )}
             currentTheme={selectedFile?.selectedTheme}
             onThemeChange={
-              selectedFile
+              selectedFile && !selectedFile.isReadOnly
                 ? (theme: string) => fileStore.setTheme(selectedFile.id, theme)
                 : undefined
             }
@@ -690,7 +690,7 @@ export function Workspace() {
     </div>
   );
 
-  const canFit = Boolean(selectedFile && !selectedFile.isLocked && rawSections?.cv);
+  const canFit = Boolean(selectedFile && !selectedFile.isReadOnly && rawSections?.cv);
   const hiddenEntryCount = countHiddenEntries(selectedFile?.hiddenEntries);
   const previewPane = (
     <div className="relative h-full">

@@ -183,4 +183,34 @@ describe('applyAcceptedReviewChanges', () => {
       { name: 'Tools', summary: 'details: SQL, Python, Tableau' }
     ]);
   });
+
+  it('inserts accepted array additions without overwriting existing entries', () => {
+    const baseline = makeSections({
+      cv: yamlSection('cv', {
+        sections: {
+          experience: [{ company: 'Existing Co', position: 'Engineer' }]
+        }
+      })
+    });
+    const proposed = makeSections({
+      cv: yamlSection('cv', {
+        sections: {
+          experience: [
+            { company: 'New Co', position: 'Staff Engineer' },
+            { company: 'Existing Co', position: 'Engineer' }
+          ]
+        }
+      })
+    });
+
+    const sectionChanges = computeReviewSectionChanges(baseline, proposed);
+    const merged = applyAcceptedReviewChanges(baseline, sectionChanges, {
+      'cv:add:sections.experience.0': 'accepted'
+    });
+
+    expect(YAML.parse(merged.cv).cv.sections.experience).toEqual([
+      { company: 'New Co', position: 'Staff Engineer' },
+      { company: 'Existing Co', position: 'Engineer' }
+    ]);
+  });
 });

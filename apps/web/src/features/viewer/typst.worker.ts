@@ -19,6 +19,7 @@ const BASE_URL = import.meta.env.BASE_URL;
 
 let typst: TypstModule | null = null;
 let typstRuntimePromise: Promise<[unknown, { preloadRemoteFonts: (fontUrls: string[]) => unknown }]> | null = null;
+let typstOperationQueue = Promise.resolve();
 
 function assetUrl(path: string) {
   return new URL(`${BASE_URL}${path}`, self.location.origin).toString();
@@ -152,9 +153,15 @@ async function initTypst(fontUrls: string[]) {
   });
 }
 
-self.onmessage = async (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
+self.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
   const { id, type, payload } = event.data;
 
+  typstOperationQueue = typstOperationQueue
+    .catch(() => undefined)
+    .then(() => handleTypstMessage(id, type, payload));
+};
+
+async function handleTypstMessage(id: number, type: string, payload: unknown) {
   try {
     switch (type) {
       case 'INIT':
@@ -186,4 +193,4 @@ self.onmessage = async (event: MessageEvent<{ id: number; type: string; payload?
       payload: formatTypstError(error)
     });
   }
-};
+}

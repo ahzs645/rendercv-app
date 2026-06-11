@@ -1,4 +1,6 @@
 node_modules
+.playwright-mcp/
+data/
 build
 .env.local
 .env.*.local
@@ -8,8 +10,12 @@ coverage
 playwright-report
 test-results
 .turbo
+.astro
+*.tsbuildinfo
+preview-timing*.json
 static/cdn/themes/*.zip
 apps/api/data/
+apps/api/apps/
 
 # micropython-wasm probe scratch
 experiments/mpwasm/.mp-input/

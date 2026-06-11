@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { Hono } from 'hono';
 import type { GitHubConnectionResponse, GitHubSyncResponse } from '@rendercv/contracts';
 import { resolveFileSections } from '@rendercv/core';
@@ -17,6 +17,9 @@ export const githubRouter = new Hono()
     const isPrivate = context.req.query('private') === 'true';
 
     if (repoName) {
+      if (!isSafeRepoName(repoName)) {
+        return jsonError(context, 'invalid_repo', 'Repository name contains invalid characters.', 400);
+      }
       connectAndSync(repoName, isPrivate);
     }
 
@@ -34,6 +37,9 @@ export const githubRouter = new Hono()
     if (!repoName) {
       return jsonError(context, 'missing_repo', 'Repository name is required to start GitHub sync.', 400);
     }
+    if (!isSafeRepoName(repoName)) {
+      return jsonError(context, 'invalid_repo', 'Repository name contains invalid characters.', 400);
+    }
 
     connectAndSync(repoName, isPrivate);
     persistState();
@@ -50,7 +56,11 @@ export const githubRouter = new Hono()
 
 function connectAndSync(repoName: string, isPrivate: boolean) {
   const repoFullName = `rendercv-local/${repoName}`;
-  const exportRoot = resolve(API_DATA_DIR, 'github-sync', repoName);
+  const syncRoot = resolve(API_DATA_DIR, 'github-sync');
+  const exportRoot = resolve(syncRoot, repoName);
+  if (relative(syncRoot, exportRoot).startsWith('..')) {
+    throw new Error('Repository path resolved outside the sync directory.');
+  }
 
   mkdirSync(exportRoot, { recursive: true });
 
@@ -97,4 +107,8 @@ function connectAndSync(repoName: string, isPrivate: boolean) {
     isPrivate,
     lastSyncedAt: new Date().toISOString()
   };
+}
+
+function isSafeRepoName(repoName: string) {
+  return /^[A-Za-z0-9._-]{1,100}$/.test(repoName) && repoName !== '.' && repoName !== '..';
 }

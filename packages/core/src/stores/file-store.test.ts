@@ -83,6 +83,24 @@ describe('fileStore', () => {
     expect(duplicate).toBeDefined();
     expect(duplicate!.sharedOrigin).toBeUndefined();
   });
+
+  it('ignores invalid selected file ids', () => {
+    const before = fileStore.getSnapshot().selectedFileId;
+
+    fileStore.selectFile('missing-file-id');
+
+    expect(fileStore.getSnapshot().selectedFileId).toBe(before);
+  });
+
+  it('does not mutate archived files through ordinary edit operations', () => {
+    const file = fileStore.createFile('Archived Edit Guard');
+
+    fileStore.archiveFile(file.id);
+    fileStore.setTheme(file.id, 'moderncv');
+
+    const archived = fileStore.getSnapshot().files.find((entry) => entry.id === file.id)!;
+    expect(archived.selectedTheme).toBe(file.selectedTheme);
+  });
 });
 
 describe('readThemeName', () => {

@@ -311,8 +311,14 @@ with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
 
         if not relative_path.parts:
             continue
+        if any(part == ".." for part in relative_path.parts) or relative_path.is_absolute():
+            raise RuntimeError("Theme archive contains an unsafe path.")
 
         destination = custom_theme_folder.joinpath(*relative_path.parts)
+        try:
+            destination.resolve().relative_to(custom_theme_folder.resolve())
+        except ValueError:
+            raise RuntimeError("Theme archive contains an unsafe path.")
         if info.is_dir():
             destination.mkdir(parents=True, exist_ok=True)
             continue
@@ -530,15 +536,6 @@ async function renderSectionsWithFallback(sections: {
     normalized_cv?: string | null;
     warnings?: string[] | null;
   };
-  if (import.meta.env.DEV) {
-    console.log('[RenderCV worker] first render result', {
-      keys: Object.keys(firstResult ?? {}),
-      hasNormalizedCvInResult: typeof firstResult.normalized_cv === 'string',
-      normalizedCvFromResultLength: firstResult.normalized_cv?.length ?? null,
-      normalizedCvFromGlobalsLength: null,
-      errorCount: firstResult.errors?.length ?? 0
-    });
-  }
 
   const hasMissingCustomThemeError = firstResult.errors?.some(
     (error) =>
@@ -579,15 +576,6 @@ async function renderSectionsWithFallback(sections: {
     normalized_cv?: string | null;
     warnings?: string[] | null;
   };
-  if (import.meta.env.DEV) {
-    console.log('[RenderCV worker] fallback render result', {
-      keys: Object.keys(fallbackResult ?? {}),
-      hasNormalizedCvInResult: typeof fallbackResult.normalized_cv === 'string',
-      normalizedCvFromResultLength: fallbackResult.normalized_cv?.length ?? null,
-      normalizedCvFromGlobalsLength: null,
-      errorCount: fallbackResult.errors?.length ?? 0
-    });
-  }
   return {
     ...fallbackResult,
     normalizedCv: fallbackResult.normalized_cv ?? firstResult.normalized_cv ?? null,

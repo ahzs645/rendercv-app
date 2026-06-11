@@ -96,6 +96,31 @@ describe('ReviewStore', () => {
     expect(updated.proposals[0]?.reviewerName).toBe('Morgan');
   });
 
+  it('rejects proposals whose baseline does not match an existing thread', () => {
+    const store = new ReviewStore();
+    const baseline = makeSections();
+    const session = store.ensureSession({
+      linkedFileId: 'file-1',
+      baseFileName: 'Resume',
+      rootBaselineSections: baseline,
+      threadId: 'thread-1'
+    });
+
+    const proposal: ReviewProposalPackage = {
+      version: 1,
+      proposalId: 'proposal-1',
+      threadId: 'thread-1',
+      rootFingerprint: session.rootFingerprint,
+      fileName: 'Resume',
+      rootBaselineSections: makeSections({ cv: 'cv:\n  name: Different Baseline' }),
+      proposedSections: makeSections({ cv: 'cv:\n  name: Morgan Doe\n  label: Developer' }),
+      reviewerName: 'Morgan',
+      createdAt: 1_700_000_000_000
+    };
+
+    expect(() => store.importProposal(proposal)).toThrow(/baseline does not match/);
+  });
+
   it('migrates legacy review copies into a pending session without losing the original baseline', () => {
     const store = new ReviewStore();
     const baseline = makeSections();

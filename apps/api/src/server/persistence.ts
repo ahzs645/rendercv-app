@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import type { CvFile, FeedbackSubmission, GitHubConnection, UserPreferences } from '@rendercv/contracts';
 import { fileStore } from '@rendercv/core';
 
@@ -16,7 +15,9 @@ type PersistedState = {
   };
 };
 
-export const API_DATA_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../data');
+export const API_DATA_DIR = resolve(
+  process.env.RENDERCV_DATA_DIR ?? process.env.API_DATA_DIR ?? 'data'
+);
 const DATA_PATH = resolve(API_DATA_DIR, 'state.json');
 
 function stripReadOnly(files: ReturnType<typeof fileStore.getSnapshot>['files']) {
@@ -57,7 +58,7 @@ function loadState(): PersistedState {
 export const serverState = loadState();
 
 export function persistState() {
-  mkdirSync(dirname(DATA_PATH), { recursive: true });
+  mkdirSync(API_DATA_DIR, { recursive: true });
   writeFileSync(DATA_PATH, JSON.stringify(serverState, null, 2));
 }
 
