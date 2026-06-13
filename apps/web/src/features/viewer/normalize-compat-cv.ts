@@ -74,6 +74,7 @@ const ENTRY_META_FIELDS = new Set([
   'url',
   'doi'
 ]);
+const DATE_FIELD_NAMES = new Set(['date', 'start_date', 'end_date']);
 const TITLE_FIELD_CANDIDATES = [
   'name',
   'title',
@@ -210,6 +211,26 @@ function stringifyNumbers(value: unknown): unknown {
   }
 
   return value;
+}
+
+function sanitizeDateSentinels(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeDateSentinels(item));
+  }
+
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => {
+      if (DATE_FIELD_NAMES.has(key) && typeof item === 'string' && item.trim().toLowerCase() === 'present') {
+        return [key, 'present'];
+      }
+
+      return [key, sanitizeDateSentinels(item)];
+    })
+  );
 }
 
 function normalizeStringList(value: unknown) {
@@ -1399,5 +1420,5 @@ export function normalizeCompatibilityCvYaml(
     }
   }
 
-  return YAML.stringify(stringifyNumbers(parsed));
+  return YAML.stringify(stringifyNumbers(sanitizeDateSentinels(parsed)));
 }

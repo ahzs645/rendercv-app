@@ -88,6 +88,7 @@ ENTRY_META_FIELDS = {
     "url",
     "doi",
 }
+DATE_FIELD_NAMES = {"date", "start_date", "end_date"}
 TITLE_FIELD_CANDIDATES = (
     "name",
     "title",
@@ -367,6 +368,21 @@ def stringify_numbers(value):
     if isinstance(value, (int, float)):
         return str(value)
     return value
+
+
+def sanitize_date_sentinels(value):
+    if isinstance(value, list):
+        return [sanitize_date_sentinels(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+
+    sanitized = {}
+    for key, item in value.items():
+        if key in DATE_FIELD_NAMES and isinstance(item, str) and item.strip().lower() == "present":
+            sanitized[key] = "present"
+        else:
+            sanitized[key] = sanitize_date_sentinels(item)
+    return sanitized
 
 
 def pick_flavor_value(value):
@@ -851,7 +867,7 @@ def normalize_cv_yaml(yaml_text):
                 normalized_entries.extend(expand_nested_positions(entry))
             sections[section_name] = normalize_unknown_entries(normalized_entries, section_name)
 
-    return safe_dump_yaml(stringify_numbers(parsed))
+    return safe_dump_yaml(stringify_numbers(sanitize_date_sentinels(parsed)))
 
 
 design_parsed = safe_load_yaml(yaml_input_design)

@@ -174,6 +174,34 @@ describe('prepareViewerSections', () => {
     expect(sections.cv).toContain('placeholder: 3333 University Way, Prince George, BC');
   });
 
+  it('normalizes present date sentinel casing in section entries and nested positions', () => {
+    const sections = prepareViewerSections({
+      cv: `cv:
+  sections:
+    experience:
+      - company: Weigl Enterprises
+        position: Engineer in Training
+        start_date: 2025-03
+        end_date: Present
+      - company: University of Northern British Columbia
+        position: CAD Technician
+        positions:
+          - title: Structural CAD/BIM Technologist
+            start_date: 2026-05
+            end_date: PRESENT
+`,
+      design: `design:
+  theme: classic
+`,
+      locale: '',
+      settings: ''
+    });
+
+    expect(sections.cv).toContain('end_date: present');
+    expect(sections.cv).not.toContain('end_date: Present');
+    expect(sections.cv).not.toContain('end_date: PRESENT');
+  });
+
   it('normalizes legacy social entries into supported social networks and custom connections', () => {
     const sections = prepareViewerSections({
       cv: `cv:
