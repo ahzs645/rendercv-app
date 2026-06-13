@@ -242,7 +242,7 @@ function SortableEntryArrayItem({
         <div
           ref={setActivatorNodeRef}
           {...listeners}
-          className="form-item-control absolute top-1/2 left-0 flex size-9 -translate-y-1/2 items-center justify-center rounded-md cursor-grab touch-none text-muted-foreground/60 active:cursor-grabbing sm:left-1 sm:size-6 sm:rounded-none sm:text-muted-foreground/40"
+          className="form-item-control absolute top-1/2 left-0 flex size-11 -translate-y-1/2 items-center justify-center rounded-md cursor-grab touch-none text-muted-foreground/60 active:cursor-grabbing sm:left-1 sm:size-6 sm:rounded-none sm:text-muted-foreground/40"
         >
           <GripVertical className="size-4 sm:size-3.5" />
         </div>
@@ -250,7 +250,7 @@ function SortableEntryArrayItem({
           {hiddenState ? (
             <button
               type="button"
-              className={`form-item-control flex size-9 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
+              className={`form-item-control flex size-11 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
                 isHidden
                   ? 'text-amber-600 sm:text-amber-600'
                   : 'text-muted-foreground/60 hover:text-foreground sm:text-muted-foreground/40'
@@ -264,14 +264,14 @@ function SortableEntryArrayItem({
           ) : null}
           <button
             type="button"
-            className="form-item-control flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-6 sm:rounded-none sm:hover:bg-transparent"
+            className="form-item-control flex size-11 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-6 sm:rounded-none sm:hover:bg-transparent"
             onClick={() => onRemove(index)}
             aria-label="Remove"
           >
             <X className="size-4 sm:size-3" />
           </button>
         </div>
-        <div className={`pr-16 sm:pr-12 ${isHidden ? 'opacity-45' : ''}`}>
+        <div className={`pr-24 sm:pr-12 ${isHidden ? 'opacity-45' : ''}`}>
           {template === 'text' ? (
             <TextRow
               value={typeof entry === 'string' ? entry : ''}

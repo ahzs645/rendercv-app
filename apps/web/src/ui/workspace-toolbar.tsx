@@ -695,8 +695,8 @@ export function WorkspaceToolbar({
   }
 
   return (
-    <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 px-4 py-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <div className="flex min-h-12 flex-nowrap items-center justify-between gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
         <ToolbarIconButton
           active={!sidebarCollapsed}
           ariaLabel={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
@@ -704,7 +704,7 @@ export function WorkspaceToolbar({
         >
           <PanelLeft className="size-4" />
         </ToolbarIconButton>
-        <div className="mr-2 hidden min-w-0 lg:block">
+        <div className="mr-1 hidden max-w-32 min-w-0 xl:block">
           <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {selectedFile?.name ?? 'RenderCV'}
           </p>
@@ -766,7 +766,7 @@ export function WorkspaceToolbar({
         />
         {!isReadOnly ? <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} /> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
         <ToolbarControlGroup>
           <ToolbarIconButton
             ariaLabel="Zoom out"

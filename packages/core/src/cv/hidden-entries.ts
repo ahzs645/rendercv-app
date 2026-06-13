@@ -136,6 +136,50 @@ export function stripEmptySectionsFromCvYaml(cvYaml: string): string {
   return YAML.stringify(parsed);
 }
 
+/**
+ * Remove whole disabled sections from a CV YAML string. Returns the input
+ * unchanged when there is nothing disabled or the YAML can't be parsed.
+ *
+ * Unlike `filterHiddenEntriesFromCvYaml`, this drops sections by key (not by
+ * entry fingerprint), so a disabled section stays disabled while its entries
+ * are edited.
+ */
+export function filterDisabledSectionsFromCvYaml(
+  cvYaml: string,
+  disabledSections: string[] | undefined
+): string {
+  if (!cvYaml || !disabledSections || disabledSections.length === 0) {
+    return cvYaml;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(cvYaml);
+  } catch {
+    return cvYaml;
+  }
+
+  if (!isPlainObject(parsed) || !isPlainObject(parsed.cv) || !isPlainObject(parsed.cv.sections)) {
+    return cvYaml;
+  }
+
+  const sections = parsed.cv.sections as Record<string, unknown>;
+  let changed = false;
+
+  for (const sectionKey of disabledSections) {
+    if (sectionKey in sections) {
+      delete sections[sectionKey];
+      changed = true;
+    }
+  }
+
+  if (!changed) {
+    return cvYaml;
+  }
+
+  return YAML.stringify(parsed);
+}
+
 /** Count how many entries the given hidden map actually hides. */
 export function countHiddenEntries(hidden: Record<string, string[]> | undefined): number {
   if (!hidden) return 0;

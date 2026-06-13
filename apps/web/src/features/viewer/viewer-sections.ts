@@ -1,5 +1,6 @@
 import type { CvFile, CvFileSections, CvVariantDefinition } from '@rendercv/contracts';
 import {
+  filterDisabledSectionsFromCvYaml,
   filterHiddenEntriesFromCvYaml,
   resolveFileSections,
   stripEmptySectionsFromCvYaml
@@ -118,11 +119,14 @@ export function resolveViewerSections(file: CvFile): CvFileSections {
       ? file.variants[file.selectedVariant]
       : undefined;
 
-  // Drop entries hidden via Fit-to-page / manual visibility toggles before the
-  // CV reaches the renderer. The editor keeps the full CV (resolveFileSections).
+  // Drop disabled sections and hidden entries before the CV reaches the
+  // renderer. The editor keeps the full CV (resolveFileSections).
   const visibleSections: CvFileSections = {
     ...sections,
-    cv: filterHiddenEntriesFromCvYaml(sections.cv, file.hiddenEntries)
+    cv: filterHiddenEntriesFromCvYaml(
+      filterDisabledSectionsFromCvYaml(sections.cv, file.disabledSections),
+      file.hiddenEntries
+    )
   };
 
   return prepareViewerSections(visibleSections, variant);

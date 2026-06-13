@@ -671,6 +671,13 @@ export function Workspace({ active = true }: { active?: boolean }) {
                     fileStore.toggleEntryHidden(selectedFile.id, sectionKey, fingerprint)
                 : undefined
             }
+            disabledSections={selectedFile?.disabledSections}
+            onToggleSectionDisabled={
+              selectedFile && !selectedFile.isReadOnly
+                ? (sectionKey: string) =>
+                    fileStore.toggleSectionDisabled(selectedFile.id, sectionKey)
+                : undefined
+            }
             themeOptions={Array.from(
               new Set([
                 ...Object.keys(defaultDesigns),
