@@ -574,6 +574,21 @@ export class FileStore {
     this.#updateMeta(id, { hiddenEntries: next });
   }
 
+  /** Toggle whether a whole CV section is disabled (excluded from render/export). */
+  toggleSectionDisabled(id: string, sectionKey: string) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file) {
+      return;
+    }
+
+    const current = file.disabledSections ?? [];
+    const next = current.includes(sectionKey)
+      ? current.filter((key) => key !== sectionKey)
+      : [...current, sectionKey];
+
+    this.#updateMeta(id, { disabledSections: next });
+  }
+
   /** Reveal every hidden entry. */
   clearHiddenEntries(id: string) {
     const file = this.files.find((current) => current.id === id);

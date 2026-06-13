@@ -15,7 +15,8 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Plus, X } from 'lucide-react';
+import { Eye, EyeOff, GripVertical, Plus, X } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   createDefaultEntry,
   detectEntryType,
@@ -36,7 +37,8 @@ import {
   createUniqueSectionKey,
   renameRecordKey,
   removeRecordKey,
-  moveRecordEntry
+  moveRecordEntry,
+  insertRecordEntryAt
 } from './utils';
 
 type DragHandleProps = {
@@ -47,11 +49,15 @@ type DragHandleProps = {
 export function CvSectionEditor({
   entriesExpanded,
   rootValue,
-  onChange
+  onChange,
+  disabledSections,
+  onToggleSectionDisabled
 }: {
   entriesExpanded: boolean;
   rootValue: Record<string, unknown>;
   onChange: (nextRoot: Record<string, unknown>) => void;
+  disabledSections?: string[];
+  onToggleSectionDisabled?: (sectionKey: string) => void;
 }) {
   const socialNetworks = asArray(rootValue.social_networks);
   const customConnections = asArray(rootValue.custom_connections);
@@ -83,7 +89,13 @@ export function CvSectionEditor({
         onChange={(nextEntries) => updateCvField('custom_connections', nextEntries)}
         originPath={['custom_connections']}
       />
-      <SectionMapEditor entriesExpanded={entriesExpanded} sections={sections} onChange={updateSections} />
+      <SectionMapEditor
+        entriesExpanded={entriesExpanded}
+        sections={sections}
+        onChange={updateSections}
+        disabledSections={disabledSections}
+        onToggleSectionDisabled={onToggleSectionDisabled}
+      />
     </>
   );
 }
@@ -91,14 +103,24 @@ export function CvSectionEditor({
 function SectionMapEditor({
   entriesExpanded,
   sections,
-  onChange
+  onChange,
+  disabledSections,
+  onToggleSectionDisabled
 }: {
   entriesExpanded: boolean;
   sections: Record<string, unknown>;
   onChange: (sections: Record<string, unknown>) => void;
+  disabledSections?: string[];
+  onToggleSectionDisabled?: (sectionKey: string) => void;
 }) {
+  const disabledSet = new Set(disabledSections ?? []);
   const sectionEntries = Object.entries(sections);
   const sectionKeys = sectionEntries.map(([sectionKey]) => sectionKey);
+
+  // Keep the freshest sections + onChange so a deferred Undo (from the toast)
+  // re-inserts into the current document rather than a stale snapshot.
+  const latestRef = useRef({ sections, onChange });
+  latestRef.current = { sections, onChange };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 3 } })
@@ -133,7 +155,19 @@ function SectionMapEditor({
   }
 
   function deleteSection(sectionKey: string) {
+    const index = sectionKeys.indexOf(sectionKey);
+    const removedValue = sections[sectionKey];
+    const title = dictionaryKeyToTitle(sectionKey);
     onChange(removeRecordKey(sections, sectionKey));
+    toast(`Removed "${title}" section`, {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          const { sections: latestSections, onChange: latestOnChange } = latestRef.current;
+          latestOnChange(insertRecordEntryAt(latestSections, sectionKey, removedValue, index));
+        }
+      }
+    });
   }
 
   function updateSectionEntries(sectionKey: string, nextEntries: unknown[]) {
@@ -165,6 +199,10 @@ function SectionMapEditor({
                 sectionKey={sectionKey}
                 entries={asArray(sectionValue)}
                 entriesExpanded={entriesExpanded}
+                disabled={disabledSet.has(sectionKey)}
+                onToggleDisabled={
+                  onToggleSectionDisabled ? () => onToggleSectionDisabled(sectionKey) : undefined
+                }
                 onDelete={() => deleteSection(sectionKey)}
                 onRename={renameSection}
                 onChangeEntries={(nextEntries) => updateSectionEntries(sectionKey, nextEntries)}
@@ -187,6 +225,8 @@ function SortableSectionEditor(props: {
   sectionKey: string;
   entries: unknown[];
   entriesExpanded: boolean;
+  disabled: boolean;
+  onToggleDisabled?: () => void;
   onRename: (oldKey: string, nextTitle: string) => void;
   onDelete: () => void;
   onChangeEntries: (entries: unknown[]) => void;
@@ -226,6 +266,8 @@ function SectionEditor({
   sectionKey,
   entries,
   entriesExpanded,
+  disabled,
+  onToggleDisabled,
   onRename,
   onDelete,
   onChangeEntries,
@@ -234,6 +276,8 @@ function SectionEditor({
   sectionKey: string;
   entries: unknown[];
   entriesExpanded: boolean;
+  disabled: boolean;
+  onToggleDisabled?: () => void;
   onRename: (oldKey: string, nextTitle: string) => void;
   onDelete: () => void;
   onChangeEntries: (entries: unknown[]) => void;
@@ -266,12 +310,14 @@ function SectionEditor({
           ref={dragHandle.setActivatorNodeRef}
           {...dragHandle.listeners}
           aria-label="Drag to reorder section"
-          className="form-item-control absolute top-1/2 left-0 flex size-9 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground/60 active:cursor-grabbing sm:left-1 sm:size-6 sm:rounded-none sm:text-muted-foreground/40"
+          className="form-item-control absolute top-1/2 left-0 flex size-11 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground/60 active:cursor-grabbing sm:left-1 sm:size-6 sm:rounded-none sm:text-muted-foreground/40"
         >
           <GripVertical className="size-4 sm:size-3.5" />
         </div>
         <input
-          className="flex-1 border-b border-muted-foreground/40 bg-transparent py-2 text-base font-semibold text-foreground/80 outline-none sm:py-0 sm:text-[15px]"
+          className={`flex-1 border-b border-muted-foreground/40 bg-transparent py-2 pr-20 pl-4 text-base font-semibold outline-none sm:py-0 sm:pr-2 sm:pl-0 sm:text-[15px] ${
+            disabled ? 'text-foreground/40 line-through decoration-1' : 'text-foreground/80'
+          }`}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           onBlur={() => onRename(sectionKey, title)}
@@ -282,29 +328,48 @@ function SectionEditor({
             }
           }}
         />
-        <button
-          type="button"
-          className="absolute top-1/2 right-0 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground/70 opacity-90 transition-opacity hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 sm:right-1 sm:size-6 sm:rounded-none sm:hover:bg-transparent md:opacity-60 md:group-hover/section:opacity-100"
-          aria-label="Delete section"
-          onClick={onDelete}
-        >
-          <X className="size-4 sm:size-3" />
-        </button>
+        <div className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center sm:right-1">
+          {onToggleDisabled ? (
+            <button
+              type="button"
+              className={`flex size-11 items-center justify-center rounded-md transition-opacity hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
+                disabled
+                  ? 'text-amber-600 opacity-100 sm:text-amber-600'
+                  : 'text-muted-foreground/70 opacity-90 hover:text-foreground md:opacity-60 md:group-hover/section:opacity-100'
+              }`}
+              aria-label={disabled ? 'Enable section in resume' : 'Disable section in resume'}
+              title={disabled ? 'Disabled — excluded from the resume. Click to enable.' : 'Disable section — keep it here but exclude it from the resume'}
+              onClick={onToggleDisabled}
+            >
+              {disabled ? <EyeOff className="size-4 sm:size-3.5" /> : <Eye className="size-4 sm:size-3.5" />}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="flex size-11 items-center justify-center rounded-md text-muted-foreground/70 opacity-90 transition-opacity hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 sm:size-6 sm:rounded-none sm:hover:bg-transparent md:opacity-60 md:group-hover/section:opacity-100"
+            aria-label="Delete section"
+            onClick={onDelete}
+          >
+            <X className="size-4 sm:size-3" />
+          </button>
+        </div>
       </div>
-      {isEmpty ? (
-        <EntryTypeChooser onChoose={chooseEntryType} />
-      ) : (
-        <EntryArrayEditor
-          title={dictionaryKeyToTitle(sectionKey)}
-          entries={entries}
-          entriesExpanded={entriesExpanded}
-          template={detectedTemplate}
-          onChange={onChangeEntries}
-          showHeader={false}
-          sectionKey={sectionKey}
-          originPath={['sections', sectionKey]}
-        />
-      )}
+      <div className={disabled ? 'opacity-45' : undefined}>
+        {isEmpty ? (
+          <EntryTypeChooser onChoose={chooseEntryType} />
+        ) : (
+          <EntryArrayEditor
+            title={dictionaryKeyToTitle(sectionKey)}
+            entries={entries}
+            entriesExpanded={entriesExpanded}
+            template={detectedTemplate}
+            onChange={onChangeEntries}
+            showHeader={false}
+            sectionKey={sectionKey}
+            originPath={['sections', sectionKey]}
+          />
+        )}
+      </div>
     </article>
   );
 }
@@ -319,11 +384,34 @@ function AddSectionMenu({
   onAddPreset: (preset: SectionPreset) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [placement, setPlacement] = useState<{ dropUp: boolean; maxHeight: number }>({
+    dropUp: false,
+    maxHeight: 0
+  });
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const existingKeySet = new Set(existingKeys);
   const availablePresets = SECTION_PRESETS.filter(
     (preset) => !existingKeySet.has(properSectionTitleToKey(preset.title))
   );
+
+  // Decide whether the menu should drop down or flip up, and how tall it can be,
+  // so every option stays reachable even when the trigger sits near the bottom
+  // of the scrollable form (common on mobile).
+  function openMenu() {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const margin = 12;
+      const spaceBelow = window.innerHeight - rect.bottom - margin;
+      const spaceAbove = rect.top - margin;
+      const dropUp = spaceBelow < 280 && spaceAbove > spaceBelow;
+      setPlacement({
+        dropUp,
+        maxHeight: Math.max(180, Math.round(dropUp ? spaceAbove : spaceBelow))
+      });
+    }
+    setOpen(true);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -349,11 +437,12 @@ function AddSectionMenu({
   return (
     <div ref={containerRef} className="relative mt-4">
       <button
+        ref={triggerRef}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
         className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border/60 px-3 py-3 text-sm text-muted-foreground/80 transition-colors hover:border-border hover:text-foreground sm:min-h-0 sm:gap-1.5 sm:py-2.5 sm:text-xs sm:text-muted-foreground/70"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => (open ? setOpen(false) : openMenu())}
       >
         <Plus className="size-4 sm:size-3.5" />
         Add Section
@@ -361,7 +450,10 @@ function AddSectionMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute left-0 right-0 z-30 mt-1 max-h-[60vh] overflow-auto rounded-md border border-border bg-popover p-2 shadow-lg"
+          className={`absolute left-0 right-0 z-30 overflow-auto rounded-md border border-border bg-popover p-2 shadow-lg ${
+            placement.dropUp ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
+          style={{ maxHeight: placement.maxHeight ? `${placement.maxHeight}px` : '60vh' }}
         >
           {availablePresets.length > 0 ? (
             <>

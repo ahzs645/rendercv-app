@@ -36,7 +36,9 @@ export function FormEditor({
   onThemeChange,
   readOnly,
   hiddenEntries,
-  onToggleEntryHidden
+  onToggleEntryHidden,
+  disabledSections,
+  onToggleSectionDisabled
 }: {
   section: SectionKey;
   value: string;
@@ -48,6 +50,8 @@ export function FormEditor({
   readOnly?: boolean;
   hiddenEntries?: Record<string, string[]>;
   onToggleEntryHidden?: (sectionKey: string, fingerprint: string) => void;
+  disabledSections?: string[];
+  onToggleSectionDisabled?: (sectionKey: string) => void;
 }) {
   const preferences = useStore(preferencesStore);
 
@@ -180,6 +184,8 @@ export function FormEditor({
               entriesExpanded={preferences.entriesExpanded}
               rootValue={draftRootValue}
               onChange={updateRoot}
+              disabledSections={disabledSections}
+              onToggleSectionDisabled={onToggleSectionDisabled}
             />
           </HiddenEntriesProvider>
         ) : null}

@@ -271,3 +271,16 @@ export function moveRecordEntry(record: Record<string, unknown>, fromIndex: numb
   entries.splice(toIndex, 0, entry);
   return Object.fromEntries(entries);
 }
+
+/** Re-insert a key/value at a specific position (used to undo a section delete). */
+export function insertRecordEntryAt(
+  record: Record<string, unknown>,
+  key: string,
+  value: unknown,
+  index: number
+): Record<string, unknown> {
+  const entries = Object.entries(record).filter(([existingKey]) => existingKey !== key);
+  const clampedIndex = Math.max(0, Math.min(index, entries.length));
+  entries.splice(clampedIndex, 0, [key, value]);
+  return Object.fromEntries(entries);
+}

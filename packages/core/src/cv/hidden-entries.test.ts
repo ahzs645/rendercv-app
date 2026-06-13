@@ -3,6 +3,7 @@ import YAML from 'yaml';
 import {
   countHiddenEntries,
   entryFingerprint,
+  filterDisabledSectionsFromCvYaml,
   filterHiddenEntriesFromCvYaml,
   stripEmptySectionsFromCvYaml
 } from './hidden-entries';
@@ -113,6 +114,39 @@ describe('stripEmptySectionsFromCvYaml', () => {
   it('returns the input unchanged on unparseable YAML', () => {
     const broken = 'cv: [oops';
     expect(stripEmptySectionsFromCvYaml(broken)).toBe(broken);
+  });
+});
+
+describe('filterDisabledSectionsFromCvYaml', () => {
+  it('returns the input unchanged when nothing is disabled', () => {
+    expect(filterDisabledSectionsFromCvYaml(CV, undefined)).toBe(CV);
+    expect(filterDisabledSectionsFromCvYaml(CV, [])).toBe(CV);
+    expect(filterDisabledSectionsFromCvYaml(CV, ['nonexistent'])).toBe(CV);
+  });
+
+  it('drops a disabled section entirely and keeps the rest', () => {
+    const parsed = YAML.parse(filterDisabledSectionsFromCvYaml(CV, ['skills']));
+    expect('skills' in parsed.cv.sections).toBe(false);
+    expect(parsed.cv.sections.experience).toHaveLength(2);
+  });
+
+  it('drops a disabled section regardless of its entry content (content-independent)', () => {
+    // A disabled section stays disabled even if its entries change, unlike
+    // fingerprint-based hiding.
+    const edited = `cv:
+  name: Jane Doe
+  sections:
+    skills:
+      - Go
+      - Zig
+`;
+    const parsed = YAML.parse(filterDisabledSectionsFromCvYaml(edited, ['skills']));
+    expect('skills' in parsed.cv.sections).toBe(false);
+  });
+
+  it('returns the input unchanged on unparseable YAML', () => {
+    const broken = 'cv: [oops';
+    expect(filterDisabledSectionsFromCvYaml(broken, ['skills'])).toBe(broken);
   });
 });
 

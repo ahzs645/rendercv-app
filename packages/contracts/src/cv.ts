@@ -60,5 +60,12 @@ export interface CvFile {
    * entries (see `entryFingerprint`). The editor always shows the full CV.
    */
   hiddenEntries?: Record<string, string[]>;
+  /**
+   * Whole CV sections disabled from rendering/export without deleting them.
+   * Values are CV section keys (the keys under `cv.sections`). Unlike
+   * `hiddenEntries`, this is content-independent, so a disabled section stays
+   * disabled while its entries are edited. The editor always shows the full CV.
+   */
+  disabledSections?: string[];
   readonly isReadOnly: boolean;
 }
