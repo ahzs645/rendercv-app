@@ -8,6 +8,7 @@
     "prebuild": "node ./scripts/sync-bundled-themes.mjs",
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "postbuild": "node ./scripts/verify-bundled-themes-dist.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"

@@ -1,3 +1,4 @@
+import YAML from 'yaml';
 import yamlToTypstPy from './yaml_to_typst.py?raw';
 import { BUNDLED_THEMES } from './bundled-themes.generated';
 
@@ -49,6 +50,9 @@ const BASE_URL = import.meta.env.BASE_URL;
 const CUSTOM_THEMES_KEY = 'custom-themes';
 const BUNDLED_THEME_CACHE_VERSION = 'theme-normalization-v2';
 const CUSTOM_THEME_MISSING_PATTERN = /The custom theme folder .* does not exist\./;
+// Theme used when a requested custom theme cannot be resolved. It must be
+// extracted into the Pyodide filesystem before it can be rendered against.
+const FALLBACK_THEME = 'ahmadstyle';
 const YAML_TO_TYPST_RENDER_RESULT = `${yamlToTypstPy}
 import json
 json.dumps({
@@ -432,7 +436,24 @@ async function persistCustomTheme(theme: StoredCustomTheme) {
 }
 
 function readDesignThemeName(design: string) {
-  return /^\s*theme\s*:\s*([^\s#]+)\s*$/m.exec(design)?.[1]?.replace(/^['"]|['"]$/g, '');
+  if (!design?.trim()) {
+    return undefined;
+  }
+
+  // Parse the YAML properly so themes written with trailing comments, quotes,
+  // or flow-style mappings still resolve. Fall back to a line-based regex only
+  // if parsing fails (e.g. the design block is mid-edit and not yet valid).
+  try {
+    const parsed = YAML.parse(design);
+    const theme = parsed?.design?.theme;
+    if (typeof theme === 'string' && theme.trim()) {
+      return theme.trim();
+    }
+  } catch {
+    // Ignore parse failures and fall through to the regex heuristic.
+  }
+
+  return /^\s*theme\s*:\s*([^\s#]+)/m.exec(design)?.[1]?.replace(/^['"]|['"]$/g, '');
 }
 
 async function ensureThemeRegistered(themeName: string | undefined) {
@@ -556,7 +577,7 @@ async function renderSectionsWithFallback(sections: {
 
   const fallbackDesign = sections.design.replace(
     /^(\s*theme\s*:\s*).+$/m,
-    '$1ahmadstyle'
+    `$1${FALLBACK_THEME}`
   );
 
   if (fallbackDesign === sections.design) {
@@ -568,6 +589,12 @@ async function renderSectionsWithFallback(sections: {
       usedFallbackTheme: false
     };
   }
+
+  // The fallback theme is not guaranteed to be on disk yet — only the
+  // originally requested theme was registered above — so extract it before
+  // re-rendering, otherwise RenderCV reports the fallback theme folder as
+  // missing too.
+  await ensureThemeRegistered(FALLBACK_THEME);
 
   pyodide.globals.set('yaml_input_design', fallbackDesign);
   const fallbackResult = JSON.parse(toJsValue(await pyodide.runPythonAsync(YAML_TO_TYPST_RENDER_RESULT)) as string) as {
