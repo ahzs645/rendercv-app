@@ -50,6 +50,7 @@ import {
   importReviewProposalIntoSession
 } from '../features/review/session-utils';
 import { useStore } from '../lib/use-store';
+import { copyTextToClipboard } from '../lib/clipboard';
 import type { MonacoEditorHandle } from './monaco-editor';
 import type { ViewerRenderer } from './preview-pane';
 import { StyledTooltip } from './styled-tooltip';
@@ -272,6 +273,24 @@ export function WorkspaceToolbar({
       toast.success('Markdown copied to clipboard.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to copy Markdown.');
+    }
+  }
+
+  // Copy the full YAML source currently shown in the editor. Selecting all and
+  // copying by hand is awkward on mobile, so this gives a one-tap "copy the
+  // entire thing" that works on both desktop and mobile.
+  async function copyYamlSource() {
+    const source = editorRef.current?.getValue() || sections?.[preferences.activeSection] || '';
+    if (!source) {
+      toast.error('Nothing to copy yet.');
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(source);
+      toast.success('YAML copied to clipboard.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to copy YAML.');
     }
   }
 
@@ -509,6 +528,18 @@ export function WorkspaceToolbar({
                           </MobileSheetButton>
                         </div>
                       ) : null}
+                      {preferences.yamlEditor ? (
+                        <MobileSheetButton
+                          className="w-full"
+                          label="Copy YAML"
+                          onClick={() => {
+                            setMobileActionsOpen(false);
+                            void copyYamlSource();
+                          }}
+                        >
+                          <Copy className="size-4" />
+                        </MobileSheetButton>
+                      ) : null}
                     </section>
                   ) : null}
 
@@ -612,7 +643,12 @@ export function WorkspaceToolbar({
         <div className="flex items-center gap-2">
           <MobilePaneSwitch activePane={mobilePane} onChange={onMobilePaneChange} />
           {showMobileEditorControls ? (
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              {preferences.yamlEditor ? (
+                <ToolbarIconButton ariaLabel="Copy YAML source" onClick={() => void copyYamlSource()}>
+                  <Copy className="size-4" />
+                </ToolbarIconButton>
+              ) : null}
               <YamlToggle
                 checked={preferences.yamlEditor}
                 label="YAML"
@@ -764,6 +800,11 @@ export function WorkspaceToolbar({
           label="YAML"
           onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
         />
+        {preferences.yamlEditor ? (
+          <ToolbarIconButton ariaLabel="Copy YAML source" onClick={() => void copyYamlSource()}>
+            <Copy className="size-4" />
+          </ToolbarIconButton>
+        ) : null}
         {!isReadOnly ? <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} /> : null}
       </div>
       <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
