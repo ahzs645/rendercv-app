@@ -3,6 +3,7 @@ import { monaco } from '../lib/monaco';
 
 export interface MonacoEditorHandle {
   focus: () => void;
+  getValue: () => string;
   insertMarkdownLink: () => void;
   surroundSelection: (prefix: string, suffix: string, placeholder?: string) => void;
   revealText: (text: string) => boolean;
@@ -55,6 +56,9 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
   useImperativeHandle(ref, () => ({
     focus() {
       editorRef.current?.focus();
+    },
+    getValue() {
+      return editorRef.current?.getValue() ?? '';
     },
     insertMarkdownLink() {
       editSelections((selected) => `[${selected || 'label'}](https://)`);
