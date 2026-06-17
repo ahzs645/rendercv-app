@@ -32,6 +32,13 @@ export function OnboardingTour({
     }
 
     handledRef.current = false;
+
+    const skipTour = () => {
+      handledRef.current = true;
+      driverRef.current?.destroy();
+      onboardingTour.skip();
+    };
+
     const tour = driver({
       animate: true,
       showProgress: true,
@@ -43,11 +50,20 @@ export function OnboardingTour({
       stagePadding: 8,
       stageRadius: 8,
       popoverOffset: 12,
-      onCloseClick: () => {
-        handledRef.current = true;
-        tour.destroy();
-        onboardingTour.skip();
+      onPopoverRender: (popover: { footer: HTMLElement }) => {
+        const { footer } = popover;
+        if (!footer || footer.querySelector('[data-onboarding-skip]')) {
+          return;
+        }
+        const skip = document.createElement('button');
+        skip.type = 'button';
+        skip.textContent = 'Skip tour';
+        skip.className = 'driver-popover-skip-btn';
+        skip.setAttribute('data-onboarding-skip', '');
+        skip.addEventListener('click', skipTour);
+        footer.insertBefore(skip, footer.firstChild);
       },
+      onCloseClick: skipTour,
       onDestroyed: () => {
         if (handledRef.current) {
           return;

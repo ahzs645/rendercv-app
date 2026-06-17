@@ -20,6 +20,25 @@
 .driver-popover-progress-text {
   color: var(--muted-foreground);
   font-size: 0.75rem;
+  margin-right: 0.75rem;
+}
+
+/* "Skip tour" is injected at the front of the footer so it sits on the left,
+   pushing the progress text and navigation buttons to the right. */
+.driver-popover-skip-btn {
+  margin-right: auto;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--muted-foreground) !important;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.driver-popover-skip-btn:hover {
+  color: var(--foreground) !important;
 }
 
 .driver-popover button {

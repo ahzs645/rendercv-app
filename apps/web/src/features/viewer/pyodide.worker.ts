@@ -186,13 +186,15 @@ async function writePackagesToIDB(tarball: Uint8Array) {
 async function registerCustomThemeArchive(
   instance: PyodideLike,
   archiveName: string,
-  archiveBytes: Uint8Array
-): Promise<{ themeName: string }> {
+  archiveBytes: Uint8Array,
+  expectedThemeName?: string
+): Promise<{ themeName: string; themeNames: string[] }> {
   instance.globals.set('_custom_theme_bytes', ensureUint8Array(archiveBytes));
   instance.globals.set('_custom_theme_archive_name', archiveName);
+  instance.globals.set('_custom_theme_expected_name', expectedThemeName ?? '');
 
   const result = (await instance.runPythonAsync(`
-import importlib.util, io, pathlib, re, shutil, sys, zipfile
+import importlib.util, io, json, pathlib, re, shutil, sys, zipfile
 
 COMPATIBILITY_REPLACEMENTS = {
     "design-entries-vertical-space-between-entries": "design_entries_vertical_space_between_entries",
@@ -276,9 +278,13 @@ legacy_base_dir = pyodide_root / "custom_themes"
 legacy_base_dir.mkdir(parents=True, exist_ok=True)
 
 with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-    package_dir = None
-    theme_name = None
-
+    # A single archive may bundle several theme packages. The resume submodule
+    # ships ahmadstyle, phdjakes, phddeedy and phdresearch side by side, so the
+    # bundled archives all contain every theme. Discover *all* packages that
+    # declare a RenderCV theme name and extract each one; stopping at the first
+    # match would register a sibling theme and leave the requested theme's
+    # folder missing (e.g. "ahmadstyle" reported as not existing).
+    packages = []
     for name in archive.namelist():
         if not name.endswith("__init__.py"):
             continue
@@ -286,80 +292,91 @@ with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
         text = archive.read(name).decode("utf-8", errors="ignore")
         match = re.search(r'Literal\\["([^"]+)"\\]', text)
         if match:
-            package_dir = name.rsplit("/", 1)[0]
-            theme_name = match.group(1)
-            break
+            packages.append((name.rsplit("/", 1)[0], match.group(1)))
 
-    if package_dir is None or theme_name is None:
+    if not packages:
         raise RuntimeError(
             "Could not find a RenderCV theme package in the uploaded archive. "
             "Expected a package with __init__.py declaring theme: Literal[\\\"...\\\"]."
         )
 
-    custom_theme_folder = pyodide_root / theme_name
-    legacy_theme_folder = legacy_base_dir / theme_name
-    if custom_theme_folder.exists():
-        shutil.rmtree(custom_theme_folder)
-    if legacy_theme_folder.exists():
-        shutil.rmtree(legacy_theme_folder)
-
-    custom_theme_folder.mkdir(parents=True, exist_ok=True)
-    package_path = pathlib.PurePosixPath(package_dir)
-
-    for info in archive.infolist():
-        archive_path = pathlib.PurePosixPath(info.filename)
-        try:
-            relative_path = archive_path.relative_to(package_path)
-        except ValueError:
-            continue
-
-        if not relative_path.parts:
-            continue
-        if any(part == ".." for part in relative_path.parts) or relative_path.is_absolute():
-            raise RuntimeError("Theme archive contains an unsafe path.")
-
-        destination = custom_theme_folder.joinpath(*relative_path.parts)
-        try:
-            destination.resolve().relative_to(custom_theme_folder.resolve())
-        except ValueError:
-            raise RuntimeError("Theme archive contains an unsafe path.")
-        if info.is_dir():
-            destination.mkdir(parents=True, exist_ok=True)
-            continue
-
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        file_bytes = archive.read(info)
-        if destination.suffix == ".typ":
-            try:
-                file_text = file_bytes.decode("utf-8")
-            except UnicodeDecodeError:
-                pass
-            else:
-                file_text = normalize_typst_template(file_text)
-                file_bytes = file_text.encode("utf-8")
-
-        with open(destination, "wb") as target:
-            target.write(file_bytes)
-
     pyodide_root_str = str(pyodide_root)
     if pyodide_root_str not in sys.path:
         sys.path.insert(0, pyodide_root_str)
 
-    init_file = custom_theme_folder / "__init__.py"
-    spec = importlib.util.spec_from_file_location(theme_name, init_file)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Failed to load custom theme from {init_file}")
+    theme_names = []
+    for package_dir, theme_name in packages:
+        custom_theme_folder = pyodide_root / theme_name
+        legacy_theme_folder = legacy_base_dir / theme_name
+        if custom_theme_folder.exists():
+            shutil.rmtree(custom_theme_folder)
+        if legacy_theme_folder.exists():
+            shutil.rmtree(legacy_theme_folder)
 
-    theme_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(theme_module)
-    result = {"themeName": theme_name}
+        custom_theme_folder.mkdir(parents=True, exist_ok=True)
+        package_path = pathlib.PurePosixPath(package_dir)
+
+        for info in archive.infolist():
+            archive_path = pathlib.PurePosixPath(info.filename)
+            try:
+                relative_path = archive_path.relative_to(package_path)
+            except ValueError:
+                continue
+
+            if not relative_path.parts:
+                continue
+            if any(part == ".." for part in relative_path.parts) or relative_path.is_absolute():
+                raise RuntimeError("Theme archive contains an unsafe path.")
+
+            destination = custom_theme_folder.joinpath(*relative_path.parts)
+            try:
+                destination.resolve().relative_to(custom_theme_folder.resolve())
+            except ValueError:
+                raise RuntimeError("Theme archive contains an unsafe path.")
+            if info.is_dir():
+                destination.mkdir(parents=True, exist_ok=True)
+                continue
+
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            file_bytes = archive.read(info)
+            if destination.suffix == ".typ":
+                try:
+                    file_text = file_bytes.decode("utf-8")
+                except UnicodeDecodeError:
+                    pass
+                else:
+                    file_text = normalize_typst_template(file_text)
+                    file_bytes = file_text.encode("utf-8")
+
+            with open(destination, "wb") as target:
+                target.write(file_bytes)
+
+        init_file = custom_theme_folder / "__init__.py"
+        spec = importlib.util.spec_from_file_location(theme_name, init_file)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"Failed to load custom theme from {init_file}")
+
+        theme_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(theme_module)
+        theme_names.append(theme_name)
+
+    # Prefer the caller's requested theme as the primary name so cache records
+    # are keyed correctly; fall back to the first package for single-theme
+    # uploads where no specific theme was requested.
+    primary_theme = (
+        _custom_theme_expected_name
+        if _custom_theme_expected_name in theme_names
+        else theme_names[0]
+    )
+    result = json.dumps({"themeName": primary_theme, "themeNames": theme_names})
 
 del _custom_theme_archive_name
 del _custom_theme_bytes
+del _custom_theme_expected_name
 result
-  `)).toJs() as { themeName: string };
+  `));
 
-  return result;
+  return JSON.parse(toJsValue(result) as string) as { themeName: string; themeNames: string[] };
 }
 
 function upsertStoredCustomTheme(theme: StoredCustomTheme) {
@@ -381,8 +398,15 @@ async function readStoredCustomThemes() {
 
 async function restoreCustomThemes(instance: PyodideLike, themes: StoredCustomTheme[]) {
   for (const theme of themes) {
-    const result = await registerCustomThemeArchive(instance, theme.archiveName, ensureUint8Array(theme.bytes));
-    registeredThemeNames.add(result.themeName);
+    const result = await registerCustomThemeArchive(
+      instance,
+      theme.archiveName,
+      ensureUint8Array(theme.bytes),
+      theme.themeName
+    );
+    for (const name of result.themeNames) {
+      registeredThemeNames.add(name);
+    }
   }
 }
 
@@ -405,7 +429,7 @@ async function ensureBundledThemes(instance: PyodideLike, storedThemes: StoredCu
       }
 
       const bytes = new Uint8Array(await response.arrayBuffer());
-      const result = await registerCustomThemeArchive(instance, theme.archiveName, bytes);
+      const result = await registerCustomThemeArchive(instance, theme.archiveName, bytes, theme.themeKey);
       const storedTheme = {
         archiveName: getBundledThemeCacheKey(theme.archiveName),
         bytes,
@@ -413,7 +437,9 @@ async function ensureBundledThemes(instance: PyodideLike, storedThemes: StoredCu
       };
       await persistCustomTheme(storedTheme);
       upsertStoredCustomTheme(storedTheme);
-      registeredThemeNames.add(result.themeName);
+      for (const name of result.themeNames) {
+        registeredThemeNames.add(name);
+      }
     } catch (error) {
       if (import.meta.env.DEV) {
         console.warn('[RenderCV worker] failed to register bundled theme', theme.themeKey, error);
@@ -466,9 +492,12 @@ async function ensureThemeRegistered(themeName: string | undefined) {
     const result = await registerCustomThemeArchive(
       pyodide,
       storedTheme.archiveName,
-      ensureUint8Array(storedTheme.bytes)
+      ensureUint8Array(storedTheme.bytes),
+      themeName
     );
-    registeredThemeNames.add(result.themeName);
+    for (const name of result.themeNames) {
+      registeredThemeNames.add(name);
+    }
     return;
   }
 
@@ -483,7 +512,12 @@ async function ensureThemeRegistered(themeName: string | undefined) {
   }
 
   const bytes = new Uint8Array(await response.arrayBuffer());
-  const result = await registerCustomThemeArchive(pyodide, bundledTheme.archiveName, bytes);
+  const result = await registerCustomThemeArchive(
+    pyodide,
+    bundledTheme.archiveName,
+    bytes,
+    bundledTheme.themeKey
+  );
   const nextStoredTheme = {
     archiveName: getBundledThemeCacheKey(bundledTheme.archiveName),
     bytes,
@@ -491,7 +525,9 @@ async function ensureThemeRegistered(themeName: string | undefined) {
   };
   await persistCustomTheme(nextStoredTheme);
   upsertStoredCustomTheme(nextStoredTheme);
-  registeredThemeNames.add(result.themeName);
+  for (const name of result.themeNames) {
+    registeredThemeNames.add(name);
+  }
 }
 
 function ensureUint8Array(value: Uint8Array | ArrayBuffer | { buffer?: ArrayBufferLike } | number[]) {
@@ -699,7 +735,9 @@ self.onmessage = async (event: MessageEvent<{ id: number; type: string; payload?
         };
         await persistCustomTheme(storedTheme);
         upsertStoredCustomTheme(storedTheme);
-        registeredThemeNames.add(result.themeName);
+        for (const name of result.themeNames) {
+          registeredThemeNames.add(name);
+        }
         self.postMessage({
           id,
           type: 'IMPORT_THEME_ARCHIVE_SUCCESS',

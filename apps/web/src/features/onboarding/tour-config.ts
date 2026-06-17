@@ -19,26 +19,12 @@ interface TourContext {
 }
 
 export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): DriveStep[] {
-  // The AI Assistant step (index 4) is the sole member of group 3 and is dropped
-  // when the AI editor is disabled. Renumber the groups that actually appear so the
-  // counter stays contiguous (no skipped "3 of 5") and the total matches reality.
-  const presentGroups = STEP_GROUP_MAP.filter(
-    (group, index) => ctx.hasAiEditor || index !== 4
-  );
-  const groupTotal = new Set(presentGroups).size;
-  const groupRemap = new Map(
-    [...new Set(presentGroups)].map((group, index) => [group, index + 1])
-  );
-
+  // The counter shown in the popover footer is driver.js' built-in progress
+  // ("{{current}} of {{total}}"), which counts the steps that are actually
+  // rendered. STEP_GROUP_MAP is kept only to tag analytics events with the
+  // logical group a step belongs to.
   function trackStep(index: number) {
     capture(EVENTS.ONBOARDING_STEP_VIEWED, { step: index + 1, group: STEP_GROUP_MAP[index] });
-  }
-
-  function patchCounter(popover: { wrapper: HTMLElement }, stepIndex: number) {
-    const progress = popover.wrapper.querySelector('.driver-popover-progress-text');
-    if (progress) {
-      progress.textContent = `${groupRemap.get(STEP_GROUP_MAP[stepIndex])} of ${groupTotal}`;
-    }
   }
 
   const steps: Array<DriveStep | null> = [
@@ -50,7 +36,6 @@ export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): Drive
           'Start by creating a new CV from scratch or importing existing YAML/PDF content. The assistant can help turn rough content into a polished CV.',
         side: 'right',
         align: 'start',
-        onPopoverRender: (popover: { wrapper: HTMLElement }) => patchCounter(popover, 0),
         onNextClick: () => {
           if (ctx.sidebar.isMobile) ctx.sidebar.setOpenMobile(false);
           window.setTimeout(() => driverRef().moveNext(), ctx.sidebar.isMobile ? 300 : 0);
@@ -69,7 +54,6 @@ export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): Drive
           'This is where you edit your CV content. Switch between the visual form editor and YAML using the toolbar.',
         side: 'right',
         align: 'start',
-        onPopoverRender: (popover: { wrapper: HTMLElement }) => patchCounter(popover, 1),
         onNextClick: () => driverRef().moveNext()
       },
       onHighlightStarted: () => {
@@ -88,7 +72,6 @@ export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): Drive
           'Switch between CV, Design, Locale, and Settings. Each tab customizes a different part of your resume.',
         side: 'bottom',
         align: 'start',
-        onPopoverRender: (popover: { wrapper: HTMLElement }) => patchCounter(popover, 2),
         onNextClick: () => {
           ctx.setActiveSection('design');
           window.setTimeout(() => driverRef().moveNext(), 200);
@@ -104,7 +87,6 @@ export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): Drive
           "You're now on the Design tab. Choose themes, colors, fonts, margins, and other presentation settings.",
         side: 'right',
         align: 'start',
-        onPopoverRender: (popover: { wrapper: HTMLElement }) => patchCounter(popover, 3),
         onNextClick: () => {
           ctx.setActiveSection('cv');
           if (ctx.hasAiEditor) {
@@ -124,8 +106,7 @@ export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): Drive
         description:
           'Ask for stronger bullets, section rewrites, or tailoring help for a specific job description.',
         side: 'top',
-        align: 'center',
-        onPopoverRender: (popover: { wrapper: HTMLElement }) => patchCounter(popover, 4)
+        align: 'center'
       },
       onHighlightStarted: () => {
         trackStep(4);
@@ -144,8 +125,7 @@ export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): Drive
         description:
           'See the rendered CV update as you edit. Zoom in for details or open a popup for side-by-side editing.',
         side: 'left',
-        align: 'start',
-        onPopoverRender: (popover: { wrapper: HTMLElement }) => patchCounter(popover, 5)
+        align: 'start'
       },
       onHighlightStarted: () => {
         trackStep(5);
@@ -159,8 +139,7 @@ export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): Drive
         description:
           'Download your CV as a PDF, use native sharing, or generate a link when you are ready to send it.',
         side: 'bottom',
-        align: 'center',
-        onPopoverRender: (popover: { wrapper: HTMLElement }) => patchCounter(popover, 6)
+        align: 'center'
       },
       onHighlightStarted: () => trackStep(6)
     },
@@ -174,7 +153,6 @@ export function buildTourSteps(ctx: TourContext, driverRef: () => Driver): Drive
           'Export your data as a portable backup. RenderCV keeps your resume content portable instead of locked into the editor.',
         side: 'bottom',
         align: 'center',
-        onPopoverRender: (popover: { wrapper: HTMLElement }) => patchCounter(popover, 7),
         onNextClick: () => ctx.onComplete()
       },
       onHighlightStarted: () => trackStep(7)
