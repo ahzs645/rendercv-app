@@ -12,39 +12,40 @@ const generatedModulePath = path.join(
   'apps/web/src/features/viewer/bundled-themes.generated.ts'
 );
 
+// Every bundled theme ships from the same `themes/resume` submodule, and the
+// zip step archives the whole submodule. Emitting one archive per theme would
+// therefore produce four byte-identical copies. Instead we build a single
+// shared archive that every theme entry references, then let the worker extract
+// whichever package the requested theme needs (the worker registers every theme
+// package found in an archive, so one archive serves all four themes).
+const submodulePath = path.join(projectRoot, 'themes/resume');
+const sharedArchiveBaseName = 'bundled-resume-themes';
+
 const THEME_SOURCES = [
   {
-    archiveBaseName: 'ahzs645-resume',
     design: 'design:\n  theme: ahmadstyle\n',
     packageDir: 'ahmadstyle',
-    submodulePath: path.join(projectRoot, 'themes/resume'),
     themeKey: 'ahmadstyle'
   },
   {
-    archiveBaseName: 'phd-jakes-resume',
     design: 'design:\n  theme: phdjakes\n',
     packageDir: 'phdjakes',
-    submodulePath: path.join(projectRoot, 'themes/resume'),
     themeKey: 'phdjakes'
   },
   {
-    archiveBaseName: 'phd-deedy-resume',
     design: 'design:\n  theme: phddeedy\n',
     packageDir: 'phddeedy',
-    submodulePath: path.join(projectRoot, 'themes/resume'),
     themeKey: 'phddeedy'
   },
   {
-    archiveBaseName: 'phd-research-cv',
     design: 'design:\n  theme: phdresearch\n',
     packageDir: 'phdresearch',
-    submodulePath: path.join(projectRoot, 'themes/resume'),
     themeKey: 'phdresearch'
   }
 ];
 
 async function assertThemeSourceReady(themeSource) {
-  const packageRoot = path.join(themeSource.submodulePath, themeSource.packageDir);
+  const packageRoot = path.join(submodulePath, themeSource.packageDir);
   const requiredFiles = [
     path.join(packageRoot, '__init__.py'),
     path.join(packageRoot, 'Preamble.j2.typ')
@@ -54,7 +55,7 @@ async function assertThemeSourceReady(themeSource) {
     await Promise.all(requiredFiles.map((filePath) => access(filePath)));
   } catch {
     throw new Error(
-      `Theme source is incomplete at ${themeSource.submodulePath}. ` +
+      `Theme source is incomplete at ${submodulePath}. ` +
         `Expected ${themeSource.packageDir}/__init__.py and theme templates. ` +
         'Make sure the submodule is checked out before running the bundle sync.'
     );
@@ -89,21 +90,24 @@ async function writeFileIfChanged(filePath, content) {
   await writeFile(filePath, next);
 }
 
-async function syncTheme(themeSource) {
+// Build the single shared archive every theme references. Returns its name and
+// public path; callers attach the per-theme `design`/`themeKey` metadata.
+async function syncSharedArchive() {
   await mkdir(outputDir, { recursive: true });
-  await assertThemeSourceReady(themeSource);
 
-  const archiveBytes = createZipFromSubmodule(themeSource.submodulePath);
+  for (const themeSource of THEME_SOURCES) {
+    await assertThemeSourceReady(themeSource);
+  }
+
+  const archiveBytes = createZipFromSubmodule(submodulePath);
   const hash = createHash('sha256').update(archiveBytes).digest('hex').slice(0, 12);
-  const archiveName = `${themeSource.archiveBaseName}-${hash}.zip`;
+  const archiveName = `${sharedArchiveBaseName}-${hash}.zip`;
   const archivePath = path.join(outputDir, archiveName);
 
+  // Remove every other archive in the output dir, which also clears the legacy
+  // per-theme zips (ahzs645-resume-*, phd-*-*) from before the dedupe.
   for (const entry of await readdir(outputDir)) {
-    if (
-      entry.startsWith(`${themeSource.archiveBaseName}-`) &&
-      entry.endsWith('.zip') &&
-      entry !== archiveName
-    ) {
+    if (entry.endsWith('.zip') && entry !== archiveName) {
       await rm(path.join(outputDir, entry), { force: true });
     }
   }
@@ -112,9 +116,7 @@ async function syncTheme(themeSource) {
 
   return {
     archiveName,
-    archivePath: `cdn/themes/${archiveName}`,
-    design: themeSource.design,
-    themeKey: themeSource.themeKey
+    archivePath: `cdn/themes/${archiveName}`
   };
 }
 
@@ -156,11 +158,14 @@ async function existingManifestIsUsable() {
 
 async function main() {
   try {
-    const themes = [];
+    const sharedArchive = await syncSharedArchive();
 
-    for (const themeSource of THEME_SOURCES) {
-      themes.push(await syncTheme(themeSource));
-    }
+    const themes = THEME_SOURCES.map((themeSource) => ({
+      archiveName: sharedArchive.archiveName,
+      archivePath: sharedArchive.archivePath,
+      design: themeSource.design,
+      themeKey: themeSource.themeKey
+    }));
 
     await writeFileIfChanged(generatedModulePath, createGeneratedModule(themes));
   } catch (error) {

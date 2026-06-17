@@ -16,7 +16,11 @@ const generatedModulePath = path.join(
 );
 
 const source = await readFile(generatedModulePath, 'utf8');
-const archivePaths = [...source.matchAll(/"archivePath":\s*"([^"]+)"/g)].map((match) => match[1]);
+// Themes share a single archive, so the manifest references the same path more
+// than once. Dedupe before checking so the count reflects real files on disk.
+const archivePaths = [
+  ...new Set([...source.matchAll(/"archivePath":\s*"([^"]+)"/g)].map((match) => match[1]))
+];
 
 if (archivePaths.length === 0) {
   throw new Error(
