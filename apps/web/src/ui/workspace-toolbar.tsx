@@ -651,47 +651,43 @@ export function WorkspaceToolbar({
               ) : null}
               <YamlToggle
                 checked={preferences.yamlEditor}
+                className="h-11 px-3"
                 label="YAML"
                 onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
               />
             </div>
-          ) : null}
-        </div>
-
-        {mobilePane === 'preview' ? (
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3 py-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Preview
-            </p>
-            <div className="flex items-center gap-1">
-              <ToolbarIconButton
-                ariaLabel="Zoom out"
-                disabled={!canPreviewActions}
-                onClick={viewer.zoomOut}
-                variant="ghost"
-              >
-                <Minus className="size-4" />
-              </ToolbarIconButton>
-              <button
-                type="button"
-                aria-label="Reset zoom"
-                className="min-w-12 rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
-                disabled={!canPreviewActions}
-                onClick={viewer.zoomReset}
-              >
-                {viewer.zoomPercent}%
-              </button>
-              <ToolbarIconButton
-                ariaLabel="Zoom in"
-                disabled={!canPreviewActions}
-                onClick={viewer.zoomIn}
-                variant="ghost"
-              >
-                <Plus className="size-4" />
-              </ToolbarIconButton>
+          ) : (
+            <div className="ml-auto flex h-11 items-center gap-1 rounded-xl border border-border bg-card px-1.5">
+              <div className="flex items-center gap-1">
+                <ToolbarIconButton
+                  ariaLabel="Zoom out"
+                  disabled={!canPreviewActions}
+                  onClick={viewer.zoomOut}
+                  variant="ghost"
+                >
+                  <Minus className="size-4" />
+                </ToolbarIconButton>
+                <button
+                  type="button"
+                  aria-label="Reset zoom"
+                  className="min-w-12 rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                  disabled={!canPreviewActions}
+                  onClick={viewer.zoomReset}
+                >
+                  {viewer.zoomPercent}%
+                </button>
+                <ToolbarIconButton
+                  ariaLabel="Zoom in"
+                  disabled={!canPreviewActions}
+                  onClick={viewer.zoomIn}
+                  variant="ghost"
+                >
+                  <Plus className="size-4" />
+                </ToolbarIconButton>
+              </div>
             </div>
-          </div>
-        ) : null}
+          )}
+        </div>
         <DownloadShareDialog
           canLinkActions={canLinkActions}
           canPreviewActions={canPreviewActions}
@@ -954,10 +950,10 @@ function MobilePaneSwitch({
   onChange?: (pane: 'editor' | 'preview') => void;
 }) {
   return (
-    <div className="inline-flex min-w-0 flex-1 items-center rounded-xl border border-border bg-background p-1">
+    <div className="inline-flex h-11 min-w-0 flex-1 items-center rounded-xl border border-border bg-background p-1">
       <button
         type="button"
-        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+        className={`flex h-full flex-1 items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors ${
           activePane === 'editor'
             ? 'bg-foreground text-background'
             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
@@ -968,7 +964,7 @@ function MobilePaneSwitch({
       </button>
       <button
         type="button"
-        className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+        className={`flex h-full flex-1 items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors ${
           activePane === 'preview'
             ? 'bg-foreground text-background'
             : 'text-foreground hover:bg-accent hover:text-accent-foreground'
@@ -983,15 +979,17 @@ function MobilePaneSwitch({
 
 function YamlToggle({
   checked,
+  className = 'ml-1 px-2.5 py-1.5',
   label,
   onChange
 }: {
   checked: boolean;
+  className?: string;
   label: string;
   onChange: () => void;
 }) {
   return (
-    <div className="ml-1 flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
+    <div className={`flex items-center gap-2 rounded-md border border-border bg-background ${className}`}>
       <button
         type="button"
         role="switch"
