@@ -350,18 +350,18 @@ export function Sidebar({
         <nav className={`grid gap-1 ${isMini ? 'grid-cols-2' : ''}`}>
           <button
             className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-              isMini ? 'justify-center px-0 py-2' : isCompact ? 'justify-center px-2 py-2' : 'gap-2 px-2 py-2 text-left'
+              isMini ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-2 text-left'
             }`}
             onClick={() => onboardingTour.start()}
             title="Start product tour"
             type="button"
           >
             <HelpCircle className="size-4 shrink-0" />
-            {isCompact ? <span className="sr-only">Product Tour</span> : <span>Product Tour</span>}
+            {isMini ? <span className="sr-only">Product Tour</span> : <span>Product Tour</span>}
           </button>
           <button
             className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-60 ${
-              isMini ? 'justify-center px-0 py-2' : isCompact ? 'justify-center px-2 py-2' : 'gap-2 px-2 py-2 text-left'
+              isMini ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-2 text-left'
             }`}
             disabled={isDownloadingAll}
             onClick={() => void downloadAllData()}
@@ -369,7 +369,7 @@ export function Sidebar({
             type="button"
           >
             <FolderDown className="size-4 shrink-0" />
-            {isCompact ? (
+            {isMini ? (
               <span className="sr-only">Download all data</span>
             ) : (
               <span>{isDownloadingAll ? 'Downloading...' : 'Download all data'}</span>
@@ -377,14 +377,14 @@ export function Sidebar({
           </button>
           <button
             className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-              isMini ? 'justify-center px-0 py-2' : isCompact ? 'justify-center px-2 py-2' : 'gap-2 px-2 py-2 text-left'
+              isMini ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-2 text-left'
             }`}
             onClick={() => setAiSettingsOpen(true)}
             title="AI provider settings"
             type="button"
           >
             <Settings className="size-4 shrink-0" />
-            {isCompact ? <span className="sr-only">AI providers</span> : <span>AI providers</span>}
+            {isMini ? <span className="sr-only">AI providers</span> : <span>AI providers</span>}
           </button>
           <SidebarLinkButton compact={isCompact} icon={<Shield className="size-4" />} mini={isMini} to="/privacy-policy">
             Privacy Policy

@@ -91,10 +91,7 @@ export function SectionTabs({
 
   const currentIndex = variant?.value ? variant.options.indexOf(variant.value) : -1;
   const canCycle = Boolean(variant && variant.options.length > 1 && currentIndex >= 0);
-  const showVariantControls = Boolean(
-    (variant && variant.options.length > 0) ||
-      (active === 'cv' && onImportVariants)
-  );
+  const showVariantControls = Boolean(variant && variant.options.length > 0);
 
   return (
     <div className="shrink-0 border-b border-border px-3 pt-2 sm:px-2 sm:pt-1" data-onboarding="section-tabs">
@@ -124,8 +121,7 @@ export function SectionTabs({
             className="-mx-1 flex flex-nowrap items-center gap-1 overflow-visible px-1 sm:ml-3 sm:shrink-0 sm:gap-0.5 sm:px-0"
             data-testid="variant-selector"
           >
-            {null}
-            {active === 'cv' && onImportVariants ? (
+            {active === 'cv' && onImportVariants && variantOptions.length > 0 ? (
               <>
                 <input
                   ref={variantsInputRef}

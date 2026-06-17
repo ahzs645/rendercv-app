@@ -10,11 +10,11 @@ export function TextRow({
   placeholder?: string;
 }) {
   return (
-    <div className="flex items-center py-1.5">
+    <div className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:gap-0 sm:py-1.5">
       {label ? (
         <span
-          className="shrink-0 text-xs text-muted-foreground"
-          style={{ width: 'var(--label-width, 8rem)', transition: 'color 190ms cubic-bezier(0.215, 0.61, 0.355, 1)' }}
+          className="w-full shrink-0 text-xs text-muted-foreground sm:w-[var(--label-width,8rem)]"
+          style={{ transition: 'color 190ms cubic-bezier(0.215, 0.61, 0.355, 1)' }}
         >
           {label}
         </span>
