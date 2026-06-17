@@ -271,7 +271,7 @@ function SortableEntryArrayItem({
             <X className="size-4 sm:size-3" />
           </button>
         </div>
-        <div className={`pr-24 sm:pr-12 ${isHidden ? 'opacity-45' : ''}`}>
+        <div className={`${hiddenState ? 'pr-[68px]' : 'pr-9'} sm:pr-12 ${isHidden ? 'opacity-45' : ''}`}>
           {template === 'text' ? (
             <TextRow
               value={typeof entry === 'string' ? entry : ''}
