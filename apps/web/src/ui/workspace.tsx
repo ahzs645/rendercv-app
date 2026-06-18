@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react';
 import { GitCompareArrows, Check, Pencil, Upload, WandSparkles, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, preferencesStore, resolveFileSections, reviewStore } from '@rendercv/core';
+import { classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, preferencesStore, resolveFileSections, reviewStore, variantLabel } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
@@ -143,6 +143,16 @@ export function Workspace({ active = true }: { active?: boolean }) {
   );
   const activeSection = preferences.activeSection;
   const currentValue = rawSections?.[activeSection] ?? '';
+  // The active variant (if any) drives both what the PDF excludes and what the
+  // form editor reflects/authors. When a variant is selected, the section/entry
+  // visibility toggles edit that variant; otherwise they edit the file-global
+  // manual disables/hides.
+  const activeVariantKey =
+    selectedFile?.selectedVariant && selectedFile.variants?.[selectedFile.selectedVariant]
+      ? selectedFile.selectedVariant
+      : null;
+  const activeVariant = activeVariantKey ? selectedFile?.variants?.[activeVariantKey] ?? null : null;
+  const activeVariantLabel = activeVariantKey ? variantLabel(activeVariantKey) : '';
   const viewer = useViewerRenderer(viewerSections);
   const handleSectionChange = useCallback(
     (nextValue: string) => {
@@ -668,16 +678,34 @@ export function Workspace({ active = true }: { active?: boolean }) {
             onToggleEntryHidden={
               selectedFile && !selectedFile.isReadOnly
                 ? (sectionKey: string, fingerprint: string) =>
-                    fileStore.toggleEntryHidden(selectedFile.id, sectionKey, fingerprint)
+                    activeVariantKey
+                      ? fileStore.toggleEntryHiddenInVariant(
+                          selectedFile.id,
+                          activeVariantKey,
+                          sectionKey,
+                          fingerprint
+                        )
+                      : fileStore.toggleEntryHidden(selectedFile.id, sectionKey, fingerprint)
                 : undefined
             }
             disabledSections={selectedFile?.disabledSections}
             onToggleSectionDisabled={
               selectedFile && !selectedFile.isReadOnly
                 ? (sectionKey: string) =>
-                    fileStore.toggleSectionDisabled(selectedFile.id, sectionKey)
+                    activeVariantKey
+                      ? fileStore.toggleVariantSectionExcluded(
+                          selectedFile.id,
+                          activeVariantKey,
+                          sectionKey
+                        )
+                      : fileStore.toggleSectionDisabled(selectedFile.id, sectionKey)
                 : undefined
             }
+            activeVariantKey={activeVariantKey}
+            activeVariant={activeVariant}
+            variantLabel={activeVariantLabel}
+            variantExcludedSections={activeVariant?.exclude_sections}
+            hideArchivedEntries={preferences.hideArchivedEntries}
             themeOptions={Array.from(
               new Set([
                 ...Object.keys(defaultDesigns),

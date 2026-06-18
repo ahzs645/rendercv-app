@@ -23,6 +23,8 @@ export interface UserPreferences {
   activeSection: SectionKey;
   wordWrap: boolean;
   entriesExpanded: boolean;
+  /** Hide `archived`-tagged entries from the form editor (they are always excluded from the PDF). */
+  hideArchivedEntries: boolean;
   selectedModel: string;
   onboardingCompletedAt?: string | null;
   aiProvider: AiProviderId;

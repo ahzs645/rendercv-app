@@ -1,5 +1,6 @@
 import type { CvVariantDefinition } from '@rendercv/contracts';
 import YAML from 'yaml';
+import { matchesEntryVariant, normalizeStringList } from './variant-visibility';
 const SUPPORTED_SOCIAL_NETWORKS = new Set([
   'LinkedIn',
   'GitHub',
@@ -41,7 +42,6 @@ const TOP_LEVEL_SOCIAL_FIELD_MAP: Record<string, string> = {
 };
 const POSITION_SPACING_SAME_MARKER = 'RCVSPACINGSAME:';
 const POSITION_SPACING_DIFF_MARKER = 'RCVSPACINGDIFF:';
-const ARCHIVED_TAG = 'archived';
 const MONTH_NAMES: Record<string, string> = {
   '01': 'January',
   '02': 'February',
@@ -233,17 +233,6 @@ function sanitizeDateSentinels(value: unknown): unknown {
   );
 }
 
-function normalizeStringList(value: unknown) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .filter((item): item is string => typeof item === 'string')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 function pickFlavorValue(value: unknown, preferredFlavors: string[]): unknown {
   if (!isRecord(value) || !('flavors' in value) || !isRecord(value.flavors)) {
     return value;
@@ -284,28 +273,6 @@ function normalizeFlavoredFields(entry: unknown, preferredFlavors: string[]): un
   }
 
   return normalized;
-}
-
-function matchesEntryVariant(entry: UnknownRecord, selectedTags: string[], variantActive: boolean) {
-  const requiredTags = normalizeStringList(entry.tags);
-  if (requiredTags.includes(ARCHIVED_TAG) && !selectedTags.includes(ARCHIVED_TAG)) {
-    return false;
-  }
-
-  if (!variantActive) {
-    return true;
-  }
-
-  const inverseTags = normalizeStringList(entry.itags);
-  if (inverseTags.length > 0 && inverseTags.some((tag) => selectedTags.includes(tag))) {
-    return false;
-  }
-
-  if (requiredTags.length > 0 && !requiredTags.some((tag) => selectedTags.includes(tag))) {
-    return false;
-  }
-
-  return true;
 }
 
 function stripCompatFields(entry: unknown): unknown {

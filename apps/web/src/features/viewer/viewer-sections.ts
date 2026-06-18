@@ -121,11 +121,16 @@ export function resolveViewerSections(file: CvFile): CvFileSections {
 
   // Drop disabled sections and hidden entries before the CV reaches the
   // renderer. The editor keeps the full CV (resolveFileSections).
+  // Variant-authored per-entry exclusions (`exclude_entries`) are applied here
+  // too, so the PDF matches what the form reflects for the active variant.
   const visibleSections: CvFileSections = {
     ...sections,
     cv: filterHiddenEntriesFromCvYaml(
-      filterDisabledSectionsFromCvYaml(sections.cv, file.disabledSections),
-      file.hiddenEntries
+      filterHiddenEntriesFromCvYaml(
+        filterDisabledSectionsFromCvYaml(sections.cv, file.disabledSections),
+        file.hiddenEntries
+      ),
+      variant?.exclude_entries
     )
   };
 
