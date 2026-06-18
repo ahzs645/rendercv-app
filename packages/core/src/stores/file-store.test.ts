@@ -162,3 +162,54 @@ describe('fileStore.uniqueName', () => {
     fileStore.deleteFile(f2.id);
   });
 });
+
+describe('fileStore variant authoring', () => {
+  function findFile(id: string) {
+    return fileStore.getSnapshot().files.find((entry) => entry.id === id);
+  }
+
+  it('creates, selects, renames and deletes variants', () => {
+    const file = fileStore.createFile('Variants CV');
+    const key = fileStore.createVariant(file.id, 'Tech Focus');
+    expect(key).toBe('tech_focus');
+    expect(findFile(file.id)?.selectedVariant).toBe('tech_focus');
+
+    fileStore.renameVariant(file.id, 'tech_focus', 'Academic');
+    const afterRename = findFile(file.id);
+    expect(afterRename?.variants?.academic).toBeDefined();
+    expect(afterRename?.variants?.tech_focus).toBeUndefined();
+    expect(afterRename?.selectedVariant).toBe('academic');
+
+    fileStore.deleteVariant(file.id, 'academic');
+    expect(findFile(file.id)?.variants?.academic).toBeUndefined();
+    fileStore.deleteFile(file.id);
+  });
+
+  it('toggles a section exclusion on the active variant', () => {
+    const file = fileStore.createFile('Section Variant CV');
+    const key = fileStore.createVariant(file.id, 'minimal')!;
+
+    fileStore.toggleVariantSectionExcluded(file.id, key, 'projects');
+    expect(findFile(file.id)?.variants?.[key]?.exclude_sections).toEqual(['projects']);
+
+    fileStore.toggleVariantSectionExcluded(file.id, key, 'projects');
+    expect(findFile(file.id)?.variants?.[key]?.exclude_sections).toEqual([]);
+    fileStore.deleteFile(file.id);
+  });
+
+  it('toggles an entry exclusion without touching CV content', () => {
+    const file = fileStore.createFile('Entry Variant CV');
+    const key = fileStore.createVariant(file.id, 'short')!;
+    const originalCv = findFile(file.id)?.cv;
+
+    fileStore.toggleEntryHiddenInVariant(file.id, key, 'experience', 'abc123');
+    const after = findFile(file.id);
+    expect(after?.variants?.[key]?.exclude_entries).toEqual({ experience: ['abc123'] });
+    // CV content is untouched — exclusions live on the variant metadata.
+    expect(after?.cv).toBe(originalCv);
+
+    fileStore.toggleEntryHiddenInVariant(file.id, key, 'experience', 'abc123');
+    expect(findFile(file.id)?.variants?.[key]?.exclude_entries).toEqual({});
+    fileStore.deleteFile(file.id);
+  });
+});

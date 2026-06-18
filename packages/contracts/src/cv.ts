@@ -21,6 +21,13 @@ export interface CvVariantDefinition {
   exclude_sections?: string[];
   tags?: string[];
   flavors?: string[];
+  /**
+   * Per-section entry fingerprints hidden from this variant, authored in-app.
+   * Kept here (rather than as `itags` in the CV) so CV content stays pristine
+   * and untouched by compatibility normalization. Keyed by section, values are
+   * content fingerprints (see `entryFingerprint`).
+   */
+  exclude_entries?: Record<string, string[]>;
 }
 
 export type CvVariants = Record<string, CvVariantDefinition>;

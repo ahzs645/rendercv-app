@@ -1,4 +1,10 @@
-import type { CvFile, CvFileSections, CvVariants, SectionKey } from '@rendercv/contracts';
+import type {
+  CvFile,
+  CvFileSections,
+  CvVariantDefinition,
+  CvVariants,
+  SectionKey
+} from '@rendercv/contracts';
 import YAML from 'yaml';
 import { preferencesStore } from './preferences-store';
 import { createStore } from './store';
@@ -176,6 +182,27 @@ export function readLocaleName(localeContent: string | undefined) {
   }
 
   return undefined;
+}
+
+/** Turn a human label into a variant key (snake_case, safe for YAML keys). */
+function slugifyVariantKey(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function createUniqueVariantKey(variants: CvVariants, baseName: string): string {
+  const base = slugifyVariantKey(baseName) || 'variant';
+  if (!variants[base]) {
+    return base;
+  }
+  let index = 2;
+  while (variants[`${base}_${index}`]) {
+    index += 1;
+  }
+  return `${base}_${index}`;
 }
 
 function resolveSelectedVariant(variants: CvVariants | undefined, selectedVariant: string | undefined) {
@@ -540,6 +567,127 @@ export class FileStore {
     this.#updateMeta(id, {
       variants,
       selectedVariant: resolveSelectedVariant(variants, undefined)
+    });
+  }
+
+  /** Create a new, empty variant and select it. Returns the generated key. */
+  createVariant(id: string, name?: string): string | undefined {
+    const file = this.files.find((current) => current.id === id);
+    if (!file) {
+      return undefined;
+    }
+
+    const variants = file.variants ?? {};
+    const key = createUniqueVariantKey(variants, name?.trim() || 'new_variant');
+    const description = name?.trim() ? name.trim() : undefined;
+    const nextVariants: CvVariants = {
+      ...variants,
+      [key]: { description }
+    };
+    this.#updateMeta(id, { variants: nextVariants, selectedVariant: key });
+    return key;
+  }
+
+  renameVariant(id: string, oldKey: string, nextName: string) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file?.variants?.[oldKey]) {
+      return;
+    }
+
+    const nextKey = slugifyVariantKey(nextName);
+    if (!nextKey || (nextKey !== oldKey && file.variants[nextKey])) {
+      return;
+    }
+
+    const nextVariants: CvVariants = {};
+    for (const [key, definition] of Object.entries(file.variants)) {
+      nextVariants[key === oldKey ? nextKey : key] = definition;
+    }
+
+    this.#updateMeta(id, {
+      variants: nextVariants,
+      selectedVariant: file.selectedVariant === oldKey ? nextKey : file.selectedVariant
+    });
+  }
+
+  deleteVariant(id: string, key: string) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file?.variants?.[key]) {
+      return;
+    }
+
+    const nextVariants: CvVariants = { ...file.variants };
+    delete nextVariants[key];
+    this.#updateMeta(id, {
+      variants: nextVariants,
+      selectedVariant:
+        file.selectedVariant === key ? resolveSelectedVariant(nextVariants, undefined) : file.selectedVariant
+    });
+  }
+
+  updateVariant(id: string, key: string, patch: Partial<CvVariantDefinition>) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file?.variants?.[key]) {
+      return;
+    }
+
+    this.#updateMeta(id, {
+      variants: { ...file.variants, [key]: { ...file.variants[key], ...patch } }
+    });
+  }
+
+  /** Toggle whether a variant excludes a whole section (its `exclude_sections`). */
+  toggleVariantSectionExcluded(id: string, variantKey: string, sectionKey: string) {
+    const file = this.files.find((current) => current.id === id);
+    const variant = file?.variants?.[variantKey];
+    if (!file || !variant) {
+      return;
+    }
+
+    const current = variant.exclude_sections ?? [];
+    const exclude_sections = current.includes(sectionKey)
+      ? current.filter((key) => key !== sectionKey)
+      : [...current, sectionKey];
+
+    this.#updateMeta(id, {
+      variants: {
+        ...file.variants,
+        [variantKey]: { ...variant, exclude_sections }
+      }
+    });
+  }
+
+  /**
+   * Toggle whether a single entry is hidden from a variant. Stored as a content
+   * fingerprint on the variant definition (`exclude_entries`) — CV content is
+   * left untouched, so this is a metadata change and never collides with the
+   * form editor or compatibility normalization.
+   */
+  toggleEntryHiddenInVariant(id: string, variantKey: string, sectionKey: string, fingerprint: string) {
+    const file = this.files.find((current) => current.id === id);
+    const variant = file?.variants?.[variantKey];
+    if (!file || !variant) {
+      return;
+    }
+
+    const current = variant.exclude_entries ?? {};
+    const sectionList = current[sectionKey] ?? [];
+    const nextSectionList = sectionList.includes(fingerprint)
+      ? sectionList.filter((value) => value !== fingerprint)
+      : [...sectionList, fingerprint];
+
+    const nextExcludeEntries: Record<string, string[]> = { ...current };
+    if (nextSectionList.length > 0) {
+      nextExcludeEntries[sectionKey] = nextSectionList;
+    } else {
+      delete nextExcludeEntries[sectionKey];
+    }
+
+    this.#updateMeta(id, {
+      variants: {
+        ...file.variants,
+        [variantKey]: { ...variant, exclude_entries: nextExcludeEntries }
+      }
     });
   }
 

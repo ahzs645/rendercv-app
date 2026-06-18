@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { CvFileSections, SectionKey } from '@rendercv/contracts';
+import type { CvFileSections, CvVariantDefinition, SectionKey } from '@rendercv/contracts';
+import { computeVariantVisibility } from '../viewer/variant-visibility';
+import { VariantVisibilityProvider } from './variant-visibility-context';
 import { Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import YAML from 'yaml';
 import { preferencesStore, themeLabel } from '@rendercv/core';
@@ -38,7 +40,12 @@ export function FormEditor({
   hiddenEntries,
   onToggleEntryHidden,
   disabledSections,
-  onToggleSectionDisabled
+  onToggleSectionDisabled,
+  activeVariantKey,
+  activeVariant,
+  variantLabel,
+  variantExcludedSections,
+  hideArchivedEntries
 }: {
   section: SectionKey;
   value: string;
@@ -52,6 +59,11 @@ export function FormEditor({
   onToggleEntryHidden?: (sectionKey: string, fingerprint: string) => void;
   disabledSections?: string[];
   onToggleSectionDisabled?: (sectionKey: string) => void;
+  activeVariantKey?: string | null;
+  activeVariant?: CvVariantDefinition | null;
+  variantLabel?: string;
+  variantExcludedSections?: string[];
+  hideArchivedEntries?: boolean;
 }) {
   const preferences = useStore(preferencesStore);
 
@@ -80,6 +92,10 @@ export function FormEditor({
   const [draftRootValue, setDraftRootValue] = useState(parsedRootValue);
   const [pendingCommitVersion, setPendingCommitVersion] = useState(0);
   const lastEmittedValueRef = useRef<string | null>(null);
+  const variantVisibility = useMemo(
+    () => computeVariantVisibility(draftRootValue, activeVariant ?? null),
+    [draftRootValue, activeVariant]
+  );
 
   useEffect(() => {
     if (value === lastEmittedValueRef.current) {
@@ -180,13 +196,23 @@ export function FormEditor({
             hidden={hiddenEntries ?? {}}
             toggle={onToggleEntryHidden ?? noopToggle}
           >
-            <CvSectionEditor
-              entriesExpanded={preferences.entriesExpanded}
-              rootValue={draftRootValue}
-              onChange={updateRoot}
-              disabledSections={disabledSections}
-              onToggleSectionDisabled={onToggleSectionDisabled}
-            />
+            <VariantVisibilityProvider
+              activeVariantKey={activeVariantKey ?? null}
+              variantLabel={variantLabel ?? ''}
+              visibility={variantVisibility}
+            >
+              <CvSectionEditor
+                entriesExpanded={preferences.entriesExpanded}
+                rootValue={draftRootValue}
+                onChange={updateRoot}
+                disabledSections={disabledSections}
+                onToggleSectionDisabled={onToggleSectionDisabled}
+                activeVariantKey={activeVariantKey ?? null}
+                variantLabel={variantLabel ?? ''}
+                variantExcludedSections={variantExcludedSections}
+                hideArchivedEntries={hideArchivedEntries ?? false}
+              />
+            </VariantVisibilityProvider>
           </HiddenEntriesProvider>
         ) : null}
       </div>

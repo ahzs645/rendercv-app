@@ -27,6 +27,7 @@ import {
   X
 } from 'lucide-react';
 import { useEntryHidden } from './hidden-entries-context';
+import { useEntryVariantState } from './variant-visibility-context';
 import {
   createDefaultEntry,
   positionSubTemplate
@@ -56,7 +57,8 @@ export function EntryArrayEditor({
   showHeader = true,
   addLabel,
   sectionKey,
-  originPath
+  originPath,
+  hideArchivedEntries = false
 }: {
   title: string;
   entries: unknown[];
@@ -67,6 +69,7 @@ export function EntryArrayEditor({
   addLabel?: string;
   sectionKey?: string;
   originPath?: (string | number)[];
+  hideArchivedEntries?: boolean;
 }) {
   const labelWidth = labelWidthForTemplate(template);
   const nextIdRef = useRef(0);
@@ -127,6 +130,7 @@ export function EntryArrayEditor({
       template={template}
       sectionKey={sectionKey}
       originPath={originPath}
+      hideArchivedEntries={hideArchivedEntries}
     />
   ));
 
@@ -194,7 +198,8 @@ function SortableEntryArrayItem({
   onChange,
   onRemove,
   sectionKey,
-  originPath
+  originPath,
+  hideArchivedEntries = false
 }: {
   id: number;
   entry: unknown;
@@ -206,6 +211,7 @@ function SortableEntryArrayItem({
   onRemove: (index: number) => void;
   sectionKey?: string;
   originPath?: (string | number)[];
+  hideArchivedEntries?: boolean;
 }) {
   const {
     attributes,
@@ -218,7 +224,19 @@ function SortableEntryArrayItem({
   } = useSortable({ id });
 
   const hiddenState = useEntryHidden(sectionKey, entry);
-  const isHidden = hiddenState?.hidden ?? false;
+  const variantState = useEntryVariantState(sectionKey, entry);
+  const hiddenByVariant = variantState?.hiddenByVariant ?? false;
+  const isArchived = variantState?.archived ?? false;
+  // Manual hide OR variant exclusion both grey the entry out in the editor. The
+  // eye toggle routes to whichever is active (variant vs file-global manual) via
+  // the hidden-entries context, set up in the workspace.
+  const isHidden = (hiddenState?.hidden ?? false) || hiddenByVariant;
+
+  // When the user opts to hide archived entries, drop them from the form list
+  // entirely (they remain in the document and are always excluded from the PDF).
+  if (hideArchivedEntries && isArchived) {
+    return null;
+  }
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -246,18 +264,43 @@ function SortableEntryArrayItem({
         >
           <GripVertical className="size-4 sm:size-3.5" />
         </div>
-        <div className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center sm:right-1">
+        <div className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center gap-1 sm:right-1">
+          {isArchived ? (
+            <span
+              className="hidden shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline"
+              title="Tagged archived — always excluded from the PDF"
+            >
+              Archived
+            </span>
+          ) : hiddenByVariant ? (
+            <span
+              className="hidden shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary sm:inline"
+              title={`Hidden from the "${variantState?.variantLabel}" variant`}
+            >
+              Off in {variantState?.variantLabel}
+            </span>
+          ) : null}
           {hiddenState ? (
             <button
               type="button"
               className={`form-item-control flex size-11 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
-                isHidden
-                  ? 'text-amber-600 sm:text-amber-600'
-                  : 'text-muted-foreground/60 hover:text-foreground sm:text-muted-foreground/40'
+                hiddenByVariant
+                  ? 'text-primary'
+                  : isHidden
+                    ? 'text-amber-600 sm:text-amber-600'
+                    : 'text-muted-foreground/60 hover:text-foreground sm:text-muted-foreground/40'
               }`}
               onClick={hiddenState.toggle}
               aria-label={isHidden ? 'Show in resume' : 'Hide from resume'}
-              title={isHidden ? 'Hidden from the resume — click to show' : 'Hide from the resume'}
+              title={
+                variantState?.variantLabel
+                  ? isHidden
+                    ? `Hidden from the "${variantState.variantLabel}" variant — click to show`
+                    : `Hide from the "${variantState.variantLabel}" variant`
+                  : isHidden
+                    ? 'Hidden from the resume — click to show'
+                    : 'Hide from the resume'
+              }
             >
               {isHidden ? <EyeOff className="size-4 sm:size-3.5" /> : <Eye className="size-4 sm:size-3.5" />}
             </button>

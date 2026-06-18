@@ -51,13 +51,21 @@ export function CvSectionEditor({
   rootValue,
   onChange,
   disabledSections,
-  onToggleSectionDisabled
+  onToggleSectionDisabled,
+  activeVariantKey,
+  variantLabel,
+  variantExcludedSections,
+  hideArchivedEntries
 }: {
   entriesExpanded: boolean;
   rootValue: Record<string, unknown>;
   onChange: (nextRoot: Record<string, unknown>) => void;
   disabledSections?: string[];
   onToggleSectionDisabled?: (sectionKey: string) => void;
+  activeVariantKey?: string | null;
+  variantLabel?: string;
+  variantExcludedSections?: string[];
+  hideArchivedEntries?: boolean;
 }) {
   const socialNetworks = asArray(rootValue.social_networks);
   const customConnections = asArray(rootValue.custom_connections);
@@ -95,6 +103,10 @@ export function CvSectionEditor({
         onChange={updateSections}
         disabledSections={disabledSections}
         onToggleSectionDisabled={onToggleSectionDisabled}
+        activeVariantKey={activeVariantKey}
+        variantLabel={variantLabel}
+        variantExcludedSections={variantExcludedSections}
+        hideArchivedEntries={hideArchivedEntries}
       />
     </>
   );
@@ -105,15 +117,24 @@ function SectionMapEditor({
   sections,
   onChange,
   disabledSections,
-  onToggleSectionDisabled
+  onToggleSectionDisabled,
+  activeVariantKey,
+  variantLabel,
+  variantExcludedSections,
+  hideArchivedEntries
 }: {
   entriesExpanded: boolean;
   sections: Record<string, unknown>;
   onChange: (sections: Record<string, unknown>) => void;
   disabledSections?: string[];
   onToggleSectionDisabled?: (sectionKey: string) => void;
+  activeVariantKey?: string | null;
+  variantLabel?: string;
+  variantExcludedSections?: string[];
+  hideArchivedEntries?: boolean;
 }) {
   const disabledSet = new Set(disabledSections ?? []);
+  const variantExcludedSet = new Set(variantExcludedSections ?? []);
   const sectionEntries = Object.entries(sections);
   const sectionKeys = sectionEntries.map(([sectionKey]) => sectionKey);
 
@@ -200,6 +221,10 @@ function SectionMapEditor({
                 entries={asArray(sectionValue)}
                 entriesExpanded={entriesExpanded}
                 disabled={disabledSet.has(sectionKey)}
+                variantExcluded={variantExcludedSet.has(sectionKey)}
+                activeVariantKey={activeVariantKey ?? null}
+                variantLabel={variantLabel ?? ''}
+                hideArchivedEntries={hideArchivedEntries ?? false}
                 onToggleDisabled={
                   onToggleSectionDisabled ? () => onToggleSectionDisabled(sectionKey) : undefined
                 }
@@ -226,6 +251,10 @@ function SortableSectionEditor(props: {
   entries: unknown[];
   entriesExpanded: boolean;
   disabled: boolean;
+  variantExcluded: boolean;
+  activeVariantKey: string | null;
+  variantLabel: string;
+  hideArchivedEntries: boolean;
   onToggleDisabled?: () => void;
   onRename: (oldKey: string, nextTitle: string) => void;
   onDelete: () => void;
@@ -267,6 +296,10 @@ function SectionEditor({
   entries,
   entriesExpanded,
   disabled,
+  variantExcluded,
+  activeVariantKey,
+  variantLabel,
+  hideArchivedEntries,
   onToggleDisabled,
   onRename,
   onDelete,
@@ -277,6 +310,10 @@ function SectionEditor({
   entries: unknown[];
   entriesExpanded: boolean;
   disabled: boolean;
+  variantExcluded: boolean;
+  activeVariantKey: string | null;
+  variantLabel: string;
+  hideArchivedEntries?: boolean;
   onToggleDisabled?: () => void;
   onRename: (oldKey: string, nextTitle: string) => void;
   onDelete: () => void;
@@ -286,6 +323,11 @@ function SectionEditor({
   const [title, setTitle] = useState(dictionaryKeyToTitle(sectionKey));
   const detectedTemplate = detectEntryType(entries[0]);
   const isEmpty = entries.length === 0;
+  // A section is hidden from the PDF if manually disabled or excluded by the
+  // active variant. The two are styled differently: amber for manual, the
+  // primary/brand color for variant-driven so authors can tell them apart.
+  const hiddenFromResume = disabled || variantExcluded;
+  const variantActive = Boolean(activeVariantKey);
 
   useEffect(() => {
     setTitle(dictionaryKeyToTitle(sectionKey));
@@ -316,7 +358,7 @@ function SectionEditor({
         </div>
         <input
           className={`flex-1 border-b border-muted-foreground/40 bg-transparent py-2 pr-20 pl-4 text-base font-semibold outline-none sm:py-0 sm:pr-2 sm:pl-0 sm:text-[15px] ${
-            disabled ? 'text-foreground/40 line-through decoration-1' : 'text-foreground/80'
+            hiddenFromResume ? 'text-foreground/40 line-through decoration-1' : 'text-foreground/80'
           }`}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -328,20 +370,46 @@ function SectionEditor({
             }
           }}
         />
+        {variantExcluded ? (
+          <span
+            className="ml-2 hidden shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary sm:inline"
+            title={`Excluded from the "${variantLabel}" variant`}
+          >
+            Off in {variantLabel}
+          </span>
+        ) : null}
         <div className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center sm:right-1">
           {onToggleDisabled ? (
             <button
               type="button"
               className={`flex size-11 items-center justify-center rounded-md transition-opacity hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
-                disabled
-                  ? 'text-amber-600 opacity-100 sm:text-amber-600'
-                  : 'text-muted-foreground/70 opacity-90 hover:text-foreground md:opacity-60 md:group-hover/section:opacity-100'
+                variantExcluded
+                  ? 'text-primary opacity-100'
+                  : disabled
+                    ? 'text-amber-600 opacity-100 sm:text-amber-600'
+                    : 'text-muted-foreground/70 opacity-90 hover:text-foreground md:opacity-60 md:group-hover/section:opacity-100'
               }`}
-              aria-label={disabled ? 'Enable section in resume' : 'Disable section in resume'}
-              title={disabled ? 'Disabled — excluded from the resume. Click to enable.' : 'Disable section — keep it here but exclude it from the resume'}
+              aria-label={
+                variantActive
+                  ? variantExcluded
+                    ? 'Include section in variant'
+                    : 'Exclude section from variant'
+                  : hiddenFromResume
+                    ? 'Enable section in resume'
+                    : 'Disable section in resume'
+              }
+              title={
+                variantActive
+                  ? variantExcluded
+                    ? `Excluded from the "${variantLabel}" variant. Click to include.`
+                    : `Exclude this section from the "${variantLabel}" variant`
+                  : hiddenFromResume
+                    ? 'Disabled — excluded from the resume. Click to enable.'
+                    : 'Disable section — keep it here but exclude it from the resume'
+              }
               onClick={onToggleDisabled}
             >
-              {disabled ? <EyeOff className="size-4 sm:size-3.5" /> : <Eye className="size-4 sm:size-3.5" />}
+              {hiddenFromResume ? <EyeOff className="size-4 sm:size-3.5" /> : <Eye className="size-4 sm:size-3.5" />}
             </button>
           ) : null}
           <button
@@ -354,7 +422,7 @@ function SectionEditor({
           </button>
         </div>
       </div>
-      <div className={disabled ? 'opacity-45' : undefined}>
+      <div className={hiddenFromResume ? 'opacity-45' : undefined}>
         {isEmpty ? (
           <EntryTypeChooser onChoose={chooseEntryType} />
         ) : (
@@ -367,6 +435,7 @@ function SectionEditor({
             showHeader={false}
             sectionKey={sectionKey}
             originPath={['sections', sectionKey]}
+            hideArchivedEntries={hideArchivedEntries}
           />
         )}
       </div>

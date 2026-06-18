@@ -174,6 +174,7 @@ export const normalTemplate: EntryTemplate = {
       defaultValue: '',
       preserveEmpty: true
     },
+    { path: ['url'], label: 'URL', type: 'string', placeholder: 'https://' },
     { path: ['date'], label: 'Date', type: 'date', placeholder: '2020-09, Fall 2023, etc.' },
     { path: ['start_date'], label: 'Start Date', type: 'date', placeholder: '2020-09 or 2020' },
     {

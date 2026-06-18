@@ -16,6 +16,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   activeSection: 'cv',
   wordWrap: true,
   entriesExpanded: true,
+  hideArchivedEntries: false,
   selectedModel: DEFAULT_MODEL_ID,
   onboardingCompletedAt: null,
   aiProvider: 'managed',
