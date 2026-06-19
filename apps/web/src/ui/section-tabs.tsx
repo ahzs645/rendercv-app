@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Layers, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Layers, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import type { CvFile, CvFileSections, SectionKey } from '@rendercv/contracts';
 import { SECTION_LABELS } from '@rendercv/contracts';
 import {
@@ -195,6 +196,7 @@ function VariantManager({
 }) {
   const preferences = useStore(preferencesStore);
   const [open, setOpen] = useState(false);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -232,10 +234,8 @@ function VariantManager({
     close();
   }
 
-  function handleRename(key: string) {
-    const next = window.prompt('Rename variant', variantLabel(key));
-    if (next === null || !next.trim()) return;
-    fileStore.renameVariant(selectedFile.id, key, next);
+  function handleEdit(key: string) {
+    setEditingKey(key);
     close();
   }
 
@@ -313,9 +313,9 @@ function VariantManager({
                     <>
                       <button
                         type="button"
-                        aria-label={`Rename ${variantLabel(key)}`}
+                        aria-label={`Edit ${variantLabel(key)}`}
                         className="flex size-6 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
-                        onClick={() => handleRename(key)}
+                        onClick={() => handleEdit(key)}
                       >
                         <Pencil className="size-3" />
                       </button>
@@ -376,6 +376,240 @@ function VariantManager({
           </button>
         </div>
       ) : null}
+      <VariantEditDialog
+        selectedFile={selectedFile}
+        variantKey={editingKey}
+        onClose={() => setEditingKey(null)}
+      />
+    </div>
+  );
+}
+
+function VariantEditDialog({
+  selectedFile,
+  variantKey,
+  onClose
+}: {
+  selectedFile: CvFile;
+  variantKey: string | null;
+  onClose: () => void;
+}) {
+  const variant = variantKey ? selectedFile.variants?.[variantKey] : undefined;
+  const open = Boolean(variantKey && variant);
+
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [flavors, setFlavors] = useState<string[]>([]);
+
+  // Seed the form from the variant whenever a different variant is opened.
+  useEffect(() => {
+    if (!variantKey || !variant) {
+      return;
+    }
+    setName(variantLabel(variantKey));
+    setDescription(variant.description ?? '');
+    setTags(variant.tags ?? []);
+    setFlavors(variant.flavors ?? []);
+    // Only re-seed when the edited variant changes, not on every keystroke that
+    // mutates the underlying variant object.
+  }, [variantKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleSave() {
+    if (!variantKey) {
+      return;
+    }
+
+    let targetKey = variantKey;
+    const trimmedName = name.trim();
+    if (trimmedName && trimmedName !== variantLabel(variantKey)) {
+      const renamed = fileStore.renameVariant(selectedFile.id, variantKey, trimmedName);
+      if (!renamed) {
+        toast.error('That name is empty or already used by another variant.');
+        return;
+      }
+      targetKey = renamed;
+    }
+
+    fileStore.updateVariant(selectedFile.id, targetKey, {
+      description: description.trim() || undefined,
+      tags: tags.length > 0 ? tags : undefined,
+      flavors: flavors.length > 0 ? flavors : undefined
+    });
+    toast.success(`Saved “${variantLabel(targetKey)}”.`);
+    onClose();
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
+        <Dialog.Content className="dialog-content-fade fixed inset-x-4 top-1/2 z-50 max-h-[85vh] -translate-y-1/2 overflow-y-auto rounded-3xl border border-border bg-background shadow-2xl outline-none md:left-1/2 md:w-[min(480px,calc(100vw-3rem))] md:-translate-x-1/2">
+          <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
+            <div className="min-w-0">
+              <Dialog.Title className="text-lg font-semibold text-foreground">Edit variant</Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-muted-foreground">
+                Name this variant and choose which tagged content and field flavors it includes.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Close"
+                className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <form
+            className="space-y-5 px-6 py-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSave();
+            }}
+          >
+            <div>
+              <label
+                htmlFor="variant-name"
+                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Name
+              </label>
+              <input
+                id="variant-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="e.g. Academic"
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 placeholder:text-muted-foreground/60"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="variant-description"
+                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Description
+              </label>
+              <textarea
+                id="variant-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={2}
+                placeholder="Optional note about when to use this variant"
+                className="mt-1 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 placeholder:text-muted-foreground/60"
+              />
+            </div>
+
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Tags
+              </span>
+              <TokenInput tokens={tags} onChange={setTags} placeholder="Add a tag and press Enter" />
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Entries tagged with any of these show in the variant; entries with a matching inverse
+                tag (<code className="rounded bg-muted px-1 py-0.5 text-[11px]">itags</code>) are hidden.
+              </p>
+            </div>
+
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Flavors
+              </span>
+              <TokenInput tokens={flavors} onChange={setFlavors} placeholder="Add a flavor and press Enter" />
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                When a field defines flavors, the first one listed here that matches is used.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  Cancel
+                </button>
+              </Dialog.Close>
+              <button
+                type="submit"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function TokenInput({
+  tokens,
+  onChange,
+  placeholder
+}: {
+  tokens: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+}) {
+  const [draft, setDraft] = useState('');
+
+  function commit(raw: string) {
+    const parts = raw
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length === 0) {
+      setDraft('');
+      return;
+    }
+    const next = [...tokens];
+    for (const part of parts) {
+      if (!next.includes(part)) {
+        next.push(part);
+      }
+    }
+    onChange(next);
+    setDraft('');
+  }
+
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+      {tokens.map((token) => (
+        <span
+          key={token}
+          className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-foreground"
+        >
+          {token}
+          <button
+            type="button"
+            aria-label={`Remove ${token}`}
+            className="text-muted-foreground/70 hover:text-foreground"
+            onClick={() => onChange(tokens.filter((value) => value !== token))}
+          >
+            <X className="size-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ',') {
+            event.preventDefault();
+            commit(draft);
+          } else if (event.key === 'Backspace' && draft === '' && tokens.length > 0) {
+            onChange(tokens.slice(0, -1));
+          }
+        }}
+        onBlur={() => commit(draft)}
+        placeholder={tokens.length === 0 ? placeholder : ''}
+        className="min-w-[8rem] flex-1 bg-transparent py-0.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+      />
     </div>
   );
 }

@@ -579,24 +579,35 @@ export class FileStore {
 
     const variants = file.variants ?? {};
     const key = createUniqueVariantKey(variants, name?.trim() || 'new_variant');
-    const description = name?.trim() ? name.trim() : undefined;
+    // Start with an empty definition; the display label is derived from the key
+    // and description/tags/flavors are authored separately via updateVariant.
     const nextVariants: CvVariants = {
       ...variants,
-      [key]: { description }
+      [key]: {}
     };
     this.#updateMeta(id, { variants: nextVariants, selectedVariant: key });
     return key;
   }
 
-  renameVariant(id: string, oldKey: string, nextName: string) {
+  /**
+   * Rename a variant (changes its key). Returns the resulting key, or undefined
+   * when the new name is empty or collides with another variant. The returned
+   * key lets callers immediately target the renamed variant (e.g. to apply a
+   * metadata patch in the same save).
+   */
+  renameVariant(id: string, oldKey: string, nextName: string): string | undefined {
     const file = this.files.find((current) => current.id === id);
     if (!file?.variants?.[oldKey]) {
-      return;
+      return undefined;
     }
 
     const nextKey = slugifyVariantKey(nextName);
     if (!nextKey || (nextKey !== oldKey && file.variants[nextKey])) {
-      return;
+      return undefined;
+    }
+
+    if (nextKey === oldKey) {
+      return oldKey;
     }
 
     const nextVariants: CvVariants = {};
@@ -608,6 +619,7 @@ export class FileStore {
       variants: nextVariants,
       selectedVariant: file.selectedVariant === oldKey ? nextKey : file.selectedVariant
     });
+    return nextKey;
   }
 
   deleteVariant(id: string, key: string) {

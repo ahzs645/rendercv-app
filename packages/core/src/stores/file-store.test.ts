@@ -185,6 +185,56 @@ describe('fileStore variant authoring', () => {
     fileStore.deleteFile(file.id);
   });
 
+  it('starts a created variant with an empty definition', () => {
+    const file = fileStore.createFile('Empty Variant CV');
+    const key = fileStore.createVariant(file.id, 'Tech Focus')!;
+    expect(findFile(file.id)?.variants?.[key]).toEqual({});
+    fileStore.deleteFile(file.id);
+  });
+
+  it('renameVariant returns the new key and reports collisions', () => {
+    const file = fileStore.createFile('Rename Variant CV');
+    fileStore.createVariant(file.id, 'Tech Focus');
+    fileStore.createVariant(file.id, 'Academic');
+
+    // No-op rename (same slug) still succeeds and returns the key.
+    expect(fileStore.renameVariant(file.id, 'tech_focus', 'Tech Focus')).toBe('tech_focus');
+    // Collision with an existing variant fails and leaves keys untouched.
+    expect(fileStore.renameVariant(file.id, 'tech_focus', 'Academic')).toBeUndefined();
+    expect(findFile(file.id)?.variants?.tech_focus).toBeDefined();
+    // A genuine rename returns the new key.
+    expect(fileStore.renameVariant(file.id, 'tech_focus', 'Industry')).toBe('industry');
+    expect(findFile(file.id)?.variants?.industry).toBeDefined();
+    fileStore.deleteFile(file.id);
+  });
+
+  it('updates a variant description, tags and flavors', () => {
+    const file = fileStore.createFile('Update Variant CV');
+    const key = fileStore.createVariant(file.id, 'Academic')!;
+
+    fileStore.updateVariant(file.id, key, {
+      description: 'For research roles',
+      tags: ['research'],
+      flavors: ['long']
+    });
+    expect(findFile(file.id)?.variants?.[key]).toMatchObject({
+      description: 'For research roles',
+      tags: ['research'],
+      flavors: ['long']
+    });
+
+    // Patches merge: updating tags leaves the description intact.
+    fileStore.updateVariant(file.id, key, { tags: ['research', 'teaching'] });
+    const updated = findFile(file.id)?.variants?.[key];
+    expect(updated?.description).toBe('For research roles');
+    expect(updated?.tags).toEqual(['research', 'teaching']);
+
+    // Unknown variant keys are ignored.
+    fileStore.updateVariant(file.id, 'missing', { description: 'nope' });
+    expect(findFile(file.id)?.variants?.missing).toBeUndefined();
+    fileStore.deleteFile(file.id);
+  });
+
   it('toggles a section exclusion on the active variant', () => {
     const file = fileStore.createFile('Section Variant CV');
     const key = fileStore.createVariant(file.id, 'minimal')!;
