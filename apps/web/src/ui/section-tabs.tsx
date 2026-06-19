@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Layers, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Download, Layers, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import type { CvFile, CvFileSections, SectionKey } from '@rendercv/contracts';
 import { SECTION_LABELS } from '@rendercv/contracts';
 import {
@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
 import type { ViewerRenderer } from './preview-pane';
 import { ThemeLibraryDialog } from './theme-library-dialog';
+import { serializeCvVariantsYaml } from '../features/viewer/cv-variants';
+import { downloadBlob } from '../features/viewer/download';
 
 const TAB_ORDER = Object.keys(SECTION_LABELS) as SectionKey[];
 const BUILT_IN_THEME_KEYS = Object.keys(defaultDesigns);
@@ -239,6 +241,17 @@ function VariantManager({
     close();
   }
 
+  function handleExport() {
+    if (variantKeys.length === 0) {
+      return;
+    }
+    const yaml = serializeCvVariantsYaml(variants);
+    const baseName = (selectedFile.name || 'cv').replace(/\.[^.]+$/, '').trim() || 'cv';
+    void downloadBlob(new Blob([yaml], { type: 'text/yaml' }), `${baseName}.variants.yaml`);
+    toast.success('Exported variants.');
+    close();
+  }
+
   function handleDelete(key: string) {
     if (!window.confirm(`Delete the "${variantLabel(key)}" variant? This won't delete any CV content.`)) {
       return;
@@ -359,6 +372,18 @@ function VariantManager({
             >
               <Upload className="size-3.5 shrink-0" />
               {isImporting ? 'Importing…' : 'Import variants…'}
+            </button>
+          ) : null}
+          {variantKeys.length > 0 ? (
+            <button
+              type="button"
+              role="menuitem"
+              data-testid="variant-export"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+              onClick={handleExport}
+            >
+              <Download className="size-3.5 shrink-0" />
+              Export variants…
             </button>
           ) : null}
           <div className="my-1 h-px bg-border/60" />
