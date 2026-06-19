@@ -385,7 +385,7 @@ function VariantManager({
   );
 }
 
-function VariantEditDialog({
+export function VariantEditDialog({
   selectedFile,
   variantKey,
   onClose
@@ -507,7 +507,12 @@ function VariantEditDialog({
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Tags
               </span>
-              <TokenInput tokens={tags} onChange={setTags} placeholder="Add a tag and press Enter" />
+              <TokenInput
+                tokens={tags}
+                onChange={setTags}
+                placeholder="Add a tag and press Enter"
+                testId="variant-tags-input"
+              />
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Entries tagged with any of these show in the variant; entries with a matching inverse
                 tag (<code className="rounded bg-muted px-1 py-0.5 text-[11px]">itags</code>) are hidden.
@@ -518,7 +523,12 @@ function VariantEditDialog({
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Flavors
               </span>
-              <TokenInput tokens={flavors} onChange={setFlavors} placeholder="Add a flavor and press Enter" />
+              <TokenInput
+                tokens={flavors}
+                onChange={setFlavors}
+                placeholder="Add a flavor and press Enter"
+                testId="variant-flavors-input"
+              />
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 When a field defines flavors, the first one listed here that matches is used.
               </p>
@@ -550,11 +560,13 @@ function VariantEditDialog({
 function TokenInput({
   tokens,
   onChange,
-  placeholder
+  placeholder,
+  testId
 }: {
   tokens: string[];
   onChange: (next: string[]) => void;
   placeholder: string;
+  testId?: string;
 }) {
   const [draft, setDraft] = useState('');
 
@@ -596,6 +608,7 @@ function TokenInput({
         </span>
       ))}
       <input
+        data-testid={testId}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => {
