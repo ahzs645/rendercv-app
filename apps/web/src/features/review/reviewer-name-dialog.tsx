@@ -9,21 +9,25 @@ export function ReviewerNameDialog({
   onConfirm,
   onOpenChange,
   open,
+  showNoteField = true,
   title
 }: {
   confirmLabel?: string;
   description: string;
   initialName?: string;
-  onConfirm: (name: string) => void | Promise<void>;
+  onConfirm: (name: string, note?: string) => void | Promise<void>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  showNoteField?: boolean;
   title: string;
 }) {
   const [value, setValue] = useState(initialName ?? '');
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     if (open) {
       setValue(initialName ?? '');
+      setNote('');
     }
   }, [initialName, open]);
 
@@ -64,6 +68,21 @@ export function ReviewerNameDialog({
               />
             </label>
 
+            {showNoteField ? (
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-foreground">
+                  Note to the author <span className="font-normal text-muted-foreground">(optional)</span>
+                </span>
+                <textarea
+                  className="min-h-20 w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary"
+                  maxLength={2000}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="Why these changes? Anything the author should look at first?"
+                  value={note}
+                />
+              </label>
+            ) : null}
+
             <div className="flex items-center justify-end gap-2">
               <button
                 className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
@@ -75,7 +94,7 @@ export function ReviewerNameDialog({
               <button
                 className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-40"
                 disabled={!value.trim()}
-                onClick={() => void onConfirm(value.trim())}
+                onClick={() => void onConfirm(value.trim(), note.trim() || undefined)}
                 type="button"
               >
                 {confirmLabel}

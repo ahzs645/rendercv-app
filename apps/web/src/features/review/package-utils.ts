@@ -124,6 +124,7 @@ export function validateReviewProposalPackage(value: unknown): ReviewProposalPac
     !isSections(value.rootBaselineSections) ||
     !isSections(value.proposedSections) ||
     typeof value.reviewerName !== 'string' ||
+    (value.note !== undefined && typeof value.note !== 'string') ||
     typeof value.createdAt !== 'number'
   ) {
     throw new Error('Invalid review proposal payload.');
@@ -139,6 +140,7 @@ export function validateReviewProposalPackage(value: unknown): ReviewProposalPac
     rootBaselineSections: value.rootBaselineSections,
     proposedSections: value.proposedSections,
     reviewerName: value.reviewerName,
+    ...(value.note ? { note: value.note } : {}),
     createdAt: value.createdAt
   };
 }

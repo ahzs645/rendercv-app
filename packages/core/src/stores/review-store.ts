@@ -225,6 +225,7 @@ export class ReviewStore {
       fileName: pkg.fileName,
       proposedSections: pkg.proposedSections,
       reviewerName: pkg.reviewerName,
+      note: pkg.note,
       createdAt: pkg.createdAt,
       decisionStates: {}
     });
@@ -262,12 +263,14 @@ export class ReviewStore {
     fileName,
     proposedSections,
     reviewerName,
+    note,
     linkedFileId,
     sessionId
   }: {
     fileName: string;
     proposedSections: CvFileSections;
     reviewerName: string;
+    note?: string;
     linkedFileId?: string;
     sessionId?: string;
   }) {
@@ -296,6 +299,7 @@ export class ReviewStore {
       rootBaselineSections: session.rootBaselineSections,
       proposedSections,
       reviewerName,
+      ...(note?.trim() ? { note: note.trim() } : {}),
       createdAt
     };
 

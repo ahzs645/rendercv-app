@@ -390,7 +390,7 @@ export function WorkspaceToolbar({
     }
   }
 
-  async function handleReviewerConfirm(reviewerName: string) {
+  async function handleReviewerConfirm(reviewerName: string, note?: string) {
     if (!selectedFile || !fileSections || !canSendProposal || !selectedReviewSession) {
       return;
     }
@@ -401,7 +401,8 @@ export function WorkspaceToolbar({
       linkedFileId: selectedFile.id,
       fileName: selectedFile.name,
       proposedSections: fileSections,
-      reviewerName
+      reviewerName,
+      note
     });
 
     try {
@@ -950,7 +951,7 @@ export function WorkspaceToolbar({
         confirmLabel={activeReviewProposal ? 'Forward proposal' : 'Send proposal'}
         description="Add the name that should appear on the review proposal package."
         initialName={preferences.reviewDisplayName}
-        onConfirm={(name) => void handleReviewerConfirm(name)}
+        onConfirm={(name, note) => void handleReviewerConfirm(name, note)}
         onOpenChange={setReviewerDialogOpen}
         open={reviewerDialogOpen}
         title="Reviewer name"

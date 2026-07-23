@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Download, GitCompareArrows, Pencil, Send, X } from 'lucide-react';
+import { ArrowLeft, Check, Download, GitCompareArrows, MessageSquareQuote, Pencil, Send, X } from 'lucide-react';
 import YAML from 'yaml';
 import {
   fileStore,
@@ -21,8 +21,11 @@ import {
   ReviewProposalTooLargeError
 } from '../features/review/package-utils';
 import { buildProposalPackageFromSession } from '../features/review/session-utils';
+import { diffWords, type WordDiffToken } from '../features/review/word-diff';
 import { PreviewPane } from '../ui/preview-pane';
 import { useStore } from '../lib/use-store';
+
+type MobilePane = 'changes' | 'original' | 'proposed';
 
 export function ReviewSessionPage() {
   const { sessionId = '' } = useParams();
@@ -34,6 +37,8 @@ export function ReviewSessionPage() {
   const activeProposal = session?.proposals.find((entry) => entry.proposalId === session?.activeProposalId);
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
   const [nameAction, setNameAction] = useState<'forward' | null>(null);
+  const [proposalPane, setProposalPane] = useState<'proposed' | 'merged'>('proposed');
+  const [mobilePane, setMobilePane] = useState<MobilePane>('changes');
 
   const reviewChanges = useMemo(
     () =>
@@ -175,7 +180,7 @@ export function ReviewSessionPage() {
     navigate('/');
   }
 
-  async function handleForwardProposal(reviewerName: string) {
+  async function handleForwardProposal(reviewerName: string, note?: string) {
     if (!activeProposal) {
       return;
     }
@@ -186,7 +191,8 @@ export function ReviewSessionPage() {
       linkedFileId: currentSession.linkedFileId,
       fileName: activeProposal.fileName,
       proposedSections: activeProposal.proposedSections,
-      reviewerName
+      reviewerName,
+      note
     });
 
     try {
@@ -311,8 +317,38 @@ export function ReviewSessionPage() {
         </div>
       </div>
 
+      {/* Mobile pane switcher: the stacked panels get very tall on phones. */}
+      <div className="sticky top-0 z-20 border-b border-border bg-sidebar/95 px-4 py-2 backdrop-blur lg:hidden">
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-background p-1">
+          {(
+            [
+              ['changes', 'Changes'],
+              ['original', 'Original'],
+              ['proposed', 'Proposed']
+            ] as Array<[MobilePane, string]>
+          ).map(([pane, label]) => (
+            <button
+              key={pane}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                mobilePane === pane
+                  ? 'bg-foreground text-background'
+                  : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+              }`}
+              onClick={() => setMobilePane(pane)}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="mx-auto flex max-w-[1600px] min-h-[calc(100vh-84px)] flex-col gap-4 px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[26rem_minmax(0,1fr)]">
-        <aside className="rounded-3xl border border-border bg-background">
+        <aside
+          className={`rounded-3xl border border-border bg-background ${
+            mobilePane === 'changes' ? '' : 'hidden lg:block'
+          }`}
+        >
           <div className="flex items-center gap-2 border-b border-border px-5 py-4">
             <GitCompareArrows className="size-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Change review</h2>
@@ -355,10 +391,58 @@ export function ReviewSessionPage() {
           ) : null}
           {activeProposal ? (
             <div className="px-5 py-4 lg:max-h-[calc(100vh-10rem)] lg:overflow-auto">
+              {activeProposal.note ? (
+                <div className="mb-4 flex gap-2.5 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
+                  <MessageSquareQuote className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-primary">
+                      Note from {activeProposal.reviewerName}
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm leading-5 text-foreground">
+                      {activeProposal.note}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
               <div className="mb-4 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-xs leading-5 text-muted-foreground">
                 Accept the changes you want to apply. Rejected and pending changes keep the original resume values when you finish.
                 <span className="mt-1 block font-medium text-foreground">{resolveHelpText}</span>
               </div>
+              {totalCount > 1 ? (
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">{totalCount} changes in total</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                      onClick={() =>
+                        reviewStore.setSectionDecision(
+                          currentSession.sessionId,
+                          activeProposal.proposalId,
+                          reviewChanges.flatMap((section) => section.changes.map((change) => change.id)),
+                          'accepted'
+                        )
+                      }
+                      type="button"
+                    >
+                      Accept all changes
+                    </button>
+                    <button
+                      className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                      onClick={() =>
+                        reviewStore.setSectionDecision(
+                          currentSession.sessionId,
+                          activeProposal.proposalId,
+                          reviewChanges.flatMap((section) => section.changes.map((change) => change.id)),
+                          'rejected'
+                        )
+                      }
+                      type="button"
+                    >
+                      Reject all changes
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {totalCount === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
                   This proposal matches your original resume — there is nothing to accept or reject.
@@ -411,6 +495,13 @@ export function ReviewSessionPage() {
                       {section.changes.length ? (
                         section.changes.map((change) => {
                           const decision = activeProposal.decisionStates[change.id];
+                          const diffTokens =
+                            change.kind === 'set'
+                              ? diffWords(
+                                  formatReviewValue(change.baselineValue),
+                                  formatReviewValue(change.proposedValue)
+                                )
+                              : null;
                           return (
                             <article
                               key={change.id}
@@ -429,11 +520,13 @@ export function ReviewSessionPage() {
                               </div>
                               <div className="mt-3 grid gap-3 md:grid-cols-2">
                                 <ValueCard
+                                  diffTokens={diffTokens}
                                   title="Original"
                                   tone="base"
                                   value={change.baselineValue}
                                 />
                                 <ValueCard
+                                  diffTokens={diffTokens}
                                   title="Proposed"
                                   tone="proposal"
                                   value={change.proposedValue}
@@ -505,7 +598,11 @@ export function ReviewSessionPage() {
         </aside>
 
         <div className="grid min-h-0 gap-4 xl:grid-cols-2">
-          <div className="min-h-[28rem] rounded-3xl border border-border bg-background p-4">
+          <div
+            className={`min-h-[28rem] rounded-3xl border border-border bg-background p-4 ${
+              mobilePane === 'original' ? '' : 'hidden lg:block'
+            }`}
+          >
             <div className="mb-3">
               <h2 className="text-sm font-semibold text-foreground">Original resume</h2>
               <p className="text-xs text-muted-foreground">
@@ -521,17 +618,61 @@ export function ReviewSessionPage() {
               />
             </div>
           </div>
-          <div className="min-h-[28rem] rounded-3xl border border-border bg-background p-4">
-            <div className="mb-3">
-              <h2 className="text-sm font-semibold text-foreground">Proposed resume</h2>
-              <p className="text-xs text-muted-foreground">
-                The resume with the active reviewer proposal applied.
-              </p>
+          <div
+            className={`min-h-[28rem] rounded-3xl border border-border bg-background p-4 ${
+              mobilePane === 'proposed' ? '' : 'hidden lg:block'
+            }`}
+          >
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">
+                  {proposalPane === 'merged' ? 'Merged result' : 'Proposed resume'}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {proposalPane === 'merged'
+                    ? `Exactly what applying will produce right now (${acceptedCount} accepted change${acceptedCount === 1 ? '' : 's'}).`
+                    : 'The resume with the active reviewer proposal applied.'}
+                </p>
+              </div>
+              {activeProposal ? (
+                <div className="inline-flex items-center rounded-lg border border-border bg-background p-0.5">
+                  <button
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      proposalPane === 'proposed'
+                        ? 'bg-foreground text-background'
+                        : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                    }`}
+                    onClick={() => setProposalPane('proposed')}
+                    type="button"
+                  >
+                    Proposed
+                  </button>
+                  <button
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      proposalPane === 'merged'
+                        ? 'bg-foreground text-background'
+                        : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+                    }`}
+                    onClick={() => setProposalPane('merged')}
+                    type="button"
+                  >
+                    Merged
+                  </button>
+                </div>
+              ) : null}
             </div>
             <div className="h-[calc(100%-3rem)]">
               <PreviewPane
-                fileName={activeProposal?.fileName ?? `${currentSession.baseFileName} (Proposal)`}
-                sections={activeProposal?.proposedSections ?? currentSession.rootBaselineSections}
+                fileName={
+                  proposalPane === 'merged'
+                    ? `${currentSession.baseFileName} (Merged)`
+                    : activeProposal?.fileName ?? `${currentSession.baseFileName} (Proposal)`
+                }
+                sections={
+                  proposalPane === 'merged'
+                    ? mergedSections ?? currentSession.rootBaselineSections
+                    : activeProposal?.proposedSections ?? currentSession.rootBaselineSections
+                }
                 showHeader={false}
                 controls={{ downloadPdf: false, downloadTypst: false, popup: false }}
               />
@@ -544,7 +685,7 @@ export function ReviewSessionPage() {
         confirmLabel={nameAction === 'forward' ? 'Forward proposal' : 'Continue'}
         description="Add the name that should appear on the forwarded review proposal."
         initialName={preferences.reviewDisplayName}
-        onConfirm={(name) => void handleForwardProposal(name)}
+        onConfirm={(name, note) => void handleForwardProposal(name, note)}
         onOpenChange={(open) => {
           setNameDialogOpen(open);
           if (!open) {
@@ -626,11 +767,41 @@ function formatReviewValue(value: unknown) {
   return YAML.stringify(value).trim();
 }
 
+function DiffText({ mode, tokens }: { mode: 'base' | 'proposal'; tokens: WordDiffToken[] }) {
+  // The base card shows same+removed tokens; the proposal card same+added.
+  const visible = tokens.filter((token) =>
+    mode === 'base' ? token.type !== 'added' : token.type !== 'removed'
+  );
+
+  return (
+    <>
+      {visible.map((token, index) =>
+        token.type === 'same' ? (
+          <span key={index}>{token.text}</span>
+        ) : (
+          <mark
+            key={index}
+            className={`rounded-sm px-0.5 ${
+              token.type === 'removed'
+                ? 'bg-rose-500/15 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200'
+                : 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200'
+            }`}
+          >
+            {token.text}
+          </mark>
+        )
+      )}
+    </>
+  );
+}
+
 function ValueCard({
+  diffTokens,
   title,
   tone,
   value
 }: {
+  diffTokens?: WordDiffToken[] | null;
   title: string;
   tone: 'base' | 'proposal';
   value: unknown;
@@ -647,7 +818,7 @@ function ValueCard({
         {title}
       </p>
       <pre className="mt-2 overflow-auto whitespace-pre-wrap break-words text-xs text-foreground">
-        {formatReviewValue(value)}
+        {diffTokens ? <DiffText mode={tone} tokens={diffTokens} /> : formatReviewValue(value)}
       </pre>
     </div>
   );

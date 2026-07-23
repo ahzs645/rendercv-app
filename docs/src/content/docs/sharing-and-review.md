@@ -40,7 +40,11 @@ Review sessions track imported proposals and their status.
 You can:
 
 - Open active review sessions from the sidebar.
-- Compare proposed changes.
+- Compare proposed changes, with word-level highlighting for edited text.
+- Switch between proposals when several reviewers respond to the same review.
+- Preview the merged result — exactly what applying your current decisions will produce.
+- Read the reviewer's note explaining the proposal.
+- Accept or reject everything at once.
 - Work on merge drafts.
 - Send proposals back.
 - Resolve sessions when finished.
@@ -54,7 +58,7 @@ You can:
 
 Proposal packages are file-based review artifacts. They are useful when a URL is too large or when the reviewer is sending changes through another channel.
 
-Review package imports are limited to 4 MB. Proposal packages contain the baseline sections, proposed sections, reviewer name, thread ID, root fingerprint, proposal ID, and timestamp.
+Review package imports are limited to 4 MB. Proposal packages contain the baseline sections, proposed sections, reviewer name, an optional reviewer note, thread ID, root fingerprint, proposal ID, and timestamp.
 
 ## Practical Workflow
 
