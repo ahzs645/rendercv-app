@@ -4,11 +4,16 @@ const MAX_REMOTE_YAML_SIZE = 1024 * 1024;
 
 /**
  * Builds a share link that reopens a hosted CV through the `?url=` loader, e.g.
- * `https://app.example.com/?url=https%3A%2F%2Fhost%2FCV.yaml`.
+ * `https://app.example.com/?url=https%3A%2F%2Fhost%2FCV.yaml`. When the file's
+ * variants also came from a URL, the link carries `&variants=` so the recipient
+ * gets the identical experience.
  */
-export function buildSourceShareUrl(sourceUrl: string): string {
+export function buildSourceShareUrl(sourceUrl: string, variantsSourceUrl?: string): string {
   const url = new URL(import.meta.env.BASE_URL, window.location.origin);
   url.searchParams.set('url', sourceUrl);
+  if (variantsSourceUrl) {
+    url.searchParams.set('variants', variantsSourceUrl);
+  }
   return url.toString();
 }
 

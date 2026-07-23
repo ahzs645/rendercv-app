@@ -42,6 +42,39 @@ describe('fileStore', () => {
     expect(file.sourceBaseline).toEqual(resolveFileSections(file));
   });
 
+  it('moves the source baseline along with normalization updates but not user edits', () => {
+    const file = fileStore.createFile('From URL', {
+      cv: 'cv:\n  name: RCVSPACINGSAME:Julian',
+      sourceUrl: 'https://www.julianstokes.ca/CV.yaml'
+    });
+    fileStore.selectFile(file.id);
+
+    // An automated normalization keeps the file "unmodified since import".
+    fileStore.updateSection('cv', 'cv:\n  name: Julian', { normalization: true });
+    let updated = fileStore.getSnapshot().files.find((entry) => entry.id === file.id)!;
+    expect(updated.cv).toBe('cv:\n  name: Julian');
+    expect(updated.sourceBaseline?.cv).toBe('cv:\n  name: Julian');
+
+    // A user edit leaves the baseline untouched, marking the file as modified.
+    fileStore.updateSection('cv', 'cv:\n  name: Julian Stokes');
+    updated = fileStore.getSnapshot().files.find((entry) => entry.id === file.id)!;
+    expect(updated.cv).toBe('cv:\n  name: Julian Stokes');
+    expect(updated.sourceBaseline?.cv).toBe('cv:\n  name: Julian');
+  });
+
+  it('updateSourceBaseline repairs a stale baseline in place', () => {
+    const file = fileStore.createFile('From URL', {
+      cv: 'cv:\n  name: Julian',
+      sourceUrl: 'https://www.julianstokes.ca/CV.yaml'
+    });
+
+    const nextBaseline = { ...file.sourceBaseline!, cv: 'cv:\n  name: Julian Repaired' };
+    fileStore.updateSourceBaseline(file.id, nextBaseline);
+
+    const updated = fileStore.getSnapshot().files.find((entry) => entry.id === file.id)!;
+    expect(updated.sourceBaseline?.cv).toBe('cv:\n  name: Julian Repaired');
+  });
+
   it('leaves sourceBaseline undefined without a sourceUrl', () => {
     const file = fileStore.createFile('No Source', { cv: 'cv:\n  name: Local' });
 

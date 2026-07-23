@@ -9,7 +9,7 @@ The app supports two main collaboration modes: sharing snapshots and collecting 
 
 A share link contains or points to the current CV state. Use it when someone needs to view or open a copy of your CV.
 
-If the CV came from a public source URL and has not changed locally, the app may copy that source URL. If the CV has changed, the app creates an encoded snapshot link.
+If the CV came from a public source URL and has not changed locally, the app copies a short link that reopens the CV through the `?url=` loader instead. When the CV's variants were also loaded from a URL, the link carries `&variants=` so the recipient gets the identical setup. Automatic compatibility normalizations (for example, converting legacy `positions:` entries) do not count as local changes. If the CV has changed, the app creates an encoded snapshot link.
 
 Encoded share links use `/share#...` and include `version`, `fileName`, and the `cv`, `design`, `locale`, and `settings` sections. Clean share links are capped at 24,000 characters.
 
@@ -23,7 +23,7 @@ PDF links use `/share?dl=pdf#...`. Opening one initializes the renderer, downloa
 
 ## Review Links
 
-Review links include an origin snapshot so changes can be compared against your starting point.
+Review links include an origin snapshot so changes can be compared against your starting point. They always carry the full CV — not the currently selected variant's filtered view — so a returned proposal links back to your original file and merging can never silently drop variant-hidden content.
 
 Use review links when:
 

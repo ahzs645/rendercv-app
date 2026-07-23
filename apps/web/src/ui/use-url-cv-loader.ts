@@ -55,7 +55,7 @@ export function useUrlCvLoader(
           const variants = parseCvVariantsYaml(variantsText);
           const fileId = fileStore.selectedFileId;
           if (fileId) {
-            fileStore.setVariants(fileId, variants);
+            fileStore.setVariants(fileId, variants, { sourceUrl: variantsUrl });
             toast.success(`Loaded resume with ${Object.keys(variants).length} variants.`);
           }
         }

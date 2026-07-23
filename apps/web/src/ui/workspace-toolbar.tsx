@@ -30,7 +30,14 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
-import { fileStore, preferencesStore, readThemeName, readLocaleName, reviewStore } from '@rendercv/core';
+import {
+  fileStore,
+  preferencesStore,
+  readThemeName,
+  readLocaleName,
+  resolveFileSections,
+  reviewStore
+} from '@rendercv/core';
 import { toast } from 'sonner';
 import { downloadBlob } from '../features/viewer/download';
 import { cvYamlToJson, cvYamlToMarkdown } from '../features/viewer/format-exports';
@@ -89,6 +96,10 @@ export function WorkspaceToolbar({
     preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
 
   const isReadOnly = Boolean(selectedFile?.isReadOnly);
+  // The full file contents (no variant filtering, no viewer-only normalization).
+  // Review round-trips and backups must operate on these so a returned proposal
+  // still fingerprints back to this file and no hidden content is lost.
+  const fileSections = selectedFile ? resolveFileSections(selectedFile) : undefined;
   const canFormat = preferences.yamlEditor && !isReadOnly;
   const canPreviewActions = Boolean(sections);
   const canLinkActions = Boolean(selectedFile && sections);
@@ -131,9 +142,12 @@ export function WorkspaceToolbar({
       if (
         selectedFile.sourceUrl &&
         selectedFile.sourceBaseline &&
-        sectionsMatch(sections, selectedFile.sourceBaseline)
+        fileSections &&
+        sectionsMatch(fileSections, selectedFile.sourceBaseline)
       ) {
-        await navigator.clipboard.writeText(buildSourceShareUrl(selectedFile.sourceUrl));
+        await navigator.clipboard.writeText(
+          buildSourceShareUrl(selectedFile.sourceUrl, selectedFile.variantsSourceUrl)
+        );
         toast.success('Source link copied.');
         return;
       }
@@ -151,16 +165,19 @@ export function WorkspaceToolbar({
   }
 
   async function copyReviewLink() {
-    if (!selectedFile || !sections) {
+    if (!selectedFile || !fileSections) {
       return;
     }
 
     try {
+      // Review copies carry the full file (not the variant-filtered view): the
+      // returned proposal is fingerprinted against this file's full sections,
+      // and merging must never silently drop variant-hidden content.
       const result = await buildEncodedShareUrl({
         version: 1,
         fileName: selectedFile.name,
-        sections,
-        origin: sections
+        sections: fileSections,
+        origin: fileSections
       });
       await navigator.clipboard.writeText(result.url);
       toast.success('Review link copied.');
@@ -311,13 +328,13 @@ export function WorkspaceToolbar({
   }
 
   async function exportJson() {
-    if (!selectedFile || !sections) return;
+    if (!selectedFile || !fileSections) return;
 
     try {
       await exportShareFile({
         version: 1,
         fileName: selectedFile.name,
-        sections
+        sections: fileSections
       });
       toast.success('Backup file downloaded.');
     } catch (error) {
@@ -374,7 +391,7 @@ export function WorkspaceToolbar({
   }
 
   async function handleReviewerConfirm(reviewerName: string) {
-    if (!selectedFile || !sections || !canSendProposal || !selectedReviewSession) {
+    if (!selectedFile || !fileSections || !canSendProposal || !selectedReviewSession) {
       return;
     }
 
@@ -383,7 +400,7 @@ export function WorkspaceToolbar({
       sessionId: selectedReviewSession.sessionId,
       linkedFileId: selectedFile.id,
       fileName: selectedFile.name,
-      proposedSections: sections,
+      proposedSections: fileSections,
       reviewerName
     });
 

@@ -252,7 +252,10 @@ export class ReviewStore {
       })
     }));
 
-    return this.findByThreadId(pkg.threadId)!;
+    // Look the session up by its own id: a proposal from a second reviewer
+    // matches an existing session by root fingerprint while carrying a
+    // different threadId, so a threadId lookup would come back empty.
+    return this.getSession(session.sessionId)!;
   }
 
   createProposalPackage({

@@ -10,6 +10,11 @@ import { toast } from 'sonner';
 import { api, API_ENABLED, ApiUnavailableError } from './api';
 import { initPostHog } from './analytics/posthog-client';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
+import {
+  normalizeCompatibilityCvYaml,
+  stripPositionMarkersFromCvYaml
+} from '../features/viewer/normalize-compat-cv';
+import { normalizeLegacyDesignYaml } from '../features/viewer/viewer-sections';
 
 const FILE_STORAGE_KEY = 'rendercv_guest_files';
 const PREFERENCE_STORAGE_KEY = 'rendercv_preferences';
@@ -65,6 +70,45 @@ function ensureBundledThemeLibraryEntries() {
 
   if (nextLibrary) {
     preferencesStore.patch({ themeLibrary: nextLibrary });
+  }
+}
+
+/**
+ * Older URL imports snapshotted `sourceBaseline` before the automated
+ * compatibility normalizations ran, leaving the baseline permanently out of
+ * sync with the (otherwise untouched) file. If replaying those normalizations
+ * on the baseline reproduces the file's current sections, the difference was
+ * ours — repair the baseline so source-link sharing works again.
+ */
+function migrateStaleSourceBaselines() {
+  for (const file of fileStore.getSnapshot().files) {
+    if (!file.sourceUrl || !file.sourceBaseline) {
+      continue;
+    }
+
+    const sections = resolveFileSections(file);
+    const baseline = file.sourceBaseline;
+    if (sections.cv === baseline.cv && sections.design === baseline.design) {
+      continue;
+    }
+
+    const strippedCv = stripPositionMarkersFromCvYaml(baseline.cv);
+    const cvCandidates = [strippedCv, normalizeCompatibilityCvYaml(strippedCv)];
+    const designCandidates = [baseline.design, normalizeLegacyDesignYaml(baseline.design) ?? baseline.design];
+
+    const cv = cvCandidates.find((candidate) => candidate === sections.cv);
+    const design = designCandidates.find((candidate) => candidate === sections.design);
+
+    if (
+      (sections.cv === baseline.cv || cv !== undefined) &&
+      (sections.design === baseline.design || design !== undefined)
+    ) {
+      fileStore.updateSourceBaseline(file.id, {
+        ...baseline,
+        cv: cv ?? baseline.cv,
+        design: design ?? baseline.design
+      });
+    }
   }
 }
 
@@ -167,6 +211,7 @@ export function WorkspaceBootstrap() {
       reviewStore.hydrate(undefined);
     }
     migrateLegacyReviewCopies();
+    migrateStaleSourceBaselines();
 
     if (CLOUD_SYNC_ENABLED) {
       api.getPreferences().then((response) => {
