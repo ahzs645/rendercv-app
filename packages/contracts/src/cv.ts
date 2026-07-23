@@ -55,6 +55,8 @@ export interface CvFile {
   sharedOrigin?: CvFileSections;
   /** Public URL this file was imported from (e.g. `https://host/CV.yaml`), if any. */
   sourceUrl?: string;
+  /** Public URL the file's variants were imported from, so source share links can reproduce them. */
+  variantsSourceUrl?: string;
   /**
    * Snapshot of the sections at the moment of a URL import. Used to detect whether
    * the file is still unmodified so the share action can hand back the source URL

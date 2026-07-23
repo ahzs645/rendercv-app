@@ -10,5 +10,7 @@ export interface ReviewProposalPackage {
   rootBaselineSections: CvFileSections;
   proposedSections: CvFileSections;
   reviewerName: string;
+  /** Optional free-text note from the reviewer explaining the proposal. */
+  note?: string;
   createdAt: number;
 }

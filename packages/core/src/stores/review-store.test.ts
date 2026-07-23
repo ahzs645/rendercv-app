@@ -96,6 +96,37 @@ describe('ReviewStore', () => {
     expect(updated.proposals[0]?.reviewerName).toBe('Morgan');
   });
 
+  it('imports a second reviewer proposal that matches by fingerprint but carries a new threadId', () => {
+    const store = new ReviewStore();
+    const baseline = makeSections();
+    const session = store.ensureSession({
+      linkedFileId: 'file-1',
+      baseFileName: 'Resume',
+      rootBaselineSections: baseline,
+      threadId: 'thread-1'
+    });
+
+    const proposal: ReviewProposalPackage = {
+      version: 1,
+      proposalId: 'proposal-2',
+      threadId: 'thread-2',
+      rootFingerprint: session.rootFingerprint,
+      fileName: 'Resume',
+      rootBaselineSections: baseline,
+      proposedSections: makeSections({ cv: 'cv:\n  name: Sam Doe\n  label: Developer' }),
+      reviewerName: 'Sam',
+      createdAt: 1_700_000_000_000
+    };
+
+    const importedSession = store.importProposal(proposal);
+
+    expect(importedSession).toBeDefined();
+    expect(importedSession.sessionId).toBe(session.sessionId);
+    expect(importedSession.activeProposalId).toBe('proposal-2');
+    expect(importedSession.proposals).toHaveLength(1);
+    expect(store.sessions).toHaveLength(1);
+  });
+
   it('rejects proposals whose baseline does not match an existing thread', () => {
     const store = new ReviewStore();
     const baseline = makeSections();

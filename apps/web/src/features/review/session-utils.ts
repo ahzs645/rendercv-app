@@ -38,6 +38,7 @@ export function buildProposalPackageFromSession(
     rootBaselineSections: session.rootBaselineSections,
     proposedSections: proposal.proposedSections,
     reviewerName: proposal.reviewerName,
+    note: proposal.note,
     createdAt: proposal.createdAt
   };
 }

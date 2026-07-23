@@ -225,6 +225,7 @@ export class ReviewStore {
       fileName: pkg.fileName,
       proposedSections: pkg.proposedSections,
       reviewerName: pkg.reviewerName,
+      note: pkg.note,
       createdAt: pkg.createdAt,
       decisionStates: {}
     });
@@ -252,19 +253,24 @@ export class ReviewStore {
       })
     }));
 
-    return this.findByThreadId(pkg.threadId)!;
+    // Look the session up by its own id: a proposal from a second reviewer
+    // matches an existing session by root fingerprint while carrying a
+    // different threadId, so a threadId lookup would come back empty.
+    return this.getSession(session.sessionId)!;
   }
 
   createProposalPackage({
     fileName,
     proposedSections,
     reviewerName,
+    note,
     linkedFileId,
     sessionId
   }: {
     fileName: string;
     proposedSections: CvFileSections;
     reviewerName: string;
+    note?: string;
     linkedFileId?: string;
     sessionId?: string;
   }) {
@@ -293,6 +299,7 @@ export class ReviewStore {
       rootBaselineSections: session.rootBaselineSections,
       proposedSections,
       reviewerName,
+      ...(note?.trim() ? { note: note.trim() } : {}),
       createdAt
     };
 

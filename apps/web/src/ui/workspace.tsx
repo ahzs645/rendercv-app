@@ -367,7 +367,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
 
     const strippedCv = stripPositionMarkersFromCvYaml(rawSections.cv);
     if (strippedCv !== rawSections.cv) {
-      fileStore.updateSection('cv', strippedCv);
+      fileStore.updateSection('cv', strippedCv, { normalization: true });
     }
   }, [rawSections?.cv, selectedFile]);
 
@@ -387,7 +387,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
 
     const repairedCv = repairFlattenedPositionDatesInCvYaml(rawSections.cv);
     if (repairedCv !== rawSections.cv) {
-      fileStore.updateSection('cv', repairedCv);
+      fileStore.updateSection('cv', repairedCv, { normalization: true });
     }
   }, [rawSections?.cv, selectedFile]);
 
@@ -428,12 +428,12 @@ export function Workspace({ active = true }: { active?: boolean }) {
 
         const normalizedDesign = normalizeLegacyDesignYaml(rawSections.design);
         if (normalizedDesign && normalizedDesign !== rawSections.design) {
-          fileStore.updateSection('design', normalizedDesign);
+          fileStore.updateSection('design', normalizedDesign, { normalization: true });
         }
 
         const normalizedCv = normalizeCompatibilityCvYaml(rawSections.cv);
         if (normalizedCv !== rawSections.cv) {
-          fileStore.updateSection('cv', normalizedCv);
+          fileStore.updateSection('cv', normalizedCv, { normalization: true });
         }
 
         registerSharedThemeDesign(selectedFile.selectedTheme, selectedFile.designs[selectedFile.selectedTheme]);

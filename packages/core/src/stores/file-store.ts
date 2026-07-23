@@ -483,7 +483,7 @@ export class FileStore {
     preferencesStore.patch({ selectedFileId: id });
   }
 
-  updateSection(section: SectionKey, content: string) {
+  updateSection(section: SectionKey, content: string, options?: { normalization?: boolean }) {
     const selectedFile = this.selectedFile;
     if (!selectedFile || selectedFile.isReadOnly) {
       return;
@@ -491,13 +491,15 @@ export class FileStore {
 
     const previous: Record<string, unknown> = { lastEdited: selectedFile.lastEdited };
     const next: Record<string, unknown> = { lastEdited: Date.now() };
+    let previousContent = '';
 
     switch (section) {
       case 'cv':
         if ((selectedFile.cv ?? '') === content) {
           return;
         }
-        previous.cv = selectedFile.cv ?? '';
+        previousContent = selectedFile.cv ?? '';
+        previous.cv = previousContent;
         next.cv = content;
         break;
       case 'design': {
@@ -505,6 +507,7 @@ export class FileStore {
         if (currentDesign === content) {
           return;
         }
+        previousContent = currentDesign;
         previous.designs = selectedFile.designs;
         next.designs = { ...selectedFile.designs, [selectedFile.selectedTheme]: content };
         break;
@@ -514,6 +517,7 @@ export class FileStore {
         if (currentLocale === content) {
           return;
         }
+        previousContent = currentLocale;
         previous.locales = selectedFile.locales;
         next.locales = { ...selectedFile.locales, [selectedFile.selectedLocale]: content };
         break;
@@ -522,9 +526,22 @@ export class FileStore {
         if ((selectedFile.settings ?? '') === content) {
           return;
         }
+        previousContent = selectedFile.settings ?? '';
         previous.settings = selectedFile.settings ?? '';
         next.settings = content;
         break;
+    }
+
+    // Automated normalizations (compat repairs, marker stripping) are not user
+    // edits: if the section still matched the URL-import baseline, move the
+    // baseline along so "unmodified since import" detection keeps working.
+    if (
+      options?.normalization &&
+      selectedFile.sourceBaseline &&
+      selectedFile.sourceBaseline[section] === previousContent
+    ) {
+      previous.sourceBaseline = selectedFile.sourceBaseline;
+      next.sourceBaseline = { ...selectedFile.sourceBaseline, [section]: content };
     }
 
     this.#pushUndoEntry({
@@ -563,10 +580,11 @@ export class FileStore {
     this.#updateMeta(id, { selectedLocale });
   }
 
-  setVariants(id: string, variants: CvVariants) {
+  setVariants(id: string, variants: CvVariants, options?: { sourceUrl?: string }) {
     this.#updateMeta(id, {
       variants,
-      selectedVariant: resolveSelectedVariant(variants, undefined)
+      selectedVariant: resolveSelectedVariant(variants, undefined),
+      ...(options?.sourceUrl !== undefined ? { variantsSourceUrl: options.sourceUrl } : {})
     });
   }
 
@@ -830,6 +848,27 @@ export class FileStore {
       sourceUrl: file.sourceUrl,
       sourceBaseline: file.sourceBaseline
     });
+  }
+
+  /**
+   * Repairs the URL-import baseline in place (no undo entry): used by boot-time
+   * migrations when an old baseline predates an automated normalization pass.
+   */
+  updateSourceBaseline(id: string, sourceBaseline: CvFileSections) {
+    const file = this.files.find((current) => current.id === id);
+    if (!file || !file.sourceUrl) {
+      return;
+    }
+
+    this.#store.update((current) => ({
+      ...current,
+      files: current.files.map((entry) =>
+        entry.id === id
+          ? withReadOnly({ ...(entry as Omit<CvFile, 'isReadOnly'>), sourceBaseline })
+          : entry
+      )
+    }));
+    this.persistence?.onUpdateMeta?.(id, { sourceBaseline });
   }
 
   replaceFileSections(id: string, sections: CvFileSections) {

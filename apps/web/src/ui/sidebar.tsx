@@ -9,6 +9,7 @@ import {
   FolderDown,
   GitCompareArrows,
   HelpCircle,
+  MessageSquarePlus,
   Link as LinkIcon,
   Lock,
   Monitor,
@@ -22,10 +23,12 @@ import { Link, useLocation } from 'react-router-dom';
 import type { CvFile } from '@rendercv/contracts';
 import { fileStore, preferencesStore, resolveFileSections, reviewStore } from '@rendercv/core';
 import { toast } from 'sonner';
+import { API_ENABLED } from '../lib/api';
 import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { onboardingTour } from '../features/onboarding/tour-state';
 import { AiSettingsDialog } from './ai-settings-dialog';
+import { FeedbackDialog } from './feedback-dialog';
 import { PdfImportButton } from './pdf-import-button';
 import { ImportComboButton } from './import-combo-button';
 import type { PreparedYamlImport } from './yaml-import-button';
@@ -67,6 +70,7 @@ export function Sidebar({
   const [mode, setMode] = useState<SidebarMode>('full');
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const activeFiles = useMemo(
     () =>
       snapshot.files
@@ -386,6 +390,19 @@ export function Sidebar({
             <Settings className="size-4 shrink-0" />
             {isMini ? <span className="sr-only">AI providers</span> : <span>AI providers</span>}
           </button>
+          {API_ENABLED ? (
+            <button
+              className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+                isMini ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-2 text-left'
+              }`}
+              onClick={() => setFeedbackOpen(true)}
+              title="Send feedback"
+              type="button"
+            >
+              <MessageSquarePlus className="size-4 shrink-0" />
+              {isMini ? <span className="sr-only">Send feedback</span> : <span>Send feedback</span>}
+            </button>
+          ) : null}
           <SidebarLinkButton compact={isCompact} icon={<Shield className="size-4" />} mini={isMini} to="/privacy-policy">
             Privacy Policy
           </SidebarLinkButton>
@@ -395,6 +412,7 @@ export function Sidebar({
         </nav>
       </footer>
       <AiSettingsDialog open={aiSettingsOpen} onOpenChange={setAiSettingsOpen} />
+      {API_ENABLED ? <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} /> : null}
     </aside>
   );
 }
