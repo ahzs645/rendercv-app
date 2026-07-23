@@ -740,6 +740,15 @@ export function WorkspaceToolbar({
             modified={sections}
           />
         ) : null}
+        <ReviewerNameDialog
+          confirmLabel={activeReviewProposal ? 'Forward proposal' : 'Send proposal'}
+          description="Add the name that should appear on the review proposal package."
+          initialName={preferences.reviewDisplayName}
+          onConfirm={(name, note) => void handleReviewerConfirm(name, note)}
+          onOpenChange={setReviewerDialogOpen}
+          open={reviewerDialogOpen}
+          title="Reviewer name"
+        />
       </div>
     );
   }

@@ -112,6 +112,13 @@ function migrateStaleSourceBaselines() {
   }
 }
 
+function applyColorScheme() {
+  const snapshot = preferencesStore.getSnapshot();
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = snapshot.colorMode === 'dark' || (snapshot.colorMode === 'system' && prefersDark);
+  document.documentElement.classList.toggle('dark', isDark);
+}
+
 function reportApiFailure(label: string, error: unknown) {
   if (error instanceof ApiUnavailableError || !CLOUD_SYNC_ENABLED) {
     return;
@@ -185,6 +192,10 @@ export function WorkspaceBootstrap() {
     } catch {
       preferencesStore.hydrate(undefined);
     }
+    // Apply the color scheme immediately: the preferences subscription below
+    // only fires on changes, so without this a system-dark visitor loads a
+    // light page until some preference happens to be patched.
+    applyColorScheme();
     ensureBundledThemeLibraryEntries();
 
     try {
@@ -241,11 +252,17 @@ export function WorkspaceBootstrap() {
     return preferencesStore.subscribe(() => {
       const snapshot = preferencesStore.getSnapshot();
       localStorage.setItem(PREFERENCE_STORAGE_KEY, JSON.stringify(snapshot));
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const isDark = snapshot.colorMode === 'dark' || (snapshot.colorMode === 'system' && prefersDark);
-      document.documentElement.classList.toggle('dark', isDark);
+      applyColorScheme();
       persistWithRetry('Saving cloud preferences', () => api.patchPreferences(withoutCloudOnlyPreferences(snapshot)));
     });
+  }, []);
+
+  // Track OS color-scheme changes while in "system" mode.
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => applyColorScheme();
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
   }, []);
 
   useEffect(() => {
