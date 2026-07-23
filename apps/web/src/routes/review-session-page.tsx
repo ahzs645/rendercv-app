@@ -1,7 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Download, GitCompareArrows, MessageSquareQuote, Pencil, Send, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Check,
+  Download,
+  EllipsisVertical,
+  GitCompareArrows,
+  MessageSquareQuote,
+  Pencil,
+  Send,
+  X
+} from 'lucide-react';
 import YAML from 'yaml';
 import {
   fileStore,
@@ -242,7 +253,7 @@ export function ReviewSessionPage() {
       <Helmet>
         <title>{currentSession.baseFileName} Review | RenderCV</title>
       </Helmet>
-      <div className="border-b border-border bg-background/95 backdrop-blur">
+      <div className="relative z-30 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
           <button
             className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
@@ -266,8 +277,9 @@ export function ReviewSessionPage() {
             <StatusPill label="Pending" value={pendingCount} tone="default" />
             {activeProposal ? (
               <>
+                {/* Secondary actions collapse into the ⋯ menu below lg. */}
                 <button
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  className="hidden items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:inline-flex"
                   onClick={handleExportActiveProposal}
                   type="button"
                 >
@@ -275,7 +287,7 @@ export function ReviewSessionPage() {
                   Export proposal
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  className="hidden items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:inline-flex"
                   onClick={() => {
                     setNameAction('forward');
                     setNameDialogOpen(true);
@@ -286,7 +298,7 @@ export function ReviewSessionPage() {
                   Forward proposal
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  className="hidden items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:inline-flex"
                   onClick={handleEditFurther}
                   type="button"
                 >
@@ -305,13 +317,50 @@ export function ReviewSessionPage() {
             ) : null}
             {currentSession.archivedHistory.length > 0 ? (
               <button
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="hidden items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:inline-flex"
                 onClick={handleExportHistory}
                 type="button"
               >
                 <Download className="size-4" />
                 Export history
               </button>
+            ) : null}
+            {activeProposal || currentSession.archivedHistory.length > 0 ? (
+              <MoreActionsMenu
+                items={[
+                  ...(activeProposal
+                    ? [
+                        {
+                          icon: <Download className="size-4" />,
+                          label: 'Export proposal',
+                          onClick: () => void handleExportActiveProposal()
+                        },
+                        {
+                          icon: <Send className="size-4" />,
+                          label: 'Forward proposal',
+                          onClick: () => {
+                            setNameAction('forward');
+                            setNameDialogOpen(true);
+                          }
+                        },
+                        {
+                          icon: <Pencil className="size-4" />,
+                          label: 'Edit further',
+                          onClick: handleEditFurther
+                        }
+                      ]
+                    : []),
+                  ...(currentSession.archivedHistory.length > 0
+                    ? [
+                        {
+                          icon: <Download className="size-4" />,
+                          label: 'Export history',
+                          onClick: () => void handleExportHistory()
+                        }
+                      ]
+                    : [])
+                ]}
+              />
             ) : null}
           </div>
         </div>
@@ -695,6 +744,84 @@ export function ReviewSessionPage() {
         open={nameDialogOpen}
         title="Reviewer name"
       />
+    </div>
+  );
+}
+
+/** Compact ⋯ menu that holds the secondary review actions below the lg breakpoint. */
+function MoreActionsMenu({
+  items
+}: {
+  items: Array<{ icon: ReactNode; label: string; onClick: () => void }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function onPointerDown(event: MouseEvent | TouchEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function onEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [open]);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="relative lg:hidden" ref={ref}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="More review actions"
+        className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-background text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        onClick={() => setOpen((value) => !value)}
+        type="button"
+      >
+        <EllipsisVertical className="size-4" />
+      </button>
+      {open ? (
+        <div
+          className="absolute right-0 top-full z-30 mt-1 min-w-52 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          role="menu"
+        >
+          {items.map((item) => (
+            <button
+              key={item.label}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              onClick={() => {
+                setOpen(false);
+                item.onClick();
+              }}
+              role="menuitem"
+              type="button"
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
