@@ -116,6 +116,13 @@ export function ReviewSessionPage() {
   }
 
   function handleResolveReview() {
+    if (
+      acceptedCount === 0 &&
+      !window.confirm('Reject this proposal? None of the proposed changes will be applied to your resume.')
+    ) {
+      return;
+    }
+
     const finalSections = buildTargetSections();
     const outcome = acceptedCount > 0 ? 'applied' : 'rejected';
     const linkedFile = currentSession.linkedFileId
@@ -310,14 +317,55 @@ export function ReviewSessionPage() {
             <GitCompareArrows className="size-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Change review</h2>
           </div>
+          {activeProposal && currentSession.proposals.length > 1 ? (
+            <div className="border-b border-border px-5 py-3">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Proposals in this review
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {currentSession.proposals.map((proposal) => {
+                  const isActive = proposal.proposalId === activeProposal.proposalId;
+                  return (
+                    <button
+                      key={proposal.proposalId}
+                      className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                        isActive
+                          ? 'border-primary/40 bg-primary/10 text-primary'
+                          : 'border-border text-foreground hover:bg-accent hover:text-accent-foreground'
+                      }`}
+                      onClick={() =>
+                        reviewStore.setActiveProposal(currentSession.sessionId, proposal.proposalId)
+                      }
+                      type="button"
+                    >
+                      {proposal.reviewerName}
+                      <span className={`ml-1.5 ${isActive ? 'text-primary/70' : 'text-muted-foreground'}`}>
+                        {new Date(proposal.createdAt).toLocaleString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           {activeProposal ? (
-            <div className="max-h-[calc(100vh-10rem)] overflow-auto px-5 py-4">
+            <div className="px-5 py-4 lg:max-h-[calc(100vh-10rem)] lg:overflow-auto">
               <div className="mb-4 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-xs leading-5 text-muted-foreground">
                 Accept the changes you want to apply. Rejected and pending changes keep the original resume values when you finish.
                 <span className="mt-1 block font-medium text-foreground">{resolveHelpText}</span>
               </div>
+              {totalCount === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
+                  This proposal matches your original resume — there is nothing to accept or reject.
+                </div>
+              ) : null}
               <div className="space-y-5">
-                {reviewChanges.map((section) => (
+                {reviewChanges.filter((section) => section.changes.length > 0).map((section) => (
                   <section key={section.key} className="space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -437,8 +485,21 @@ export function ReviewSessionPage() {
               </div>
             </div>
           ) : (
-            <div className="px-5 py-6 text-sm text-muted-foreground">
-              This review has been resolved. The proposal history remains available locally in this browser session.
+            <div className="px-5 py-6">
+              <p className="text-sm text-muted-foreground">
+                This review has been resolved. The proposal history remains available locally in this
+                browser session.
+              </p>
+              {currentSession.proposals.length > 0 ? (
+                <button
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => reviewStore.reopenSession(currentSession.sessionId)}
+                  type="button"
+                >
+                  <GitCompareArrows className="size-4" />
+                  Reopen review
+                </button>
+              ) : null}
             </div>
           )}
         </aside>
