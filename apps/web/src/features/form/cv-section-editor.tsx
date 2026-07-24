@@ -17,6 +17,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Eye, EyeOff, GripVertical, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { topLevelEntryListKey } from '@rendercv/core';
 import {
   createDefaultEntry,
   detectEntryType,
@@ -28,6 +29,7 @@ import {
   socialNetworkTemplate
 } from './schema/cv-schema';
 import { EntryArrayEditor } from './entry-array-editor';
+import { MobileReorderControls } from './primitives';
 import { SECTION_PRESETS, type SectionPreset } from './section-presets';
 import {
   asArray,
@@ -81,12 +83,15 @@ export function CvSectionEditor({
 
   return (
     <>
+      {/* These two live on the CV root rather than in `sections`, but they take
+          the same per-entry hide/variant toggle — hence the `cv:`-prefixed keys. */}
       <EntryArrayEditor
         title="Social Networks"
         entries={socialNetworks}
         entriesExpanded={entriesExpanded}
         template={socialNetworkTemplate}
         onChange={(nextEntries) => updateCvField('social_networks', nextEntries)}
+        sectionKey={topLevelEntryListKey('social_networks')}
         originPath={['social_networks']}
       />
       <EntryArrayEditor
@@ -95,6 +100,7 @@ export function CvSectionEditor({
         entriesExpanded={entriesExpanded}
         template={customConnectionTemplate}
         onChange={(nextEntries) => updateCvField('custom_connections', nextEntries)}
+        sectionKey={topLevelEntryListKey('custom_connections')}
         originPath={['custom_connections']}
       />
       <SectionMapEditor
@@ -209,17 +215,27 @@ function SectionMapEditor({
     onChange(moveRecordEntry(sections, oldIndex, newIndex));
   }
 
+  function moveSection(index: number, direction: -1 | 1) {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= sectionKeys.length) return;
+
+    onChange(moveRecordEntry(sections, index, nextIndex));
+  }
+
   return (
     <section>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={sectionKeys} strategy={verticalListSortingStrategy}>
           <AnimatePresence initial={false}>
-            {sectionEntries.map(([sectionKey, sectionValue]) => (
+            {sectionEntries.map(([sectionKey, sectionValue], sectionIndex) => (
               <SortableSectionEditor
                 key={sectionKey}
                 sectionKey={sectionKey}
                 entries={asArray(sectionValue)}
                 entriesExpanded={entriesExpanded}
+                canMoveUp={sectionIndex > 0}
+                canMoveDown={sectionIndex < sectionEntries.length - 1}
+                onMove={(direction) => moveSection(sectionIndex, direction)}
                 disabled={disabledSet.has(sectionKey)}
                 variantExcluded={variantExcludedSet.has(sectionKey)}
                 activeVariantKey={activeVariantKey ?? null}
@@ -250,6 +266,9 @@ function SortableSectionEditor(props: {
   sectionKey: string;
   entries: unknown[];
   entriesExpanded: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMove: (direction: -1 | 1) => void;
   disabled: boolean;
   variantExcluded: boolean;
   activeVariantKey: string | null;
@@ -295,6 +314,9 @@ function SectionEditor({
   sectionKey,
   entries,
   entriesExpanded,
+  canMoveUp,
+  canMoveDown,
+  onMove,
   disabled,
   variantExcluded,
   activeVariantKey,
@@ -309,6 +331,9 @@ function SectionEditor({
   sectionKey: string;
   entries: unknown[];
   entriesExpanded: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMove: (direction: -1 | 1) => void;
   disabled: boolean;
   variantExcluded: boolean;
   activeVariantKey: string | null;
@@ -347,17 +372,25 @@ function SectionEditor({
 
   return (
     <article className="form-section form-item-enter-anim" data-section-key={sectionKey}>
-      <div className="group/section relative -mx-7 mt-3 mb-2 flex min-h-11 items-center px-7">
+      {/* Gutter only from `sm` up — see the note in entry-array-editor.tsx. */}
+      <div className="group/section relative mt-3 mb-2 flex min-h-12 items-center sm:-mx-7 sm:px-7 sm:min-h-11">
         <div
           ref={dragHandle.setActivatorNodeRef}
           {...dragHandle.listeners}
           aria-label="Drag to reorder section"
-          className="form-item-control absolute top-1/2 left-0 flex size-11 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground/60 active:cursor-grabbing sm:left-1 sm:size-6 sm:rounded-none sm:text-muted-foreground/40"
+          className="form-item-control absolute top-1/2 left-1 hidden size-6 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-none text-muted-foreground/40 active:cursor-grabbing sm:flex"
         >
-          <GripVertical className="size-4 sm:size-3.5" />
+          <GripVertical className="size-3.5" />
         </div>
+        <MobileReorderControls
+          align="center"
+          canMoveUp={canMoveUp}
+          canMoveDown={canMoveDown}
+          onMove={onMove}
+          label="section"
+        />
         <input
-          className={`flex-1 border-b border-muted-foreground/40 bg-transparent py-2 pr-20 pl-4 text-base font-semibold outline-none sm:py-0 sm:pr-2 sm:pl-0 sm:text-[15px] ${
+          className={`ml-6 min-w-0 flex-1 border-b border-muted-foreground/40 bg-transparent py-2 pr-[76px] text-base font-semibold outline-none sm:ml-0 sm:py-0 sm:pr-2 sm:text-[15px] ${
             hiddenFromResume ? 'text-foreground/40 line-through decoration-1' : 'text-foreground/80'
           }`}
           value={title}
@@ -371,8 +404,10 @@ function SectionEditor({
           }}
         />
         {variantExcluded ? (
+          // The eye/delete controls are absolutely positioned in the right
+          // gutter, so the badge has to keep clear of them itself.
           <span
-            className="ml-2 hidden shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary sm:inline"
+            className="mr-14 ml-2 hidden shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary sm:inline"
             title={`Excluded from the "${variantLabel}" variant`}
           >
             Off in {variantLabel}
@@ -382,7 +417,7 @@ function SectionEditor({
           {onToggleDisabled ? (
             <button
               type="button"
-              className={`flex size-11 items-center justify-center rounded-md transition-opacity hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
+              className={`flex size-9 items-center justify-center rounded-md transition-opacity hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
                 variantExcluded
                   ? 'text-primary opacity-100'
                   : disabled
@@ -414,7 +449,7 @@ function SectionEditor({
           ) : null}
           <button
             type="button"
-            className="flex size-11 items-center justify-center rounded-md text-muted-foreground/70 opacity-90 transition-opacity hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 sm:size-6 sm:rounded-none sm:hover:bg-transparent md:opacity-60 md:group-hover/section:opacity-100"
+            className="flex size-9 items-center justify-center rounded-md text-muted-foreground/70 opacity-90 transition-opacity hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 sm:size-6 sm:rounded-none sm:hover:bg-transparent md:opacity-60 md:group-hover/section:opacity-100"
             aria-label="Delete section"
             onClick={onDelete}
           >

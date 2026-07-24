@@ -18,7 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Plus, X } from 'lucide-react';
 import type { FieldDef } from './schema/types';
-import { TextRow } from './primitives';
+import { MobileReorderControls, TextRow } from './primitives';
 
 function getFlavorsInfo(value: unknown): {
   flavorKeys: string[];
@@ -55,15 +55,19 @@ function SortableStringItem({
   id,
   item,
   index,
+  total,
   onUpdate,
   onRemove,
+  onMove,
   placeholder
 }: {
   id: number;
   item: string;
   index: number;
+  total: number;
   onUpdate: (index: number, value: string) => void;
   onRemove: (index: number) => void;
+  onMove: (index: number, direction: -1 | 1) => void;
   placeholder?: string;
 }) {
   const {
@@ -92,23 +96,30 @@ function SortableStringItem({
       exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
       transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
     >
-      <div className="form-item-wrapper relative -mx-7 border-b border-border/25 px-7 last:border-b-0">
+      {/* Gutter only from `sm` up — see the note in entry-array-editor.tsx. */}
+      <div className="form-item-wrapper relative border-b border-border/25 last:border-b-0 sm:-mx-7 sm:px-7">
         <div
           ref={setActivatorNodeRef}
           {...listeners}
-          className="form-item-control absolute top-1/2 left-0 flex size-9 -translate-y-1/2 items-center justify-center rounded-md cursor-grab touch-none text-muted-foreground/60 active:cursor-grabbing sm:left-1 sm:size-6 sm:rounded-none sm:text-muted-foreground/40"
+          className="form-item-control absolute top-1/2 left-1 hidden size-6 -translate-y-1/2 items-center justify-center rounded-none cursor-grab touch-none text-muted-foreground/40 active:cursor-grabbing sm:flex"
         >
-          <GripVertical className="size-4 sm:size-3.5" />
+          <GripVertical className="size-3.5" />
         </div>
+        <MobileReorderControls
+          canMoveUp={index > 0}
+          canMoveDown={index < total - 1}
+          onMove={(direction) => onMove(index, direction)}
+          label="item"
+        />
         <button
           type="button"
-          className="form-item-control absolute top-1/2 right-0 flex size-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:right-3 sm:size-6 sm:rounded-none sm:hover:bg-transparent"
+          className="form-item-control absolute top-0 right-0 flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:top-1/2 sm:right-3 sm:size-6 sm:-translate-y-1/2 sm:rounded-none sm:hover:bg-transparent"
           onClick={() => onRemove(index)}
           aria-label="Remove"
         >
           <X className="size-4 sm:size-3" />
         </button>
-        <div className="pr-10 sm:pr-7">
+        <div className="pr-9 pl-6 sm:pr-7 sm:pl-0">
           <TextRow
             value={item}
             onChange={(nextValue) => onUpdate(index, nextValue)}
@@ -255,6 +266,14 @@ export function StringListRow({
     commitItems(arrayMove([...items], oldIndex, newIndex));
   }
 
+  function moveItem(index: number, direction: -1 | 1) {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= items.length) return;
+
+    setItemIds(prev => arrayMove(prev, index, nextIndex));
+    commitItems(arrayMove([...items], index, nextIndex));
+  }
+
   return (
     <>
       <div className="py-1.5">
@@ -307,7 +326,7 @@ export function StringListRow({
           </div>
         </div>
       </div>
-      <div className="pl-4">
+      <div className="pl-2 sm:pl-4">
         {items.length > 0 ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
@@ -318,8 +337,10 @@ export function StringListRow({
                     id={itemIds[index]!}
                     item={item}
                     index={index}
+                    total={items.length}
                     onUpdate={updateItem}
                     onRemove={removeItem}
+                    onMove={moveItem}
                     placeholder={field.placeholder}
                   />
                 ))}

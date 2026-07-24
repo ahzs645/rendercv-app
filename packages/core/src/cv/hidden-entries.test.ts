@@ -5,11 +5,17 @@ import {
   entryFingerprint,
   filterDisabledSectionsFromCvYaml,
   filterHiddenEntriesFromCvYaml,
-  stripEmptySectionsFromCvYaml
+  stripEmptySectionsFromCvYaml,
+  topLevelEntryListKey
 } from './hidden-entries';
 
 const CV = `cv:
   name: Jane Doe
+  social_networks:
+    - network: LinkedIn
+      username: janedoe
+    - network: GitHub
+      username: janedoe
   sections:
     experience:
       - company: Acme
@@ -50,6 +56,43 @@ describe('filterHiddenEntriesFromCvYaml', () => {
     const parsed = YAML.parse(result);
     expect(parsed.cv.sections.experience).toEqual([{ company: 'Acme', position: 'Engineer' }]);
     expect(parsed.cv.sections.skills).toEqual(['Python', 'Rust']);
+  });
+
+  it('removes a hidden social network from the CV root', () => {
+    const github = { network: 'GitHub', username: 'janedoe' };
+    const result = filterHiddenEntriesFromCvYaml(CV, {
+      [topLevelEntryListKey('social_networks')]: [entryFingerprint(github)]
+    });
+    const parsed = YAML.parse(result);
+    expect(parsed.cv.social_networks).toEqual([{ network: 'LinkedIn', username: 'janedoe' }]);
+    expect(parsed.cv.sections.experience).toHaveLength(2);
+  });
+
+  it('drops the social_networks key when every entry is hidden', () => {
+    const result = filterHiddenEntriesFromCvYaml(CV, {
+      [topLevelEntryListKey('social_networks')]: [
+        entryFingerprint({ network: 'LinkedIn', username: 'janedoe' }),
+        entryFingerprint({ network: 'GitHub', username: 'janedoe' })
+      ]
+    });
+    expect(YAML.parse(result).cv.social_networks).toBeUndefined();
+  });
+
+  it('does not confuse a section named social_networks with the CV root list', () => {
+    const cv = `cv:
+  social_networks:
+    - network: LinkedIn
+      username: janedoe
+  sections:
+    social_networks:
+      - Some text entry
+`;
+    const result = filterHiddenEntriesFromCvYaml(cv, {
+      social_networks: [entryFingerprint('Some text entry')]
+    });
+    const parsed = YAML.parse(result);
+    expect(parsed.cv.social_networks).toEqual([{ network: 'LinkedIn', username: 'janedoe' }]);
+    expect(parsed.cv.sections.social_networks).toBeUndefined();
   });
 
   it('removes a hidden string entry', () => {

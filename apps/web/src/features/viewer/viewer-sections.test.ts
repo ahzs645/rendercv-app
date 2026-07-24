@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { prepareViewerSections } from './viewer-sections';
+import type { CvFile } from '@rendercv/contracts';
+import { entryFingerprint, topLevelEntryListKey } from '@rendercv/core';
+import { prepareViewerSections, resolveViewerSections } from './viewer-sections';
 
 describe('prepareViewerSections', () => {
   it('hides archived-tagged entries by default', () => {
@@ -316,5 +318,62 @@ describe('prepareViewerSections', () => {
     expect(sections.cv).toContain('summary: "npj Climate and Atmospheric Science, 7');
     expect(sections.cv).toContain('DOI: 10.1038/s41612-024-00671-9');
     expect(sections.cv).toContain('date: "2024"');
+  });
+});
+
+describe('resolveViewerSections', () => {
+  const CV = `cv:
+  name: Jane Doe
+  social_networks:
+    - network: LinkedIn
+      username: janedoe
+    - network: GitHub
+      username: janedoe
+  sections:
+    experience:
+      - company: Acme
+        position: Engineer
+`;
+
+  function fileWith(overrides: Partial<CvFile>): CvFile {
+    return {
+      id: 'file-1',
+      name: 'CV',
+      cv: CV,
+      settings: '',
+      designs: { classic: 'design:\n  theme: classic' },
+      locales: {},
+      selectedTheme: 'classic',
+      selectedLocale: 'en',
+      isLocked: false,
+      isArchived: false,
+      isTrashed: false,
+      isPublic: false,
+      chatMessages: [],
+      editCount: 0,
+      lastEdited: 0,
+      ...overrides
+    } as CvFile;
+  }
+
+  it('drops a social network the active variant excludes', () => {
+    const github = entryFingerprint({ network: 'GitHub', username: 'janedoe' });
+    const sections = resolveViewerSections(
+      fileWith({
+        selectedVariant: 'industry',
+        variants: {
+          industry: { exclude_entries: { [topLevelEntryListKey('social_networks')]: [github] } }
+        }
+      })
+    );
+
+    expect(sections.cv).toContain('LinkedIn');
+    expect(sections.cv).not.toContain('GitHub');
+  });
+
+  it('keeps every social network when no variant excludes them', () => {
+    const sections = resolveViewerSections(fileWith({}));
+    expect(sections.cv).toContain('LinkedIn');
+    expect(sections.cv).toContain('GitHub');
   });
 });

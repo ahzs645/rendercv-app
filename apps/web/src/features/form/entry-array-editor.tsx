@@ -35,7 +35,7 @@ import {
 import type { EntryTemplate, FieldDef } from './schema/types';
 import { FieldControl } from './field-controls';
 import { DiffScopeProvider } from './diff-context';
-import { TextRow, Divider } from './primitives';
+import { MobileReorderControls, TextRow, Divider } from './primitives';
 import {
   asRecord,
   asArray,
@@ -117,6 +117,14 @@ export function EntryArrayEditor({
     onChange(arrayMove([...entries], oldIndex, newIndex));
   }
 
+  function moveEntry(index: number, direction: -1 | 1) {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= entries.length) return;
+
+    setItemIds(prev => arrayMove(prev, index, nextIndex));
+    onChange(arrayMove([...entries], index, nextIndex));
+  }
+
   const entryList = entries.map((entry, index) => (
     <SortableEntryArrayItem
       key={itemIds[index]}
@@ -127,6 +135,7 @@ export function EntryArrayEditor({
       entriesExpanded={entriesExpanded}
       onChange={updateEntry}
       onRemove={removeEntry}
+      onMove={moveEntry}
       template={template}
       sectionKey={sectionKey}
       originPath={originPath}
@@ -155,7 +164,7 @@ export function EntryArrayEditor({
               </div>
             </div>
           </div>
-          <div className="pl-4">
+          <div className="pl-2 sm:pl-4">
             {entries.length > 0 ? (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
@@ -168,7 +177,7 @@ export function EntryArrayEditor({
         </>
       ) : null}
       {!showHeader ? (
-        <div className="pl-4">
+        <div className="pl-2 sm:pl-4">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
               <AnimatePresence initial={false}>{entryList}</AnimatePresence>
@@ -197,6 +206,7 @@ function SortableEntryArrayItem({
   template,
   onChange,
   onRemove,
+  onMove,
   sectionKey,
   originPath,
   hideArchivedEntries = false
@@ -209,6 +219,7 @@ function SortableEntryArrayItem({
   template: EntryTemplate | 'text';
   onChange: (index: number, value: unknown) => void;
   onRemove: (index: number) => void;
+  onMove: (index: number, direction: -1 | 1) => void;
   sectionKey?: string;
   originPath?: (string | number)[];
   hideArchivedEntries?: boolean;
@@ -256,15 +267,24 @@ function SortableEntryArrayItem({
       exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
       transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
     >
-      <div className="form-item-wrapper form-item-enter-anim relative -mx-7 px-7">
+      {/* The `-mx-7` gutter only exists from `sm` up: on mobile the form pane has
+          less side padding than the gutter, so pulling rows outwards made the
+          whole editor scroll sideways. Mobile keeps its controls inside the row. */}
+      <div className="form-item-wrapper form-item-enter-anim relative sm:-mx-7 sm:px-7">
         <div
           ref={setActivatorNodeRef}
           {...listeners}
-          className="form-item-control absolute top-1/2 left-0 flex size-11 -translate-y-1/2 items-center justify-center rounded-md cursor-grab touch-none text-muted-foreground/60 active:cursor-grabbing sm:left-1 sm:size-6 sm:rounded-none sm:text-muted-foreground/40"
+          className="form-item-control absolute top-1/2 left-1 hidden size-6 -translate-y-1/2 items-center justify-center rounded-none cursor-grab touch-none text-muted-foreground/40 active:cursor-grabbing sm:flex"
         >
-          <GripVertical className="size-4 sm:size-3.5" />
+          <GripVertical className="size-3.5" />
         </div>
-        <div className="absolute top-1/2 right-0 flex -translate-y-1/2 items-center gap-1 sm:right-1">
+        <MobileReorderControls
+          canMoveUp={index > 0}
+          canMoveDown={index < entriesLength - 1}
+          onMove={(direction) => onMove(index, direction)}
+          label="entry"
+        />
+        <div className="absolute top-0 right-0 flex items-center gap-0.5 sm:top-1/2 sm:right-1 sm:-translate-y-1/2 sm:gap-1">
           {isArchived ? (
             <span
               className="hidden shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline"
@@ -283,7 +303,7 @@ function SortableEntryArrayItem({
           {hiddenState ? (
             <button
               type="button"
-              className={`form-item-control flex size-11 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
+              className={`form-item-control flex size-9 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
                 hiddenByVariant
                   ? 'text-primary'
                   : isHidden
@@ -307,14 +327,18 @@ function SortableEntryArrayItem({
           ) : null}
           <button
             type="button"
-            className="form-item-control flex size-11 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-6 sm:rounded-none sm:hover:bg-transparent"
+            className="form-item-control flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-6 sm:rounded-none sm:hover:bg-transparent"
             onClick={() => onRemove(index)}
             aria-label="Remove"
           >
             <X className="size-4 sm:size-3" />
           </button>
         </div>
-        <div className={`${hiddenState ? 'pr-[68px]' : 'pr-9'} sm:pr-12 ${isHidden ? 'opacity-45' : ''}`}>
+        <div
+          className={`pl-6 ${hiddenState ? 'pr-[74px]' : 'pr-10'} sm:pr-12 sm:pl-0 ${
+            isHidden ? 'opacity-45' : ''
+          }`}
+        >
           {template === 'text' ? (
             <TextRow
               value={typeof entry === 'string' ? entry : ''}
@@ -444,7 +468,7 @@ function TemplateEntryFields({
   }
 
   return (
-    <div className="-ml-0.5 grid grid-cols-[auto_1fr] items-start gap-x-1">
+    <div className="-ml-0.5 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1">
       <button type="button" className="row-start-1" onClick={() => setExpanded((value) => !value)}>
         <ChevronRight
           className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${
@@ -554,7 +578,7 @@ function NestedExperienceFields({
   const posLabelWidth = labelWidthForFields(positionSubTemplate.fields);
 
   return (
-    <div className="-ml-0.5 grid grid-cols-[auto_1fr] items-start gap-x-1">
+    <div className="-ml-0.5 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1">
       <button type="button" className="row-start-1" onClick={() => setExpanded((v) => !v)}>
         <ChevronRight
           className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${expanded ? 'rotate-90' : ''}`}
@@ -682,7 +706,7 @@ function PositionItem({
           <X className="size-3.5 sm:size-2.5" />
         </button>
       </div>
-      <div className="-ml-0.5 grid grid-cols-[auto_1fr] items-start gap-x-1">
+      <div className="-ml-0.5 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1">
         <button type="button" className="row-start-1" onClick={() => setExpanded((v) => !v)}>
           <ChevronRight
             className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${expanded ? 'rotate-90' : ''}`}
