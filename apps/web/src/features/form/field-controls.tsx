@@ -16,6 +16,9 @@ import {
   stringValue,
   parseDimensionValue,
   asHexColor,
+  splitDelimitedList,
+  joinDelimitedList,
+  DEFAULT_LIST_DELIMITER,
   DIMENSION_UNITS
 } from './utils';
 import { useFieldDiff } from './diff-context';
@@ -67,6 +70,8 @@ export function FieldControl({
         return <BooleanRow label={field.label} checked={Boolean(value)} onChange={onChange} />;
       case 'string_list':
         return <StringListRow field={field} value={value} onChange={onChange} />;
+      case 'delimited_list':
+        return <DelimitedListRow field={field} value={value} onChange={onChange} />;
       case 'dimension':
         return <DimensionRow label={field.label} value={stringValue(value)} onChange={onChange} />;
       case 'color':
@@ -148,6 +153,51 @@ export function FieldControl({
         was: {originalDisplay}
       </span>
     </div>
+  );
+}
+
+/**
+ * Edits a delimited string as individual rows. RenderCV requires a one-line
+ * entry's `details` to be a single string, so the YAML keeps that shape and
+ * only the editor sees a list.
+ *
+ * The items are held locally rather than derived from `value` on every render:
+ * a freshly added row is empty, `joinDelimitedList` drops blanks, and a
+ * derived list would therefore make the new row vanish the moment it appeared.
+ */
+function DelimitedListRow({
+  field,
+  value,
+  onChange
+}: {
+  field: FieldDef;
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  const delimiter = field.delimiter ?? DEFAULT_LIST_DELIMITER;
+  const text = stringValue(value);
+  const [items, setItems] = useState(() => splitDelimitedList(text, delimiter));
+  const lastEmittedRef = useRef(text);
+
+  // Re-read only when the value changed somewhere else — the YAML editor, an
+  // undo, an AI proposal — never in response to this control's own commit.
+  useEffect(() => {
+    if (text !== lastEmittedRef.current) {
+      lastEmittedRef.current = text;
+      setItems(splitDelimitedList(text, delimiter));
+    }
+  }, [text, delimiter]);
+
+  function handleChange(nextValue: unknown) {
+    const nextItems = Array.isArray(nextValue) ? nextValue.map((item) => String(item)) : [];
+    const joined = joinDelimitedList(nextItems, delimiter);
+    setItems(nextItems);
+    lastEmittedRef.current = joined;
+    onChange(joined);
+  }
+
+  return (
+    <StringListRow field={field} value={items} onChange={handleChange} allowFlavors={false} />
   );
 }
 

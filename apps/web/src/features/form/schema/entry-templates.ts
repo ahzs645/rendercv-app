@@ -210,7 +210,11 @@ export const oneLineTemplate: EntryTemplate = {
     {
       path: ['details'],
       label: 'Details',
-      type: 'string',
+      // RenderCV stores this as one `; `-joined string; the editor treats each
+      // item as its own row so they can be added, removed and reordered.
+      type: 'delimited_list',
+      delimiter: ';',
+      placeholder: 'Add a detail',
       required: true,
       defaultValue: '',
       preserveEmpty: true

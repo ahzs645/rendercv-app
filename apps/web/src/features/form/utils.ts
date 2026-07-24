@@ -194,6 +194,34 @@ export function asHexColor(value: string) {
   return '#000000';
 }
 
+export const DEFAULT_LIST_DELIMITER = ';';
+
+/**
+ * Reads a delimited string (e.g. a one-line entry's `details`) as editable
+ * items. Interior blanks are kept so a stray `;;` stays visible and removable
+ * instead of silently disappearing.
+ */
+export function splitDelimitedList(value: unknown, delimiter = DEFAULT_LIST_DELIMITER) {
+  const text = stringValue(value);
+  if (!text.trim()) {
+    return [];
+  }
+
+  return text.split(delimiter).map((item) => item.trim());
+}
+
+/**
+ * Writes items back as a single string. Blanks are dropped here rather than
+ * round-tripped, so an in-progress empty row never reaches the YAML as a
+ * dangling separator.
+ */
+export function joinDelimitedList(items: string[], delimiter = DEFAULT_LIST_DELIMITER) {
+  return items
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(`${delimiter} `);
+}
+
 export function labelWidthForFields(fields: FieldDef[]) {
   const maxLength = Math.max(...fields.map((field) => field.label.length), 10);
   return `${Math.max(70, Math.round(maxLength * 7.4 + 24))}px`;

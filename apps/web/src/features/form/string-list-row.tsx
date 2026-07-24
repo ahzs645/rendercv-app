@@ -134,13 +134,21 @@ function SortableStringItem({
 export function StringListRow({
   field,
   value,
-  onChange
+  onChange,
+  allowFlavors = true
 }: {
   field: FieldDef;
   value: unknown;
   onChange: (value: unknown) => void;
+  /**
+   * Flavors store the field as `{ flavors: { … } }`. Callers that must emit a
+   * scalar (see `delimited_list`) turn them off.
+   */
+  allowFlavors?: boolean;
 }) {
-  const { flavorKeys, flavorsObj } = getFlavorsInfo(value);
+  const { flavorKeys, flavorsObj } = allowFlavors
+    ? getFlavorsInfo(value)
+    : { flavorKeys: [] as string[], flavorsObj: null };
   const hasFlavors = flavorKeys.length > 0;
   const [activeFlavor, setActiveFlavor] = useState(hasFlavors ? flavorKeys[0]! : '');
 
@@ -164,8 +172,15 @@ export function StringListRow({
     setItemIds(items.map(() => nextIdRef.current++));
   }
 
-  // Reset IDs when active flavor changes
+  // Reset IDs when the active flavor changes — but not on mount. Re-keying the
+  // initial items makes AnimatePresence treat every row as removed-and-re-added,
+  // so the list renders twice over for the length of the exit animation.
+  const previousFlavorRef = useRef(activeFlavor);
   useEffect(() => {
+    if (previousFlavorRef.current === activeFlavor) {
+      return;
+    }
+    previousFlavorRef.current = activeFlavor;
     setItemIds(items.map(() => nextIdRef.current++));
   }, [activeFlavor]);
 
@@ -304,7 +319,7 @@ export function StringListRow({
                 </button>
               </div>
             )}
-            {!hasFlavors && (
+            {allowFlavors && !hasFlavors && (
               <button
                 type="button"
                 className="flex items-center gap-0.5 text-[11px] text-muted-foreground/40 transition-colors hover:text-foreground"
