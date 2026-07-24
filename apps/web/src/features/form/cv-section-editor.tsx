@@ -17,6 +17,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Eye, EyeOff, GripVertical, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { topLevelEntryListKey } from '@rendercv/core';
 import {
   createDefaultEntry,
   detectEntryType,
@@ -82,12 +83,15 @@ export function CvSectionEditor({
 
   return (
     <>
+      {/* These two live on the CV root rather than in `sections`, but they take
+          the same per-entry hide/variant toggle — hence the `cv:`-prefixed keys. */}
       <EntryArrayEditor
         title="Social Networks"
         entries={socialNetworks}
         entriesExpanded={entriesExpanded}
         template={socialNetworkTemplate}
         onChange={(nextEntries) => updateCvField('social_networks', nextEntries)}
+        sectionKey={topLevelEntryListKey('social_networks')}
         originPath={['social_networks']}
       />
       <EntryArrayEditor
@@ -96,6 +100,7 @@ export function CvSectionEditor({
         entriesExpanded={entriesExpanded}
         template={customConnectionTemplate}
         onChange={(nextEntries) => updateCvField('custom_connections', nextEntries)}
+        sectionKey={topLevelEntryListKey('custom_connections')}
         originPath={['custom_connections']}
       />
       <SectionMapEditor
@@ -385,7 +390,7 @@ function SectionEditor({
           label="section"
         />
         <input
-          className={`ml-6 flex-1 border-b border-muted-foreground/40 bg-transparent py-2 pr-[76px] text-base font-semibold outline-none sm:ml-0 sm:py-0 sm:pr-2 sm:text-[15px] ${
+          className={`ml-6 min-w-0 flex-1 border-b border-muted-foreground/40 bg-transparent py-2 pr-[76px] text-base font-semibold outline-none sm:ml-0 sm:py-0 sm:pr-2 sm:text-[15px] ${
             hiddenFromResume ? 'text-foreground/40 line-through decoration-1' : 'text-foreground/80'
           }`}
           value={title}
@@ -399,8 +404,10 @@ function SectionEditor({
           }}
         />
         {variantExcluded ? (
+          // The eye/delete controls are absolutely positioned in the right
+          // gutter, so the badge has to keep clear of them itself.
           <span
-            className="ml-2 hidden shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary sm:inline"
+            className="mr-14 ml-2 hidden shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary sm:inline"
             title={`Excluded from the "${variantLabel}" variant`}
           >
             Off in {variantLabel}

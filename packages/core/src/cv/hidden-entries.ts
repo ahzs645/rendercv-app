@@ -41,6 +41,33 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Entry lists that live directly under `cv:` instead of inside `cv.sections`.
+ * They are hidden the same way section entries are, but their keys carry a
+ * `cv:` prefix so they can never collide with a user section that happens to be
+ * called "social_networks".
+ */
+export const TOP_LEVEL_ENTRY_LISTS = ['social_networks', 'custom_connections'] as const;
+
+export type TopLevelEntryList = (typeof TOP_LEVEL_ENTRY_LISTS)[number];
+
+const TOP_LEVEL_PREFIX = 'cv:';
+
+/** Hidden-entry key for one of the top-level `cv:` lists. */
+export function topLevelEntryListKey(list: TopLevelEntryList): string {
+  return `${TOP_LEVEL_PREFIX}${list}`;
+}
+
+/** The top-level list a hidden-entry key addresses, or null for a section key. */
+export function topLevelEntryListFromKey(key: string): TopLevelEntryList | null {
+  if (!key.startsWith(TOP_LEVEL_PREFIX)) {
+    return null;
+  }
+
+  const list = key.slice(TOP_LEVEL_PREFIX.length) as TopLevelEntryList;
+  return TOP_LEVEL_ENTRY_LISTS.includes(list) ? list : null;
+}
+
 function hasHidden(hidden: Record<string, string[]> | undefined): hidden is Record<string, string[]> {
   return Boolean(hidden && Object.values(hidden).some((list) => list.length > 0));
 }
@@ -64,27 +91,36 @@ export function filterHiddenEntriesFromCvYaml(
     return cvYaml;
   }
 
-  if (!isPlainObject(parsed) || !isPlainObject(parsed.cv) || !isPlainObject(parsed.cv.sections)) {
+  if (!isPlainObject(parsed) || !isPlainObject(parsed.cv)) {
     return cvYaml;
   }
 
-  const sections = parsed.cv.sections as Record<string, unknown>;
+  const cv = parsed.cv as Record<string, unknown>;
+  const sections = isPlainObject(cv.sections) ? (cv.sections as Record<string, unknown>) : null;
   let changed = false;
 
-  for (const [sectionKey, fingerprints] of Object.entries(hidden)) {
+  for (const [key, fingerprints] of Object.entries(hidden)) {
     if (fingerprints.length === 0) continue;
-    const entries = sections[sectionKey];
+
+    // `cv:social_networks` addresses a list on the CV root; anything else is a
+    // section key.
+    const topLevelList = topLevelEntryListFromKey(key);
+    const container = topLevelList ? cv : sections;
+    const containerKey = topLevelList ?? key;
+    if (!container) continue;
+
+    const entries = container[containerKey];
     if (!Array.isArray(entries)) continue;
 
     const hiddenSet = new Set(fingerprints);
     const kept = entries.filter((entry) => !hiddenSet.has(entryFingerprint(entry)));
     if (kept.length !== entries.length) {
-      // When hiding empties a section, drop the section entirely so the renderer
-      // doesn't emit a bare header with no content beneath it.
+      // When hiding empties the list, drop the key entirely so the renderer
+      // doesn't emit a bare section header with no content beneath it.
       if (kept.length === 0) {
-        delete sections[sectionKey];
+        delete container[containerKey];
       } else {
-        sections[sectionKey] = kept;
+        container[containerKey] = kept;
       }
       changed = true;
     }

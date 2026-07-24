@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
-import { entryFingerprint } from '@rendercv/core';
+import { entryFingerprint, topLevelEntryListKey } from '@rendercv/core';
 import { computeVariantVisibility } from './variant-visibility';
 
 function cvRoot(yamlBody: string) {
@@ -8,6 +8,11 @@ function cvRoot(yamlBody: string) {
 }
 
 const ROOT = cvRoot(`cv:
+  social_networks:
+    - network: LinkedIn
+      username: janedoe
+    - network: GitHub
+      username: janedoe
   sections:
     experience:
       - company: Active Co
@@ -68,6 +73,21 @@ describe('computeVariantVisibility', () => {
   it('leaves text entries visible when the variant does not exclude them', () => {
     const { hiddenEntries } = computeVariantVisibility(ROOT, { exclude_sections: ['projects'] });
     expect(hiddenEntries.summary).toBeUndefined();
+  });
+
+  it('hides a social network excluded by the variant', () => {
+    const key = topLevelEntryListKey('social_networks');
+    const githubFp = entryFingerprint({ network: 'GitHub', username: 'janedoe' });
+    const { hiddenEntries } = computeVariantVisibility(ROOT, {
+      exclude_entries: { [key]: [githubFp] }
+    });
+    expect(hiddenEntries[key]?.has(githubFp)).toBe(true);
+    expect(hiddenEntries[key]?.size).toBe(1);
+  });
+
+  it('leaves social networks alone when the variant excludes nothing', () => {
+    const { hiddenEntries } = computeVariantVisibility(ROOT, { exclude_sections: ['projects'] });
+    expect(hiddenEntries[topLevelEntryListKey('social_networks')]).toBeUndefined();
   });
 
   it('does not report entries inside an excluded section', () => {

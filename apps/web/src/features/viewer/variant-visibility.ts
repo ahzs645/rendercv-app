@@ -1,5 +1,5 @@
 import type { CvVariantDefinition } from '@rendercv/contracts';
-import { entryFingerprint } from '@rendercv/core';
+import { entryFingerprint, TOP_LEVEL_ENTRY_LISTS, topLevelEntryListKey } from '@rendercv/core';
 
 /**
  * Variant-driven visibility, shared between the renderer and the form editor.
@@ -100,37 +100,54 @@ export function computeVariantVisibility(
   const hiddenEntries: Record<string, Set<string>> = {};
   const archivedEntries: Record<string, Set<string>> = {};
 
-  const sections = isRecord(cvRoot) ? cvRoot.sections : undefined;
-  if (isRecord(sections)) {
-    for (const [sectionKey, entries] of Object.entries(sections)) {
-      if (excludedSections.has(sectionKey) || !Array.isArray(entries)) {
+  function collect(key: string, entries: unknown) {
+    if (!Array.isArray(entries)) {
+      return;
+    }
+
+    const listExcluded = new Set(excludeEntries[key] ?? []);
+    for (const entry of entries) {
+      const fingerprint = entryFingerprint(entry);
+      // Text entries are plain strings: they carry no tags, so only the
+      // app-authored per-entry exclusions can hide them. They still need to be
+      // reflected here, otherwise the editor shows them as visible while the
+      // PDF (which filters by fingerprint) drops them.
+      if (!isRecord(entry)) {
+        if (listExcluded.has(fingerprint)) {
+          (hiddenEntries[key] ??= new Set()).add(fingerprint);
+        }
         continue;
       }
 
-      const sectionExcluded = new Set(excludeEntries[sectionKey] ?? []);
-      for (const entry of entries) {
-        const fingerprint = entryFingerprint(entry);
-        // Text entries are plain strings: they carry no tags, so only the
-        // app-authored per-entry exclusions can hide them. They still need to be
-        // reflected here, otherwise the editor shows them as visible while the
-        // PDF (which filters by fingerprint) drops them.
-        if (!isRecord(entry)) {
-          if (sectionExcluded.has(fingerprint)) {
-            (hiddenEntries[sectionKey] ??= new Set()).add(fingerprint);
-          }
-          continue;
-        }
-        const droppedByTags = !matchesEntryVariant(entry, selectedTags, variantActive);
-        const droppedByApp = sectionExcluded.has(fingerprint);
-        if (!droppedByTags && !droppedByApp) {
-          continue;
-        }
-
-        (hiddenEntries[sectionKey] ??= new Set()).add(fingerprint);
-        if (isArchivedEntry(entry, selectedTags)) {
-          (archivedEntries[sectionKey] ??= new Set()).add(fingerprint);
-        }
+      const droppedByTags = !matchesEntryVariant(entry, selectedTags, variantActive);
+      const droppedByApp = listExcluded.has(fingerprint);
+      if (!droppedByTags && !droppedByApp) {
+        continue;
       }
+
+      (hiddenEntries[key] ??= new Set()).add(fingerprint);
+      if (isArchivedEntry(entry, selectedTags)) {
+        (archivedEntries[key] ??= new Set()).add(fingerprint);
+      }
+    }
+  }
+
+  const sections = isRecord(cvRoot) ? cvRoot.sections : undefined;
+  if (isRecord(sections)) {
+    for (const [sectionKey, entries] of Object.entries(sections)) {
+      if (excludedSections.has(sectionKey)) {
+        continue;
+      }
+
+      collect(sectionKey, entries);
+    }
+  }
+
+  // Social networks and custom connections sit on the CV root rather than in
+  // `sections`, but a variant hides them exactly the same way.
+  if (isRecord(cvRoot)) {
+    for (const list of TOP_LEVEL_ENTRY_LISTS) {
+      collect(topLevelEntryListKey(list), cvRoot[list]);
     }
   }
 
