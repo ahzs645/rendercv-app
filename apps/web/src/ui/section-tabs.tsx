@@ -282,7 +282,9 @@ function VariantManager({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-1 min-w-[14rem] max-h-[min(360px,60vh)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          // The trigger sits at the left edge of the row on mobile, so a
+          // right-anchored menu would hang off the left side of the screen.
+          className="absolute left-0 top-full z-50 mt-1 w-[min(16rem,calc(100vw-1.5rem))] max-h-[min(360px,60vh)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md sm:left-auto sm:right-0 sm:w-auto sm:min-w-[14rem]"
         >
           {variantKeys.length > 0 ? (
             <>
@@ -446,7 +448,7 @@ function VariantDropdown({
       {open ? (
         <div
           ref={menuRef}
-          className="absolute right-0 top-full z-50 mt-1 min-w-[8rem] max-h-[min(300px,50vh)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          className="absolute right-0 top-full z-50 mt-1 min-w-[8rem] max-w-[calc(100vw-1.5rem)] max-h-[min(300px,50vh)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
           role="menu"
         >
           {options.map((option) => (

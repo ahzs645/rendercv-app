@@ -20,12 +20,28 @@
 .driver-popover-progress-text {
   color: var(--muted-foreground);
   font-size: 0.75rem;
-  margin-right: 0.75rem;
+}
+
+/* driver.js keeps the popover inside the viewport but its own max-width can
+   still be wider than a small phone once the page has side padding. */
+.driver-popover {
+  max-width: min(300px, calc(100vw - 2rem));
+}
+
+/* The footer packs "Skip tour", the progress counter and the nav buttons on one
+   line; without a gap the first two render as one run-on string ("Skip tour1 of 7"). */
+.driver-popover-footer {
+  gap: 0.75rem;
 }
 
 /* "Skip tour" is injected at the front of the footer so it sits on the left,
-   pushing the progress text and navigation buttons to the right. */
-.driver-popover-skip-btn {
+   pushing the progress text and navigation buttons to the right.
+   NOTE: the class is deliberately outside the `driver-popover*` namespace —
+   driver.js swallows clicks on popover children whose class name contains it. */
+.tour-skip-btn {
+  display: inline-flex !important;
+  align-items: center;
+  min-height: 2rem;
   margin-right: auto;
   padding: 0 !important;
   background: transparent !important;
@@ -37,7 +53,7 @@
   cursor: pointer;
 }
 
-.driver-popover-skip-btn:hover {
+.tour-skip-btn:hover {
   color: var(--foreground) !important;
 }
 

@@ -109,10 +109,17 @@ export function computeVariantVisibility(
 
       const sectionExcluded = new Set(excludeEntries[sectionKey] ?? []);
       for (const entry of entries) {
+        const fingerprint = entryFingerprint(entry);
+        // Text entries are plain strings: they carry no tags, so only the
+        // app-authored per-entry exclusions can hide them. They still need to be
+        // reflected here, otherwise the editor shows them as visible while the
+        // PDF (which filters by fingerprint) drops them.
         if (!isRecord(entry)) {
+          if (sectionExcluded.has(fingerprint)) {
+            (hiddenEntries[sectionKey] ??= new Set()).add(fingerprint);
+          }
           continue;
         }
-        const fingerprint = entryFingerprint(entry);
         const droppedByTags = !matchesEntryVariant(entry, selectedTags, variantActive);
         const droppedByApp = sectionExcluded.has(fingerprint);
         if (!droppedByTags && !droppedByApp) {

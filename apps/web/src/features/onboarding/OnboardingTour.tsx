@@ -58,7 +58,11 @@ export function OnboardingTour({
         const skip = document.createElement('button');
         skip.type = 'button';
         skip.textContent = 'Skip tour';
-        skip.className = 'driver-popover-skip-btn';
+        // The class must NOT contain "driver-popover": driver.js runs a
+        // capture-phase document listener that calls stopImmediatePropagation()
+        // on every popover child whose className includes that string, which
+        // would keep this button's own click handler from ever firing.
+        skip.className = 'tour-skip-btn';
         skip.setAttribute('data-onboarding-skip', '');
         skip.addEventListener('click', skipTour);
         footer.insertBefore(skip, footer.firstChild);

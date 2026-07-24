@@ -44,7 +44,9 @@ const FONT_OPTIONS = [
   'XCharter'
 ];
 
-const STACKED_ROW_CLASSNAME = 'flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:gap-0 sm:py-1.5';
+// Mobile stacks the label above its control; the pair needs to read as one unit,
+// so the intra-row gap stays smaller than the padding that separates two rows.
+const STACKED_ROW_CLASSNAME = 'flex flex-col gap-0.5 py-2 sm:flex-row sm:items-center sm:gap-0 sm:py-1.5';
 const STACKED_LABEL_CLASSNAME =
   'w-full shrink-0 text-xs text-muted-foreground sm:w-[var(--label-width,8rem)]';
 
@@ -284,12 +286,15 @@ function CollapsibleChoiceRow({
                 key={option.value}
                 type="button"
                 data-value={option.value}
-                className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-md transition-[color,background-color,opacity,border-radius,font-size,padding] duration-[100ms] sm:min-h-0 ${
+                // The collapsed state is just the current value rendered as text,
+                // so it keeps a text-height row; only the expanded chips need a
+                // full-size touch target.
+                className={`inline-flex items-center whitespace-nowrap rounded-md transition-[color,background-color,opacity,border-radius,font-size,padding] duration-[100ms] sm:min-h-0 ${
                   !expanded && value === option.value && value
-                    ? 'cursor-pointer bg-transparent px-0 text-sm text-foreground hover:text-primary sm:rounded-none'
+                    ? 'min-h-7 cursor-pointer bg-transparent px-0 text-sm text-foreground hover:text-primary sm:rounded-none'
                     : value === option.value
-                      ? 'bg-primary/10 px-3 text-xs text-primary sm:px-2 sm:text-[11px]'
-                      : 'px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2 sm:text-[11px]'
+                      ? 'min-h-11 bg-primary/10 px-3 text-xs text-primary sm:px-2 sm:text-[11px]'
+                      : 'min-h-11 px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2 sm:text-[11px]'
                 }`}
                 onClick={() => {
                   if (!expanded) {
@@ -373,12 +378,12 @@ function DimensionRow({
             key={optionUnit}
             type="button"
             data-value={optionUnit}
-            className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-md transition-[color,background-color,opacity,border-radius,font-size,padding] duration-[100ms] sm:min-h-0 ${
+            className={`inline-flex items-center whitespace-nowrap rounded-md transition-[color,background-color,opacity,border-radius,font-size,padding] duration-[100ms] sm:min-h-0 ${
               !expanded && optionUnit === unit
-                ? 'cursor-pointer bg-transparent px-0 text-sm text-foreground hover:text-primary sm:rounded-none'
+                ? 'min-h-7 cursor-pointer bg-transparent px-0 text-sm text-foreground hover:text-primary sm:rounded-none'
                 : optionUnit === unit
-                  ? 'bg-primary/10 px-3 text-xs text-primary sm:px-2 sm:text-[11px]'
-                  : 'px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2 sm:text-[11px]'
+                  ? 'min-h-11 bg-primary/10 px-3 text-xs text-primary sm:px-2 sm:text-[11px]'
+                  : 'min-h-11 px-3 text-xs text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2 sm:text-[11px]'
             }`}
             onClick={() => {
               if (!expanded) {

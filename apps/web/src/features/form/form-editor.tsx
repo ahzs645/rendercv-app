@@ -153,7 +153,7 @@ export function FormEditor({
 
   return (
     <DiffProvider section={section} origin={sharedOrigin}>
-      <div className={`h-full overflow-y-auto px-4 pb-6 sm:px-6 lg:px-8 [overflow-anchor:none] ${readOnly ? 'opacity-60 [&_button]:pointer-events-none [&_input]:pointer-events-none [&_textarea]:pointer-events-none [&_select]:pointer-events-none [&_[role=switch]]:pointer-events-none' : ''}`} data-form-editor>
+      <div className={`h-full overflow-x-hidden overflow-y-auto px-4 pb-6 sm:px-7 lg:px-8 [overflow-anchor:none] ${readOnly ? 'opacity-60 [&_button]:pointer-events-none [&_input]:pointer-events-none [&_textarea]:pointer-events-none [&_select]:pointer-events-none [&_[role=switch]]:pointer-events-none' : ''}`} data-form-editor>
         {section === 'design' && themeOptions && themeOptions.length > 0 && onThemeChange ? (
           <ThemeRow
             options={themeOptions}

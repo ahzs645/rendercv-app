@@ -17,6 +17,9 @@ const ROOT = cvRoot(`cv:
         tags: [archived]
     projects:
       - name: Side Project
+    summary:
+      - A short paragraph about me.
+      - A second paragraph.
 `);
 
 describe('computeVariantVisibility', () => {
@@ -50,6 +53,21 @@ describe('computeVariantVisibility', () => {
     expect(hiddenEntries.experience?.has(activeFp)).toBe(true);
     // App-authored exclusion is not flagged as archived.
     expect(archivedEntries.experience?.has(activeFp) ?? false).toBe(false);
+  });
+
+  it('hides text (string) entries listed in exclude_entries', () => {
+    const textFp = entryFingerprint('A second paragraph.');
+    const { hiddenEntries, archivedEntries } = computeVariantVisibility(ROOT, {
+      exclude_entries: { summary: [textFp] }
+    });
+    expect(hiddenEntries.summary?.has(textFp)).toBe(true);
+    expect(hiddenEntries.summary?.size).toBe(1);
+    expect(archivedEntries.summary).toBeUndefined();
+  });
+
+  it('leaves text entries visible when the variant does not exclude them', () => {
+    const { hiddenEntries } = computeVariantVisibility(ROOT, { exclude_sections: ['projects'] });
+    expect(hiddenEntries.summary).toBeUndefined();
   });
 
   it('does not report entries inside an excluded section', () => {
