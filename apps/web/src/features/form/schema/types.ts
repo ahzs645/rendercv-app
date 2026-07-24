@@ -17,6 +17,8 @@ export type FieldType =
   | 'alignment'
   | 'section_style'
   | 'string_list'
+  /** A list in the editor, a single delimited string in the YAML. */
+  | 'delimited_list'
   | 'toggle';
 
 export interface FieldDef {
@@ -29,6 +31,8 @@ export interface FieldDef {
   defaultValue?: unknown;
   preserveEmpty?: boolean;
   ordered?: boolean;
+  /** Separator for `delimited_list` fields. Defaults to `;`. */
+  delimiter?: string;
   options?: string | SelectOption[];
   bullets?: string[];
   fonts?: string[];
