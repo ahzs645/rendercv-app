@@ -89,6 +89,88 @@ const TITLE_FIELD_CANDIDATES = [
   'organization',
   'label'
 ];
+type KnownEntryType = {
+  /** Fields whose presence identifies this RenderCV entry type. */
+  identity: string[];
+  /** Fields this entry type keeps as-is. */
+  fields: string[];
+  /** Where stray scalar fields are appended so their text is not dropped. */
+  overflowField: string;
+};
+
+/**
+ * The RenderCV entry types, in detection order — the two-key shapes have to be
+ * checked before `name` so a `{name, company, position}` entry stays an
+ * experience entry. `url`/`doi` ride along on the entry types the editor offers
+ * them for, even where RenderCV's own schema omits them.
+ */
+const KNOWN_ENTRY_TYPES: KnownEntryType[] = [
+  {
+    identity: ['company', 'position'],
+    fields: [
+      'company',
+      'position',
+      'date',
+      'start_date',
+      'end_date',
+      'location',
+      'summary',
+      'highlights',
+      'url',
+      'doi'
+    ],
+    overflowField: 'summary'
+  },
+  {
+    identity: ['institution', 'area'],
+    fields: [
+      'institution',
+      'area',
+      'degree',
+      'date',
+      'start_date',
+      'end_date',
+      'location',
+      'summary',
+      'highlights',
+      'url',
+      'doi'
+    ],
+    overflowField: 'summary'
+  },
+  {
+    identity: ['title', 'authors'],
+    fields: ['title', 'authors', 'journal', 'date', 'doi', 'url', 'summary'],
+    overflowField: 'summary'
+  },
+  {
+    identity: ['label', 'details'],
+    fields: ['label', 'details'],
+    overflowField: 'details'
+  },
+  { identity: ['bullet'], fields: ['bullet'], overflowField: 'bullet' },
+  { identity: ['number'], fields: ['number'], overflowField: 'number' },
+  {
+    identity: ['reversed_number'],
+    fields: ['reversed_number'],
+    overflowField: 'reversed_number'
+  },
+  {
+    identity: ['name'],
+    fields: [
+      'name',
+      'date',
+      'start_date',
+      'end_date',
+      'location',
+      'summary',
+      'highlights',
+      'url',
+      'doi'
+    ],
+    overflowField: 'summary'
+  }
+];
 const ENTRY_FIELD_SYNONYMS: Record<string, string[]> = {
   name: ['title', 'course', 'topic', 'subject', 'event', 'project', 'program'],
   title: ['paper'],
@@ -420,6 +502,17 @@ function applyFieldSynonyms(entry: unknown) {
   return updated;
 }
 
+function detectKnownEntryType(entry: unknown): KnownEntryType | undefined {
+  if (!isRecord(entry)) {
+    return undefined;
+  }
+
+  const has = (...keys: string[]) =>
+    keys.every((key) => entry[key] != null && entry[key] !== '');
+
+  return KNOWN_ENTRY_TYPES.find((entryType) => has(...entryType.identity));
+}
+
 function entryMatchesKnownType(entry: unknown) {
   if (typeof entry === 'string') {
     return true;
@@ -441,19 +534,41 @@ function entryMatchesKnownType(entry: unknown) {
     return true;
   }
 
-  const has = (...keys: string[]) =>
-    keys.every((key) => entry[key] != null && entry[key] !== '');
+  return detectKnownEntryType(entry) !== undefined;
+}
 
-  return (
-    has('name') ||
-    has('company', 'position') ||
-    has('institution', 'area') ||
-    has('label', 'details') ||
-    has('title', 'authors') ||
-    has('bullet') ||
-    has('number') ||
-    has('reversed_number')
-  );
+/**
+ * Keeps an entry in the RenderCV shape it already matches and folds only the
+ * *stray* scalar fields into that shape's overflow field. Rewriting a valid
+ * entry into some other shape (e.g. a one-line `label`/`details` pair into a
+ * normal entry with `summary: "details: ..."`) is lossy, and because imports
+ * persist the normalized YAML it would corrupt the author's source file.
+ *
+ * Arrays and mappings are left in place: RenderCV allows extra keys, and
+ * flattening a nested structure into text throws its shape away.
+ */
+function foldStrayFieldsIntoKnownEntry(entry: UnknownRecord, entryType: KnownEntryType) {
+  const kept: UnknownRecord = { ...entry };
+  const knownFields = new Set(entryType.fields);
+  const strayParts: string[] = [];
+
+  for (const [key, value] of Object.entries({ ...kept })) {
+    if (knownFields.has(key)) {
+      continue;
+    }
+    if (value == null || value === '' || Array.isArray(value) || isRecord(value)) {
+      continue;
+    }
+
+    strayParts.push(`${key.replaceAll('_', ' ')}: ${String(value)}`);
+    delete kept[key];
+  }
+
+  if (strayParts.length > 0) {
+    kept[entryType.overflowField] = joinParts([kept[entryType.overflowField], ...strayParts]);
+  }
+
+  return cleanMapping(kept);
 }
 
 function coerceUnknownEntry(entry: unknown) {
@@ -545,12 +660,14 @@ function normalizeUnknownEntry(
   }
 
   const stripped = stripCompatFields(prepared);
-  if (entryMatchesKnownType(stripped)) {
-    const coerced = coerceUnknownEntry(stripped);
-    if (coerced && isRecord(coerced) && 'name' in coerced && isRecord(stripped)) {
-      return coerced;
-    }
+  const knownType = detectKnownEntryType(stripped);
+  if (knownType && isRecord(stripped)) {
+    return foldStrayFieldsIntoKnownEntry(stripped, knownType);
+  }
 
+  if (entryMatchesKnownType(stripped)) {
+    // Continuation rows produced by `expandNestedPositions` (blank company or a
+    // spacing marker) match no entry type on their own — pass them through.
     return cleanMapping(stripped as UnknownRecord);
   }
 
