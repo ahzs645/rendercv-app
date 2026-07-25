@@ -1,10 +1,11 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Eye, EyeOff, FolderDown, KeyRound, Sparkles, Trash2, TriangleAlert, X } from 'lucide-react';
+import { Eye, EyeOff, FolderDown, KeyRound, Sparkles, Trash2, TriangleAlert } from 'lucide-react';
 import { fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
 import type { AiApiKeys, AiProviderId } from '@rendercv/contracts';
 import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
+import { DialogOverlay, DialogShell } from './dialog-shell';
 import { LOCAL_STORAGE_KEYS, PYODIDE_CACHE_DB_NAME } from '../lib/storage-keys';
 import { downloadBlob } from '../features/viewer/download';
 import type { ZipFile } from '../features/files/zip.worker';
@@ -66,64 +67,76 @@ export function SettingsDialog({
     }
   }, [open, initialTab]);
 
+  const aiForm = useAiProviderForm(open, () => onOpenChange(false));
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
-        <Dialog.Content className="dialog-content-fade fixed inset-x-4 top-1/2 z-50 flex max-h-[85vh] -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none md:left-1/2 md:w-[min(560px,calc(100vw-3rem))] md:-translate-x-1/2">
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-6 py-5">
-            <div className="min-w-0">
-              <Dialog.Title className="text-lg font-semibold text-foreground">Settings</Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                {tab === 'ai'
-                  ? 'Choose which model powers the AI editor. Bring your own API key to bypass the workspace quota — keys are stored only in this browser.'
-                  : 'Export or erase everything this browser has stored for RenderCV.'}
-              </Dialog.Description>
-            </div>
-            <Dialog.Close asChild>
-              <button
-                aria-label="Close settings"
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                type="button"
-              >
-                <X className="size-4" />
-              </button>
-            </Dialog.Close>
-          </div>
-
-          <div className="shrink-0 border-b border-border px-4 pt-3">
-            <div className="flex gap-1" role="tablist">
-              {TABS.map((option) => (
+        <DialogOverlay />
+        <DialogShell
+          bodyClassName="space-y-4"
+          closeLabel="Close settings"
+          description={
+            tab === 'ai'
+              ? 'Choose which model powers the AI editor. Bring your own API key to bypass the workspace quota — keys are stored only in this browser.'
+              : 'Export or erase everything this browser has stored for RenderCV.'
+          }
+          footer={
+            tab === 'ai' ? (
+              <>
+                <Dialog.Close asChild>
+                  <button
+                    type="button"
+                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                  >
+                    Cancel
+                  </button>
+                </Dialog.Close>
                 <button
-                  key={option.id}
-                  aria-selected={tab === option.id}
-                  className={`rounded-t-md border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
-                    tab === option.id
-                      ? 'border-primary text-foreground'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
-                  onClick={() => setTab(option.id)}
-                  role="tab"
                   type="button"
+                  onClick={aiForm.save}
+                  className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
                 >
-                  {option.label}
+                  Save
                 </button>
-              ))}
+              </>
+            ) : null
+          }
+          subheader={
+            <div className="shrink-0 border-b border-border px-4 pt-3">
+              <div className="flex gap-1" role="tablist">
+                {TABS.map((option) => (
+                  <button
+                    key={option.id}
+                    aria-selected={tab === option.id}
+                    className={`rounded-t-md border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+                      tab === option.id
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                    onClick={() => setTab(option.id)}
+                    role="tab"
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-
-          {tab === 'ai' ? (
-            <AiProvidersPanel open={open} onDone={() => onOpenChange(false)} />
-          ) : (
-            <DataPanel />
-          )}
-        </Dialog.Content>
+          }
+          title="Settings"
+          width="md"
+        >
+          {tab === 'ai' ? <AiProvidersPanel form={aiForm} /> : <DataPanel />}
+        </DialogShell>
       </Dialog.Portal>
     </Dialog.Root>
   );
 }
 
-function AiProvidersPanel({ open, onDone }: { open: boolean; onDone: () => void }) {
+type AiProviderForm = ReturnType<typeof useAiProviderForm>;
+
+function useAiProviderForm(open: boolean, onSaved: () => void) {
   const preferences = useStore(preferencesStore);
   const [provider, setProvider] = useState<AiProviderId>(preferences.aiProvider);
   const [keys, setKeys] = useState<AiApiKeys>(preferences.aiApiKeys);
@@ -137,7 +150,7 @@ function AiProvidersPanel({ open, onDone }: { open: boolean; onDone: () => void 
     }
   }, [open, preferences.aiProvider, preferences.aiApiKeys]);
 
-  function handleSave() {
+  function save() {
     const trimmedKeys: AiApiKeys = {};
     for (const [field, value] of Object.entries(keys) as Array<[keyof AiApiKeys, string | undefined]>) {
       const trimmed = value?.trim();
@@ -155,12 +168,17 @@ function AiProvidersPanel({ open, onDone }: { open: boolean; onDone: () => void 
       aiApiKeys: trimmedKeys
     });
     toast.success('AI provider settings saved.');
-    onDone();
+    onSaved();
   }
+
+  return { keys, provider, revealed, save, setKeys, setProvider, setRevealed };
+}
+
+function AiProvidersPanel({ form }: { form: AiProviderForm }) {
+  const { keys, provider, revealed, setKeys, setProvider, setRevealed } = form;
 
   return (
     <>
-      <div className="min-h-0 flex-1 space-y-4 overflow-auto px-6 py-5">
         {PROVIDERS.map((option) => {
           const isSelected = provider === option.id;
           const fieldName = option.keyField;
@@ -227,25 +245,6 @@ function AiProvidersPanel({ open, onDone }: { open: boolean; onDone: () => void 
             </label>
           );
         })}
-      </div>
-
-      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card/40 px-6 py-3">
-        <Dialog.Close asChild>
-          <button
-            type="button"
-            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
-          >
-            Cancel
-          </button>
-        </Dialog.Close>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
-        >
-          Save
-        </button>
-      </div>
     </>
   );
 }
@@ -345,7 +344,7 @@ function DataPanel() {
   }
 
   return (
-    <div className="min-h-0 flex-1 space-y-4 overflow-auto px-6 py-5">
+    <>
       <section className="rounded-2xl border border-border bg-card p-4">
         <div className="flex items-start gap-3">
           <FolderDown className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -451,7 +450,7 @@ function DataPanel() {
         Everything above is stored in this browser only. Clearing site data in your browser settings has the
         same effect as "Clear all data".
       </p>
-    </div>
+    </>
   );
 }
 

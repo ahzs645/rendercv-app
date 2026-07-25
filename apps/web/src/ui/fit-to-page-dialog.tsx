@@ -1,7 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, RotateCcw, WandSparkles, X } from 'lucide-react';
+import { Loader2, RotateCcw, WandSparkles } from 'lucide-react';
 import { countHiddenEntries } from '@rendercv/core';
+import { DialogOverlay, DialogShell } from './dialog-shell';
 import { fitContentToPages } from '../features/fit/fit-content';
 import {
   buildDisabledHidden,
@@ -107,28 +108,48 @@ export function FitToPageDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
-        <Dialog.Content className="dialog-content-pop fixed left-1/2 top-1/2 z-50 flex max-h-[min(40rem,calc(100vh-2rem))] w-[min(34rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-3xl border border-border bg-background shadow-2xl outline-none">
-          <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
-            <div>
-              <Dialog.Title className="text-lg font-semibold text-foreground">Fit to page</Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                Keeps your formatting and text — it only hides lower-priority entries until the
-                resume fits. Nothing is deleted; you can restore hidden entries anytime.
-              </Dialog.Description>
-            </div>
-            <Dialog.Close asChild>
+        <DialogOverlay />
+        <DialogShell
+          closeLabel="Close fit dialog"
+          description="Keeps your formatting and text — it only hides lower-priority entries until the resume fits. Nothing is deleted; you can restore hidden entries anytime."
+          footer={
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                {hiddenCount > 0 ? (
+                  <button
+                    type="button"
+                    disabled={running}
+                    onClick={onRestore}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+                  >
+                    <RotateCcw className="size-3.5" />
+                    Restore {hiddenCount} hidden
+                  </button>
+                ) : null}
+              </div>
               <button
-                aria-label="Close fit dialog"
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 type="button"
+                disabled={running || sections.length === 0}
+                onClick={() => void handleFit()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
               >
-                <X className="size-4" />
+                {running ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    {run.pages ? `Trying ${run.pages} pages…` : 'Measuring…'}
+                  </>
+                ) : (
+                  <>
+                    <WandSparkles className="size-4" />
+                    Fit now
+                  </>
+                )}
               </button>
-            </Dialog.Close>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            </div>
+          }
+          title="Fit to page"
+          width="md"
+        >
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-foreground">Target length</span>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -206,42 +227,7 @@ export function FitToPageDialog({
                 {run.message}
               </p>
             ) : null}
-          </div>
-
-          <div className="flex flex-col gap-2 border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              {hiddenCount > 0 ? (
-                <button
-                  type="button"
-                  disabled={running}
-                  onClick={onRestore}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
-                >
-                  <RotateCcw className="size-3.5" />
-                  Restore {hiddenCount} hidden
-                </button>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              disabled={running || sections.length === 0}
-              onClick={() => void handleFit()}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
-            >
-              {running ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  {run.pages ? `Trying ${run.pages} pages…` : 'Measuring…'}
-                </>
-              ) : (
-                <>
-                  <WandSparkles className="size-4" />
-                  Fit now
-                </>
-              )}
-            </button>
-          </div>
-        </Dialog.Content>
+        </DialogShell>
       </Dialog.Portal>
     </Dialog.Root>
   );
