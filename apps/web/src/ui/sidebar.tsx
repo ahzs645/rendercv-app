@@ -6,7 +6,6 @@ import {
   EllipsisVertical,
   FilePlus2,
   FileText,
-  FolderDown,
   GitCompareArrows,
   HelpCircle,
   MessageSquarePlus,
@@ -21,20 +20,17 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import type { CvFile } from '@rendercv/contracts';
-import { fileStore, preferencesStore, resolveFileSections, reviewStore } from '@rendercv/core';
-import { toast } from 'sonner';
+import { fileStore, preferencesStore, reviewStore } from '@rendercv/core';
 import { API_ENABLED } from '../lib/api';
 import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { onboardingTour } from '../features/onboarding/tour-state';
-import { AiSettingsDialog } from './ai-settings-dialog';
+import { SettingsDialog } from './settings-dialog';
 import { FeedbackDialog } from './feedback-dialog';
 import { PdfImportButton } from './pdf-import-button';
 import { ImportComboButton } from './import-combo-button';
 import type { PreparedYamlImport } from './yaml-import-button';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
-import { downloadBlob } from '../features/viewer/download';
-import type { ZipFile } from '../features/files/zip.worker';
 
 type SidebarMode = 'full' | 'compact' | 'mini';
 
@@ -68,8 +64,7 @@ export function Sidebar({
   const preferences = useStore(preferencesStore);
   const location = useLocation();
   const [mode, setMode] = useState<SidebarMode>('full');
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const activeFiles = useMemo(
     () =>
@@ -133,59 +128,6 @@ export function Sidebar({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-
-  const downloadAllData = useCallback(async () => {
-    if (isDownloadingAll) return;
-    setIsDownloadingAll(true);
-
-    try {
-      const files: ZipFile[] = [
-        ...activeFiles.map((file) => ({ name: file.name, sections: resolveFileSections(file) })),
-        ...archivedFiles.map((file) => ({
-          name: file.name,
-          sections: resolveFileSections(file),
-          group: 'Archive'
-        })),
-        ...trashedFiles.map((file) => ({
-          name: file.name,
-          sections: resolveFileSections(file),
-          group: 'Trash'
-        }))
-      ];
-
-      if (files.length === 0) {
-        toast.error('No CVs available to export.');
-        return;
-      }
-
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        import('../features/files/zip.worker?worker')
-          .then((ZipWorker) => {
-            const worker = new ZipWorker.default();
-            worker.postMessage({ files });
-            worker.onmessage = (event: MessageEvent<{ type: 'SUCCESS'; blob: Blob } | { type: 'ERROR'; message: string }>) => {
-              worker.terminate();
-              if (event.data.type === 'SUCCESS') {
-                resolve(event.data.blob);
-              } else {
-                reject(new Error(event.data.message));
-              }
-            };
-            worker.onerror = () => {
-              worker.terminate();
-              reject(new Error('Failed to create data export.'));
-            };
-          })
-          .catch(reject);
-      });
-
-      await downloadBlob(blob, 'CVs.zip');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to download all data.');
-    } finally {
-      setIsDownloadingAll(false);
-    }
-  }, [activeFiles, archivedFiles, isDownloadingAll, trashedFiles]);
 
   return (
     <aside
@@ -364,31 +306,16 @@ export function Sidebar({
             {isMini ? <span className="sr-only">Product Tour</span> : <span>Product Tour</span>}
           </button>
           <button
-            className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-60 ${
-              isMini ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-2 text-left'
-            }`}
-            disabled={isDownloadingAll}
-            onClick={() => void downloadAllData()}
-            title="Download all data"
-            type="button"
-          >
-            <FolderDown className="size-4 shrink-0" />
-            {isMini ? (
-              <span className="sr-only">Download all data</span>
-            ) : (
-              <span>{isDownloadingAll ? 'Downloading...' : 'Download all data'}</span>
-            )}
-          </button>
-          <button
             className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
               isMini ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-2 text-left'
             }`}
-            onClick={() => setAiSettingsOpen(true)}
-            title="AI provider settings"
+            data-onboarding="data-export"
+            onClick={() => setSettingsOpen(true)}
+            title="App settings — AI providers and data"
             type="button"
           >
             <Settings className="size-4 shrink-0" />
-            {isMini ? <span className="sr-only">AI providers</span> : <span>AI providers</span>}
+            {isMini ? <span className="sr-only">App settings</span> : <span>App settings</span>}
           </button>
           {API_ENABLED ? (
             <button
@@ -411,7 +338,7 @@ export function Sidebar({
           </SidebarLinkButton>
         </nav>
       </footer>
-      <AiSettingsDialog open={aiSettingsOpen} onOpenChange={setAiSettingsOpen} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       {API_ENABLED ? <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} /> : null}
     </aside>
   );
@@ -567,7 +494,7 @@ function SidebarFileRow({
         </div>
       ) : (
         <button
-          className={`flex h-8 w-full items-center gap-2 overflow-hidden rounded-md px-2 text-left text-sm transition-colors ${
+          className={`sidebar-file-row-button flex h-8 w-full items-center gap-2 overflow-hidden rounded-md px-2 text-left text-sm transition-colors ${
             selected
               ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
               : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
@@ -593,7 +520,9 @@ function SidebarFileRow({
         <>
           <button
             ref={triggerRef}
-            className={`absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            className={`sidebar-file-menu-trigger absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
               menuOpen
                 ? 'opacity-100'
                 : 'opacity-0 group-hover/menu-item:opacity-100 focus-visible:opacity-100'
@@ -602,7 +531,7 @@ function SidebarFileRow({
             type="button"
           >
             <EllipsisVertical className="size-4" />
-            <span className="sr-only">More</span>
+            <span className="sr-only">More actions for {file.name}</span>
           </button>
           {menuOpen ? (
             <div

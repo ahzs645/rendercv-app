@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { api, API_ENABLED, ApiUnavailableError } from './api';
 import { initPostHog } from './analytics/posthog-client';
+import { FILE_STORAGE_KEY, PREFERENCE_STORAGE_KEY, REVIEW_STORAGE_KEY } from './storage-keys';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import {
   normalizeCompatibilityCvYaml,
@@ -16,9 +17,6 @@ import {
 } from '../features/viewer/normalize-compat-cv';
 import { normalizeLegacyDesignYaml } from '../features/viewer/viewer-sections';
 
-const FILE_STORAGE_KEY = 'rendercv_guest_files';
-const PREFERENCE_STORAGE_KEY = 'rendercv_preferences';
-const REVIEW_STORAGE_KEY = 'rendercv_review_sessions';
 const BUILT_IN_THEME_KEYS = new Set(Object.keys(defaultDesigns));
 const RETRY_DELAYS = [2_000, 10_000] as const;
 const CLOUD_SYNC_ENABLED = API_ENABLED && import.meta.env.VITE_ENABLE_CLOUD_SYNC === 'true';

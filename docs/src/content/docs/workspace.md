@@ -76,7 +76,9 @@ Files can be active, archived, or trashed.
 - **Archive** hides a file from the main working list without deleting it.
 - **Trash** marks a file for removal.
 - **Restore** moves a file back to the active list.
-- **Download all data** exports active, archived, and trashed CVs.
+- **Settings → Data → Download zip** exports active, archived, and trashed CVs.
+- **Settings → Data → Empty trash** permanently deletes everything in the trash at once.
+- **Settings → Data → Clear all data** erases every CV, review session, custom theme, and preference stored in the browser.
 - **Lock** makes a file read-only.
 - **Duplicate** copies sections, theme, locale, variants, share origins, source baselines, and hidden entries.
 - **Make public and copy link** marks a file public and copies `/{fileId}`.

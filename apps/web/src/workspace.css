@@ -27,6 +27,23 @@
   }
 }
 
+/*
+ * The per-CV overflow menu (rename, archive, trash) is hover-revealed, which
+ * never happens on touch. Pin it open and give it a finger-sized target there.
+ */
+@media (hover: none) {
+  .sidebar-file-menu-trigger {
+    opacity: 1;
+    width: 1.75rem;
+    height: 1.75rem;
+    top: 0.125rem;
+  }
+
+  .sidebar-file-row-button {
+    padding-right: 2rem;
+  }
+}
+
 .prose pre {
   white-space: pre-wrap;
 }
