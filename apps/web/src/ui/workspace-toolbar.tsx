@@ -1416,7 +1416,7 @@ function DownloadShareDialog({
           title="Share and export"
           width="lg"
         >
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-7 lg:grid-cols-2 lg:gap-x-8">
               <DialogActionSection
                 description="Finished files you can send or keep outside the app."
                 title="Export files"
@@ -1552,12 +1552,12 @@ function DialogActionSection({
   title: string;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-      </div>
-      <div className="space-y-3">{children}</div>
+    <section>
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {title}
+      </h3>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+      <div className="mt-2 divide-y divide-border/70 border-t border-border/70">{children}</div>
     </section>
   );
 }
@@ -1580,9 +1580,9 @@ function DialogActionButton({
       type="button"
       disabled={disabled}
       onClick={() => void onClick()}
-      className="flex w-full items-start gap-3 rounded-2xl border border-border bg-background p-4 text-left transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+      className="-mx-2 flex w-[calc(100%+1rem)] items-start gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
     >
-      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground">
+      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
         {icon}
       </span>
       <span className="min-w-0">
