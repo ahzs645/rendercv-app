@@ -1,8 +1,9 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Link2, Upload, X } from 'lucide-react';
+import { ChevronDown, Link2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { importCvFromUrl } from './cv-url-import';
+import { DialogOverlay, DialogShell } from './dialog-shell';
 import { useYamlImport, type YamlImportOptions } from './yaml-import-button';
 
 /**
@@ -170,30 +171,31 @@ export function ImportComboButton({
 
       <Dialog.Root open={urlDialogOpen} onOpenChange={setUrlDialogOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
-          <Dialog.Content className="dialog-content-pop fixed left-1/2 top-1/2 z-50 w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-background shadow-2xl outline-none">
-            <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
-              <div>
-                <Dialog.Title className="text-lg font-semibold text-foreground">
-                  Import from URL
-                </Dialog.Title>
-                <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                  Paste a link to a hosted RenderCV YAML file. The host must allow
-                  cross-origin requests (CORS).
-                </Dialog.Description>
-              </div>
-              <Dialog.Close asChild>
+          <DialogOverlay />
+          <DialogShell
+            closeLabel="Close import from URL dialog"
+            description="Paste a link to a hosted RenderCV YAML file. The host must allow cross-origin requests (CORS)."
+            footer={
+              <>
                 <button
-                  aria-label="Close import from URL dialog"
-                  className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => setUrlDialogOpen(false)}
                   type="button"
                 >
-                  <X className="size-4" />
+                  Cancel
                 </button>
-              </Dialog.Close>
-            </div>
-
-            <div className="space-y-4 px-6 py-5">
+                <button
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-40"
+                  disabled={!url.trim() || busy}
+                  onClick={() => void handleUrlConfirm()}
+                  type="button"
+                >
+                  {busy ? 'Importing…' : 'Import'}
+                </button>
+              </>
+            }
+            title="Import from URL"
+          >
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-foreground">Resume URL</span>
                 <input
@@ -211,26 +213,7 @@ export function ImportComboButton({
                   value={url}
                 />
               </label>
-
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => setUrlDialogOpen(false)}
-                  type="button"
-                >
-                  Cancel
-                </button>
-                <button
-                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-40"
-                  disabled={!url.trim() || busy}
-                  onClick={() => void handleUrlConfirm()}
-                  type="button"
-                >
-                  {busy ? 'Importing…' : 'Import'}
-                </button>
-              </div>
-            </div>
-          </Dialog.Content>
+          </DialogShell>
         </Dialog.Portal>
       </Dialog.Root>
     </>

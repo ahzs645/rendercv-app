@@ -27,6 +27,23 @@
   }
 }
 
+/*
+ * The per-CV overflow menu (rename, archive, trash) is hover-revealed, which
+ * never happens on touch. Pin it open and give it a finger-sized target there.
+ */
+@media (hover: none) {
+  .sidebar-file-menu-trigger {
+    opacity: 1;
+    width: 1.75rem;
+    height: 1.75rem;
+    top: 0.125rem;
+  }
+
+  .sidebar-file-row-button {
+    padding-right: 2rem;
+  }
+}
+
 .prose pre {
   white-space: pre-wrap;
 }
@@ -103,11 +120,21 @@
 .dialog-content-sheet[data-state='open'] { animation: dialog-sheet-in 200ms cubic-bezier(0.16, 1, 0.3, 1); }
 .dialog-content-sheet[data-state='closed'] { animation: dialog-sheet-out 150ms ease-in; }
 
+/* Shared dialog shell: slides up as a sheet on phones, pops in centered on
+   desktop where the resting transform is -50%/-50%. */
+.dialog-shell[data-state='open'] { animation: dialog-sheet-in 200ms cubic-bezier(0.16, 1, 0.3, 1); }
+.dialog-shell[data-state='closed'] { animation: dialog-sheet-out 150ms ease-in; }
+@media (min-width: 768px) {
+  .dialog-shell[data-state='open'] { animation: dialog-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .dialog-shell[data-state='closed'] { animation: dialog-pop-out 140ms ease-in; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dialog-overlay-anim[data-state],
   .dialog-content-fade[data-state],
   .dialog-content-pop[data-state],
-  .dialog-content-sheet[data-state] {
+  .dialog-content-sheet[data-state],
+  .dialog-shell[data-state] {
     animation: none;
   }
 }

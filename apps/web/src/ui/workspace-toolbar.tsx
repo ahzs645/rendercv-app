@@ -25,8 +25,7 @@ import {
   Share2,
   SlidersHorizontal,
   Sun,
-  Undo2,
-  X
+  Undo2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
@@ -58,6 +57,7 @@ import {
 } from '../features/review/session-utils';
 import { useStore } from '../lib/use-store';
 import { copyTextToClipboard } from '../lib/clipboard';
+import { DialogOverlay, DialogShell } from './dialog-shell';
 import type { MonacoEditorHandle } from './monaco-editor';
 import type { ViewerRenderer } from './preview-pane';
 import { StyledTooltip } from './styled-tooltip';
@@ -492,16 +492,13 @@ export function WorkspaceToolbar({
               </ToolbarIconButton>
             </Dialog.Trigger>
             <Dialog.Portal>
-              <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/50 backdrop-blur-[2px]" />
-              <Dialog.Content className="dialog-content-sheet fixed inset-x-3 bottom-3 z-50 max-h-[80dvh] overflow-auto rounded-[2rem] border border-border bg-background p-5 shadow-2xl outline-none">
-                <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border" />
-                <Dialog.Title className="text-base font-semibold text-foreground">
-                  Workspace actions
-                </Dialog.Title>
-                <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                  Formatting, exports, sharing, and display controls.
-                </Dialog.Description>
-                <div className="mt-5 space-y-5">
+              <DialogOverlay />
+              <DialogShell
+                closeLabel="Close workspace actions"
+                description="Formatting, exports, sharing, and display controls."
+                title="Workspace actions"
+              >
+                <div className="space-y-5">
                   {showMobileEditorControls ? (
                     <section className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
@@ -653,7 +650,7 @@ export function WorkspaceToolbar({
                     </div>
                   </section>
                 </div>
-              </Dialog.Content>
+              </DialogShell>
             </Dialog.Portal>
           </Dialog.Root>
         </div>
@@ -1412,30 +1409,14 @@ function DownloadShareDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
-        <Dialog.Content className="dialog-content-fade fixed inset-x-4 top-1/2 z-50 max-h-[85vh] -translate-y-1/2 overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none md:left-1/2 md:w-[min(860px,calc(100vw-3rem))] md:-translate-x-1/2">
-          <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
-            <div className="min-w-0">
-              <Dialog.Title className="text-lg font-semibold text-foreground">
-                Share and export
-              </Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                Export {fileName ?? 'this resume'}, copy links, or exchange review packages.
-              </Dialog.Description>
-            </div>
-            <Dialog.Close asChild>
-              <button
-                aria-label="Close download and share dialog"
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                type="button"
-              >
-                <X className="size-4" />
-              </button>
-            </Dialog.Close>
-          </div>
-
-          <div className="max-h-[calc(85vh-5.5rem)] overflow-auto px-6 py-5">
-            <div className="grid gap-4 lg:grid-cols-2">
+        <DialogOverlay />
+        <DialogShell
+          closeLabel="Close download and share dialog"
+          description={`Export ${fileName ?? 'this resume'}, copy links, or exchange review packages.`}
+          title="Share and export"
+          width="lg"
+        >
+            <div className="grid gap-7 lg:grid-cols-2 lg:gap-x-8">
               <DialogActionSection
                 description="Finished files you can send or keep outside the app."
                 title="Export files"
@@ -1555,8 +1536,7 @@ function DownloadShareDialog({
                 />
               </DialogActionSection>
             </div>
-          </div>
-        </Dialog.Content>
+        </DialogShell>
       </Dialog.Portal>
     </Dialog.Root>
   );
@@ -1572,12 +1552,12 @@ function DialogActionSection({
   title: string;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4">
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-      </div>
-      <div className="space-y-3">{children}</div>
+    <section>
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {title}
+      </h3>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+      <div className="mt-2 divide-y divide-border/70 border-t border-border/70">{children}</div>
     </section>
   );
 }
@@ -1600,9 +1580,9 @@ function DialogActionButton({
       type="button"
       disabled={disabled}
       onClick={() => void onClick()}
-      className="flex w-full items-start gap-3 rounded-2xl border border-border bg-background p-4 text-left transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+      className="-mx-2 flex w-[calc(100%+1rem)] items-start gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
     >
-      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground">
+      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
         {icon}
       </span>
       <span className="min-w-0">

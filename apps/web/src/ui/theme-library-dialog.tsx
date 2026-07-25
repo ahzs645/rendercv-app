@@ -1,9 +1,10 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { Check, LayoutGrid, LoaderCircle, Sparkles, X } from 'lucide-react';
+import { Check, LayoutGrid, LoaderCircle, Sparkles } from 'lucide-react';
 import { defaultDesigns, fileStore, preferencesStore, themeLabel } from '@rendercv/core';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/use-store';
+import { DialogOverlay, DialogShell } from './dialog-shell';
 import type { ViewerRenderer } from './preview-pane';
 
 type ThumbnailState =
@@ -166,30 +167,13 @@ export function ThemeLibraryDialog({
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="dialog-overlay-anim fixed inset-0 z-40 bg-background/60 backdrop-blur-[2px]" />
-        <Dialog.Content className="dialog-content-fade fixed inset-x-4 top-1/2 z-50 max-h-[85vh] -translate-y-1/2 overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none md:left-1/2 md:w-[min(1100px,calc(100vw-3rem))] md:-translate-x-1/2">
-          <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
-            <div className="min-w-0">
-              <Dialog.Title className="text-lg font-semibold text-foreground">
-                Theme Library
-              </Dialog.Title>
-              <Dialog.Description className="mt-1 text-sm text-muted-foreground">
-                Preview every available theme against {selectedFile?.name ?? 'this resume'} and
-                apply one directly.
-              </Dialog.Description>
-            </div>
-            <Dialog.Close asChild>
-              <button
-                aria-label="Close theme library"
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                type="button"
-              >
-                <X className="size-4" />
-              </button>
-            </Dialog.Close>
-          </div>
-
-          <div className="max-h-[calc(85vh-5.5rem)] overflow-auto px-6 py-5">
+        <DialogOverlay />
+        <DialogShell
+          closeLabel="Close theme library"
+          description={`Preview every available theme against ${selectedFile?.name ?? 'this resume'} and apply one directly.`}
+          title="Theme Library"
+          width="xl"
+        >
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {sortedThemeKeys.map((themeKey) => {
                 const thumbnail = thumbnails[themeKey];
@@ -269,8 +253,7 @@ export function ThemeLibraryDialog({
                 );
               })}
             </div>
-          </div>
-        </Dialog.Content>
+        </DialogShell>
       </Dialog.Portal>
     </Dialog.Root>
   );

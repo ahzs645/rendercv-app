@@ -1,6 +1,7 @@
 import YAML from 'yaml';
 import yamlToTypstPy from './yaml_to_typst.py?raw';
 import { BUNDLED_THEMES } from './bundled-themes.generated';
+import { PYODIDE_CACHE_DB_NAME } from '../../lib/storage-keys';
 
 interface WorkerErrorPayload {
   message: string;
@@ -44,7 +45,7 @@ from dataclasses import asdict
 `;
 
 const PKG_CACHE_VERSION = 'rendercv-2.8-pyodide-0.29.3-v1';
-const IDB_DB_NAME = 'pyodide-pkg-cache';
+const IDB_DB_NAME = PYODIDE_CACHE_DB_NAME;
 const IDB_STORE = 'packages';
 const BASE_URL = import.meta.env.BASE_URL;
 const CUSTOM_THEMES_KEY = 'custom-themes';

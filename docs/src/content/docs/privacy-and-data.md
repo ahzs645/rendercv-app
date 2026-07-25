@@ -11,11 +11,13 @@ The workspace stores CV files locally in the browser. This makes the app fast an
 
 Local storage is tied to the browser profile and origin. It may be lost if you clear site data, switch browsers, use private browsing, or reset the device.
 
-The main local storage keys are `rendercv_guest_files`, `rendercv_preferences`, and `rendercv_review_sessions`.
+The main local storage keys are `rendercv_guest_files`, `rendercv_preferences`, and `rendercv_review_sessions`. Custom themes and the renderer package cache live in the `pyodide-pkg-cache` IndexedDB database.
+
+**Settings → Data → Clear all data** erases all of the above from the browser, including saved AI API keys. It asks for a typed confirmation and reloads into a fresh workspace with the default sample CVs.
 
 ## Backups
 
-Use **Download all data** before:
+Use **Settings → Data → Download zip** before:
 
 - Clearing browser data.
 - Switching machines.

@@ -4,11 +4,10 @@ import { fileStore, preferencesStore } from '@rendercv/core';
 import type { CvFileSections } from '@rendercv/contracts';
 import { useEffect, useState } from 'react';
 import { ENABLE_AI_EDITOR, ENABLE_ENHANCED_AI_CHAT } from '../lib/feature-flags';
+import { ENHANCED_AI_CHAT_OPEN_STORAGE_KEY } from '../lib/storage-keys';
 import { useStore } from '../lib/use-store';
 import { AiChatPanel } from './ai-chat-panel';
 import { EnhancedAiChatPanel } from './ai-chat-panel-enhanced';
-
-const ENHANCED_AI_CHAT_OPEN_STORAGE_KEY = 'rendercv.aiEditorOpenByFile.v1';
 
 function readEnhancedChatOpenState() {
   if (typeof window === 'undefined') {
