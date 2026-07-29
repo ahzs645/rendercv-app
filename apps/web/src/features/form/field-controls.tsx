@@ -22,6 +22,7 @@ import {
   DIMENSION_UNITS
 } from './utils';
 import { useFieldDiff } from './diff-context';
+import { PositionedMenu } from '../../ui/positioned-menu';
 
 type ChoiceOption = SelectOption & {
   icon?: ComponentType<{ className?: string }>;
@@ -561,17 +562,6 @@ function DateRow({
     if (match) setCalYear(parseInt(match[1]));
   }, [value]);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
-
   const selectedMonth = (() => {
     const match = value.match(/^(\d{4})-(\d{2})$/);
     if (match && parseInt(match[1]) === calYear) return parseInt(match[2]) - 1;
@@ -632,8 +622,13 @@ function DateRow({
         </button>
       </div>
 
-      {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-border bg-popover p-3 shadow-lg sm:w-56">
+      <PositionedMenu
+        anchorRef={containerRef}
+        className="w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-border bg-popover p-3 shadow-lg sm:w-56"
+        onClose={() => setOpen(false)}
+        open={open}
+        role="none"
+      >
           {/* Year navigation */}
           <div className="mb-2 flex items-center justify-between">
             <button
@@ -721,8 +716,7 @@ function DateRow({
               </button>
             </>
           )}
-        </div>
-      )}
+      </PositionedMenu>
     </div>
   );
 }

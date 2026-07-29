@@ -29,6 +29,7 @@ import { SettingsDialog } from './settings-dialog';
 import { FeedbackDialog } from './feedback-dialog';
 import { PdfImportButton } from './pdf-import-button';
 import { ImportComboButton } from './import-combo-button';
+import { PositionedMenu } from './positioned-menu';
 import type { PreparedYamlImport } from './yaml-import-button';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
 
@@ -432,34 +433,10 @@ function SidebarFileRow({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState(file.name);
-  const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const renameRef = useRef<HTMLInputElement>(null);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(event.target as Node)
-      ) {
-        closeMenu();
-      }
-    }
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') closeMenu();
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [menuOpen, closeMenu]);
 
   useEffect(() => {
     if (isRenaming && renameRef.current) {
@@ -533,12 +510,12 @@ function SidebarFileRow({
             <EllipsisVertical className="size-4" />
             <span className="sr-only">More actions for {file.name}</span>
           </button>
-          {menuOpen ? (
-            <div
-              ref={menuRef}
-              className="absolute right-0 top-full z-50 mt-1 min-w-[15rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-              role="menu"
-            >
+          <PositionedMenu
+            anchorRef={triggerRef}
+            className="min-w-[15rem] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+            onClose={closeMenu}
+            open={menuOpen}
+          >
               {!file.isArchived && !file.isTrashed ? (
                 <FileMenuItem
                   icon={<Lock className="size-4" />}
@@ -640,8 +617,7 @@ function SidebarFileRow({
                   }}
                 />
               )}
-            </div>
-          ) : null}
+          </PositionedMenu>
         </>
       ) : null}
     </div>

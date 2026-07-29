@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -33,6 +33,7 @@ import {
 } from '../features/review/package-utils';
 import { buildProposalPackageFromSession } from '../features/review/session-utils';
 import { diffWords, type WordDiffToken } from '../features/review/word-diff';
+import { PositionedMenu } from '../ui/positioned-menu';
 import { PreviewPane } from '../ui/preview-pane';
 import { useStore } from '../lib/use-store';
 
@@ -757,33 +758,6 @@ function MoreActionsMenu({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function onPointerDown(event: MouseEvent | TouchEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function onEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('touchstart', onPointerDown);
-    document.addEventListener('keydown', onEscape);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('touchstart', onPointerDown);
-      document.removeEventListener('keydown', onEscape);
-    };
-  }, [open]);
-
   if (items.length === 0) {
     return null;
   }
@@ -800,28 +774,28 @@ function MoreActionsMenu({
       >
         <EllipsisVertical className="size-4" />
       </button>
-      {open ? (
-        <div
-          className="absolute right-0 top-full z-30 mt-1 min-w-52 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-md"
-          role="menu"
-        >
-          {items.map((item) => (
-            <button
-              key={item.label}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-              onClick={() => {
-                setOpen(false);
-                item.onClick();
-              }}
-              role="menuitem"
-              type="button"
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <PositionedMenu
+        anchorRef={ref}
+        className="min-w-52 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-md"
+        onClose={() => setOpen(false)}
+        open={open}
+      >
+        {items.map((item) => (
+          <button
+            key={item.label}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            onClick={() => {
+              setOpen(false);
+              item.onClick();
+            }}
+            role="menuitem"
+            type="button"
+          >
+            {item.icon}
+            {item.label}
+          </button>
+        ))}
+      </PositionedMenu>
     </div>
   );
 }

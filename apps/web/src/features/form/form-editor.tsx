@@ -14,6 +14,7 @@ import { localeSchema } from './schema/locale-schema';
 import { settingsSchema } from './schema/settings-schema';
 import type { SectionSchema } from './schema/types';
 import { useStore } from '../../lib/use-store';
+import { PositionedMenu } from '../../ui/positioned-menu';
 import { FieldControl, FieldDescription } from './field-controls';
 import { Divider } from './primitives';
 import { CvSectionEditor } from './cv-section-editor';
@@ -313,33 +314,8 @@ function ThemeDropdown({
   onChange: (theme: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const close = useCallback(() => setOpen(false), []);
-
-  useEffect(() => {
-    if (!open) return;
-
-    function onClickOutside(event: MouseEvent) {
-      if (
-        menuRef.current && !menuRef.current.contains(event.target as Node) &&
-        triggerRef.current && !triggerRef.current.contains(event.target as Node)
-      ) {
-        close();
-      }
-    }
-
-    function onEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') close();
-    }
-
-    document.addEventListener('mousedown', onClickOutside);
-    document.addEventListener('keydown', onEscape);
-    return () => {
-      document.removeEventListener('mousedown', onClickOutside);
-      document.removeEventListener('keydown', onEscape);
-    };
-  }, [open, close]);
 
   return (
     <div className="relative min-w-0">
@@ -364,31 +340,32 @@ function ThemeDropdown({
         </span>
         <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
       </button>
-      {open ? (
-        <div
-          ref={menuRef}
-          className="absolute left-0 top-full z-50 mt-1 min-w-44 max-h-[min(300px,50vh)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-          role="menu"
-        >
-          {options.map((option) => (
-            <button
-              key={option}
-              className={`flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs outline-none transition-colors hover:bg-accent hover:text-accent-foreground ${
-                option === value ? 'text-primary' : 'text-popover-foreground'
-              }`}
-              role="menuitem"
-              type="button"
-              onClick={() => {
-                onChange(option);
-                close();
-              }}
-            >
-              {option === value ? <Check className="size-3" /> : <span className="size-3" />}
-              {themeLabel(option)}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <PositionedMenu
+        align="start"
+        anchorRef={triggerRef}
+        className="min-w-44 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+        maxHeight={300}
+        onClose={close}
+        open={open}
+      >
+        {options.map((option) => (
+          <button
+            key={option}
+            className={`flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs outline-none transition-colors hover:bg-accent hover:text-accent-foreground ${
+              option === value ? 'text-primary' : 'text-popover-foreground'
+            }`}
+            role="menuitem"
+            type="button"
+            onClick={() => {
+              onChange(option);
+              close();
+            }}
+          >
+            {option === value ? <Check className="size-3" /> : <span className="size-3" />}
+            {themeLabel(option)}
+          </button>
+        ))}
+      </PositionedMenu>
     </div>
   );
 }

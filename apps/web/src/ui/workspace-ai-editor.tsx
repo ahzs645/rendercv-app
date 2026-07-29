@@ -96,7 +96,10 @@ export function WorkspaceAiEditor({
     >
       <Dialog.Trigger asChild>
         <button
-          className={`rounded-xl px-3 py-2 ${
+          // h-[42px] pins this to the shared toolbar control height rather than
+          // letting it fall out of line-height + padding, which drifts with the
+          // inherited font size.
+          className={`h-[42px] rounded-xl px-3 ${
             preferences.aiEditorOpen
               ? 'bg-primary text-primary-foreground'
               : 'border border-border bg-card text-foreground'
