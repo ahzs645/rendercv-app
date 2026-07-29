@@ -76,6 +76,13 @@ import { WorkspaceAiEditor } from './workspace-ai-editor';
 const TOOLBAR_CONTROL_HEIGHT = 'h-[42px]';
 const TOOLBAR_CONTROL_SIZE = 'size-[42px]';
 
+/**
+ * The mobile toolbar runs on its own, taller baseline for touch targets, set by
+ * MobilePaneSwitch and the h-11 override the mobile YamlToggle receives. Any
+ * standalone control sitting next to those has to match it.
+ */
+const MOBILE_CONTROL_SIZE = 'size-11';
+
 export function WorkspaceToolbar({
   editorRef,
   isMobile = false,
@@ -673,7 +680,11 @@ export function WorkspaceToolbar({
           {showMobileEditorControls ? (
             <div className="ml-auto flex items-center gap-2">
               {preferences.yamlEditor ? (
-                <ToolbarIconButton ariaLabel="Copy YAML source" onClick={() => void copyYamlSource()}>
+                <ToolbarIconButton
+                  ariaLabel="Copy YAML source"
+                  onClick={() => void copyYamlSource()}
+                  size="lg"
+                >
                   <Copy className="size-4" />
                 </ToolbarIconButton>
               ) : null}
@@ -1587,10 +1598,11 @@ function ToolbarIconButton({
   onClick: () => void | Promise<void>;
   /**
    * `sm` for buttons nested in a ToolbarControlGroup (the group supplies the
-   * outer height); `md` for buttons standing alone in the toolbar row, which
-   * have to reach TOOLBAR_CONTROL_HEIGHT on their own.
+   * outer height); `md` for buttons standing alone in the desktop toolbar row,
+   * which have to reach TOOLBAR_CONTROL_HEIGHT on their own; `lg` for the same
+   * situation on mobile, whose baseline is taller.
    */
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'ghost';
 }) {
   return (
@@ -1602,7 +1614,7 @@ function ToolbarIconButton({
         disabled={disabled}
         onClick={() => void onClick()}
         className={`inline-flex ${
-          size === 'md' ? TOOLBAR_CONTROL_SIZE : 'size-8'
+          size === 'md' ? TOOLBAR_CONTROL_SIZE : size === 'lg' ? MOBILE_CONTROL_SIZE : 'size-8'
         } items-center justify-center rounded-md text-sm transition-colors ${
           active
             ? variant === 'ghost'
