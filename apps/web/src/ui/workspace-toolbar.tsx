@@ -77,11 +77,21 @@ const TOOLBAR_CONTROL_HEIGHT = 'h-[42px]';
 const TOOLBAR_CONTROL_SIZE = 'size-[42px]';
 
 /**
- * The mobile toolbar runs on its own, taller baseline for touch targets, set by
- * MobilePaneSwitch and the h-11 override the mobile YamlToggle receives. Any
- * standalone control sitting next to those has to match it.
+ * Height for standalone controls in the mobile toolbar. Deliberately tighter
+ * than the desktop band and equal to the plain icon-button size, so the pane
+ * switch, the YAML toggle, the zoom cluster and the title row above all sit on
+ * one line.
  */
-const MOBILE_CONTROL_SIZE = 'size-11';
+const MOBILE_CONTROL_HEIGHT = 'h-8';
+
+const TOOLBAR_ICON_SIZES = {
+  /** Nested inside the mobile zoom cluster, which is itself only 32px tall. */
+  xs: 'size-7',
+  /** Default: nested in a ToolbarControlGroup, or standalone in the mobile row. */
+  sm: 'size-8',
+  /** Standalone in the desktop row, which runs on the taller 42px band. */
+  md: TOOLBAR_CONTROL_SIZE
+} as const;
 
 export function WorkspaceToolbar({
   editorRef,
@@ -680,28 +690,27 @@ export function WorkspaceToolbar({
           {showMobileEditorControls ? (
             <div className="ml-auto flex items-center gap-2">
               {preferences.yamlEditor ? (
-                <ToolbarIconButton
-                  ariaLabel="Copy YAML source"
-                  onClick={() => void copyYamlSource()}
-                  size="lg"
-                >
+                <ToolbarIconButton ariaLabel="Copy YAML source" onClick={() => void copyYamlSource()}>
                   <Copy className="size-4" />
                 </ToolbarIconButton>
               ) : null}
               <YamlToggle
                 checked={preferences.yamlEditor}
-                className="h-11 px-3"
+                className={`${MOBILE_CONTROL_HEIGHT} px-2.5`}
                 label="YAML"
                 onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
               />
             </div>
           ) : (
-            <div className="ml-auto flex h-11 items-center gap-1 rounded-xl border border-border bg-card px-1.5">
-              <div className="flex items-center gap-1">
+            <div
+              className={`ml-auto flex ${MOBILE_CONTROL_HEIGHT} items-center gap-0.5 rounded-xl border border-border bg-card px-1`}
+            >
+              <div className="flex items-center gap-0.5">
                 <ToolbarIconButton
                   ariaLabel="Zoom out"
                   disabled={!canPreviewActions}
                   onClick={viewer.zoomOut}
+                  size="xs"
                   variant="ghost"
                 >
                   <Minus className="size-4" />
@@ -709,7 +718,7 @@ export function WorkspaceToolbar({
                 <button
                   type="button"
                   aria-label="Reset zoom"
-                  className="inline-flex h-8 min-w-12 items-center justify-center rounded-md px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                  className="inline-flex h-7 min-w-10 items-center justify-center rounded-md px-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                   disabled={!canPreviewActions}
                   onClick={viewer.zoomReset}
                 >
@@ -719,6 +728,7 @@ export function WorkspaceToolbar({
                   ariaLabel="Zoom in"
                   disabled={!canPreviewActions}
                   onClick={viewer.zoomIn}
+                  size="xs"
                   variant="ghost"
                 >
                   <Plus className="size-4" />
@@ -1009,7 +1019,9 @@ function MobilePaneSwitch({
   onChange?: (pane: 'editor' | 'preview') => void;
 }) {
   return (
-    <div className="inline-flex h-11 min-w-0 flex-1 items-center rounded-xl border border-border bg-background p-1">
+    <div
+      className={`inline-flex ${MOBILE_CONTROL_HEIGHT} min-w-0 flex-1 items-center rounded-xl border border-border bg-background p-0.5`}
+    >
       <button
         type="button"
         className={`flex h-full flex-1 items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors ${
@@ -1596,13 +1608,7 @@ function ToolbarIconButton({
   dataOnboarding?: string;
   disabled?: boolean;
   onClick: () => void | Promise<void>;
-  /**
-   * `sm` for buttons nested in a ToolbarControlGroup (the group supplies the
-   * outer height); `md` for buttons standing alone in the desktop toolbar row,
-   * which have to reach TOOLBAR_CONTROL_HEIGHT on their own; `lg` for the same
-   * situation on mobile, whose baseline is taller.
-   */
-  size?: 'sm' | 'md' | 'lg';
+  size?: keyof typeof TOOLBAR_ICON_SIZES;
   variant?: 'default' | 'ghost';
 }) {
   return (
@@ -1613,9 +1619,7 @@ function ToolbarIconButton({
         data-onboarding={dataOnboarding}
         disabled={disabled}
         onClick={() => void onClick()}
-        className={`inline-flex ${
-          size === 'md' ? TOOLBAR_CONTROL_SIZE : size === 'lg' ? MOBILE_CONTROL_SIZE : 'size-8'
-        } items-center justify-center rounded-md text-sm transition-colors ${
+        className={`inline-flex ${TOOLBAR_ICON_SIZES[size]} items-center justify-center rounded-md text-sm transition-colors ${
           active
             ? variant === 'ghost'
               ? 'bg-primary/10 text-primary hover:bg-primary/15'
