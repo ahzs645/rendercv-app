@@ -84,6 +84,18 @@ const TOOLBAR_CONTROL_SIZE = 'size-[42px]';
  */
 const MOBILE_CONTROL_HEIGHT = 'h-8';
 
+/**
+ * Corner radius for the toolbar, in two tiers.
+ *
+ * Anything sitting directly in the toolbar row — a bordered chip, a control
+ * group, a combo container, a toggle, a dropdown panel — gets TOOLBAR_RADIUS.
+ * Anything nested inside one of those gets the smaller TOOLBAR_NESTED_RADIUS,
+ * which is the outer 12px minus the 4px `p-1` those containers carry, so the
+ * inner corner sits concentric with the outer one rather than looking pinched.
+ */
+const TOOLBAR_RADIUS = 'rounded-xl';
+const TOOLBAR_NESTED_RADIUS = 'rounded-lg';
+
 const TOOLBAR_ICON_SIZES = {
   /** Nested inside the mobile zoom cluster, which is itself only 32px tall. */
   xs: 'size-7',
@@ -606,7 +618,7 @@ export function WorkspaceToolbar({
                         <button
                           type="button"
                           aria-label="Reset zoom"
-                          className="inline-flex h-8 min-w-12 items-center justify-center rounded-md px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                          className="inline-flex h-8 min-w-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                           disabled={!canPreviewActions}
                           onClick={viewer.zoomReset}
                         >
@@ -718,7 +730,7 @@ export function WorkspaceToolbar({
                 <button
                   type="button"
                   aria-label="Reset zoom"
-                  className="inline-flex h-7 min-w-10 items-center justify-center rounded-md px-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                  className="inline-flex h-7 min-w-10 items-center justify-center rounded-lg px-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                   disabled={!canPreviewActions}
                   onClick={viewer.zoomReset}
                 >
@@ -885,7 +897,7 @@ export function WorkspaceToolbar({
           <button
             type="button"
             aria-label="Reset zoom"
-            className="inline-flex h-8 min-w-12 items-center justify-center rounded-md px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+            className="inline-flex h-8 min-w-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
             disabled={!canPreviewActions}
             onClick={viewer.zoomReset}
           >
@@ -1062,7 +1074,7 @@ function YamlToggle({
   onChange: () => void;
 }) {
   return (
-    <div className={`flex items-center gap-2 rounded-md border border-border bg-background ${className}`}>
+    <div className={`flex items-center gap-2 rounded-xl border border-border bg-background ${className}`}>
       <button
         type="button"
         role="switch"
@@ -1153,7 +1165,7 @@ function ShareComboButton({
         aria-label="Share PDF"
         disabled={disabled}
         onClick={() => void onSharePdf()}
-        className="inline-flex h-8 items-center gap-2 rounded-l-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+        className="inline-flex h-8 items-center gap-2 rounded-l-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <Share2 className="size-4" />
         <span className="whitespace-nowrap">Share</span>
@@ -1166,13 +1178,13 @@ function ShareComboButton({
         aria-expanded={menuOpen}
         disabled={disabled}
         onClick={() => onMenuOpenChange(!menuOpen)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-r-md border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-r-lg border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronDown className="size-3.5" />
       </button>
       <PositionedMenu
         anchorRef={anchorRef}
-        className="min-w-52 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+        className="min-w-52 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-md"
         onClose={() => onMenuOpenChange(false)}
         open={menuOpen}
         triggerRef={triggerRef}
@@ -1260,7 +1272,7 @@ function DownloadComboButton({
         aria-label="Download PDF"
         disabled={disabled}
         onClick={() => void onDownloadPdf()}
-        className="inline-flex h-8 items-center gap-2 rounded-l-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+        className="inline-flex h-8 items-center gap-2 rounded-l-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <Download className="size-4" />
         <span className="whitespace-nowrap">Download</span>
@@ -1273,13 +1285,13 @@ function DownloadComboButton({
         aria-expanded={menuOpen}
         disabled={disabled}
         onClick={() => onMenuOpenChange(!menuOpen)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-r-md border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-r-lg border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronDown className="size-3.5" />
       </button>
       <PositionedMenu
         anchorRef={anchorRef}
-        className="min-w-48 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+        className="min-w-48 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-md"
         onClose={() => onMenuOpenChange(false)}
         open={menuOpen}
         triggerRef={triggerRef}
@@ -1351,7 +1363,7 @@ function ToolbarMenuItem({
     <button
       type="button"
       role="menuitem"
-      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
       onClick={onClick}
     >
       {icon}
@@ -1619,7 +1631,9 @@ function ToolbarIconButton({
         data-onboarding={dataOnboarding}
         disabled={disabled}
         onClick={() => void onClick()}
-        className={`inline-flex ${TOOLBAR_ICON_SIZES[size]} items-center justify-center rounded-md text-sm transition-colors ${
+        className={`inline-flex ${TOOLBAR_ICON_SIZES[size]} items-center justify-center ${
+          variant === 'ghost' ? TOOLBAR_NESTED_RADIUS : TOOLBAR_RADIUS
+        } text-sm transition-colors ${
           active
             ? variant === 'ghost'
               ? 'bg-primary/10 text-primary hover:bg-primary/15'
