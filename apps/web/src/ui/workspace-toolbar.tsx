@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { RefObject, ReactNode } from 'react';
 import {
   AppWindow,
@@ -60,8 +60,50 @@ import { copyTextToClipboard } from '../lib/clipboard';
 import { DialogOverlay, DialogShell } from './dialog-shell';
 import type { MonacoEditorHandle } from './monaco-editor';
 import type { ViewerRenderer } from './preview-pane';
+import { PositionedMenu } from './positioned-menu';
 import { StyledTooltip } from './styled-tooltip';
 import { WorkspaceAiEditor } from './workspace-ai-editor';
+
+/**
+ * Height every standalone control in the desktop toolbar row has to hit so the
+ * row reads as one band.
+ *
+ * It is dictated by ToolbarControlGroup, which is the tallest thing in the row:
+ * a 32px (`size-8`) button + `p-1` on both sides + the group's 1px border = 42px.
+ * Keep these in step — the left-hand controls used to sit at 32px, which left
+ * them 10px short of the grouped controls opposite them.
+ */
+const TOOLBAR_CONTROL_HEIGHT = 'h-[42px]';
+const TOOLBAR_CONTROL_SIZE = 'size-[42px]';
+
+/**
+ * Height for standalone controls in the mobile toolbar. Deliberately tighter
+ * than the desktop band and equal to the plain icon-button size, so the pane
+ * switch, the YAML toggle, the zoom cluster and the title row above all sit on
+ * one line.
+ */
+const MOBILE_CONTROL_HEIGHT = 'h-8';
+
+/**
+ * Corner radius for the toolbar, in two tiers.
+ *
+ * Anything sitting directly in the toolbar row — a bordered chip, a control
+ * group, a combo container, a toggle, a dropdown panel — gets TOOLBAR_RADIUS.
+ * Anything nested inside one of those gets the smaller TOOLBAR_NESTED_RADIUS,
+ * which is the outer 12px minus the 4px `p-1` those containers carry, so the
+ * inner corner sits concentric with the outer one rather than looking pinched.
+ */
+const TOOLBAR_RADIUS = 'rounded-xl';
+const TOOLBAR_NESTED_RADIUS = 'rounded-lg';
+
+const TOOLBAR_ICON_SIZES = {
+  /** Nested inside the mobile zoom cluster, which is itself only 32px tall. */
+  xs: 'size-7',
+  /** Default: nested in a ToolbarControlGroup, or standalone in the mobile row. */
+  sm: 'size-8',
+  /** Standalone in the desktop row, which runs on the taller 42px band. */
+  md: TOOLBAR_CONTROL_SIZE
+} as const;
 
 export function WorkspaceToolbar({
   editorRef,
@@ -576,7 +618,7 @@ export function WorkspaceToolbar({
                         <button
                           type="button"
                           aria-label="Reset zoom"
-                          className="min-w-12 rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                          className="inline-flex h-8 min-w-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                           disabled={!canPreviewActions}
                           onClick={viewer.zoomReset}
                         >
@@ -666,18 +708,21 @@ export function WorkspaceToolbar({
               ) : null}
               <YamlToggle
                 checked={preferences.yamlEditor}
-                className="h-11 px-3"
+                className={`${MOBILE_CONTROL_HEIGHT} px-2.5`}
                 label="YAML"
                 onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
               />
             </div>
           ) : (
-            <div className="ml-auto flex h-11 items-center gap-1 rounded-xl border border-border bg-card px-1.5">
-              <div className="flex items-center gap-1">
+            <div
+              className={`ml-auto flex ${MOBILE_CONTROL_HEIGHT} items-center gap-0.5 rounded-xl border border-border bg-card px-1`}
+            >
+              <div className="flex items-center gap-0.5">
                 <ToolbarIconButton
                   ariaLabel="Zoom out"
                   disabled={!canPreviewActions}
                   onClick={viewer.zoomOut}
+                  size="xs"
                   variant="ghost"
                 >
                   <Minus className="size-4" />
@@ -685,7 +730,7 @@ export function WorkspaceToolbar({
                 <button
                   type="button"
                   aria-label="Reset zoom"
-                  className="min-w-12 rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+                  className="inline-flex h-7 min-w-10 items-center justify-center rounded-lg px-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                   disabled={!canPreviewActions}
                   onClick={viewer.zoomReset}
                 >
@@ -695,6 +740,7 @@ export function WorkspaceToolbar({
                   ariaLabel="Zoom in"
                   disabled={!canPreviewActions}
                   onClick={viewer.zoomIn}
+                  size="xs"
                   variant="ghost"
                 >
                   <Plus className="size-4" />
@@ -757,6 +803,7 @@ export function WorkspaceToolbar({
           active={!sidebarCollapsed}
           ariaLabel={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
           onClick={onToggleSidebar}
+          size="md"
         >
           <PanelLeft className="size-4" />
         </ToolbarIconButton>
@@ -773,6 +820,7 @@ export function WorkspaceToolbar({
               onClick={() => {
                 fileStore.undo();
               }}
+              size="md"
             >
               <Undo2 className="size-4" />
             </ToolbarIconButton>
@@ -782,6 +830,7 @@ export function WorkspaceToolbar({
               onClick={() => {
                 fileStore.redo();
               }}
+              size="md"
             >
               <Redo2 className="size-4" />
             </ToolbarIconButton>
@@ -789,6 +838,7 @@ export function WorkspaceToolbar({
               ariaLabel={preferences.entriesExpanded ? 'Collapse all entries' : 'Expand all entries'}
               disabled={preferences.yamlEditor}
               onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
+              size="md"
             >
               <ChevronsDownUp className="size-4" />
             </ToolbarIconButton>
@@ -796,6 +846,7 @@ export function WorkspaceToolbar({
               ariaLabel="Bold"
               disabled={!canFormat}
               onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
+              size="md"
             >
               <Bold className="size-4" />
             </ToolbarIconButton>
@@ -803,6 +854,7 @@ export function WorkspaceToolbar({
               ariaLabel="Italic"
               disabled={!canFormat}
               onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
+              size="md"
             >
               <Italic className="size-4" />
             </ToolbarIconButton>
@@ -810,6 +862,7 @@ export function WorkspaceToolbar({
               ariaLabel="Insert link"
               disabled={!canFormat}
               onClick={() => editorRef.current?.insertMarkdownLink()}
+              size="md"
             >
               <LinkIcon className="size-4" />
             </ToolbarIconButton>
@@ -821,7 +874,11 @@ export function WorkspaceToolbar({
           onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
         />
         {preferences.yamlEditor ? (
-          <ToolbarIconButton ariaLabel="Copy YAML source" onClick={() => void copyYamlSource()}>
+          <ToolbarIconButton
+            ariaLabel="Copy YAML source"
+            onClick={() => void copyYamlSource()}
+            size="md"
+          >
             <Copy className="size-4" />
           </ToolbarIconButton>
         ) : null}
@@ -840,7 +897,7 @@ export function WorkspaceToolbar({
           <button
             type="button"
             aria-label="Reset zoom"
-            className="min-w-12 rounded-md px-2 py-1 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+            className="inline-flex h-8 min-w-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
             disabled={!canPreviewActions}
             onClick={viewer.zoomReset}
           >
@@ -974,7 +1031,9 @@ function MobilePaneSwitch({
   onChange?: (pane: 'editor' | 'preview') => void;
 }) {
   return (
-    <div className="inline-flex h-11 min-w-0 flex-1 items-center rounded-xl border border-border bg-background p-1">
+    <div
+      className={`inline-flex ${MOBILE_CONTROL_HEIGHT} min-w-0 flex-1 items-center rounded-xl border border-border bg-background p-0.5`}
+    >
       <button
         type="button"
         className={`flex h-full flex-1 items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors ${
@@ -1003,7 +1062,9 @@ function MobilePaneSwitch({
 
 function YamlToggle({
   checked,
-  className = 'ml-1 px-2.5 py-1.5',
+  // The desktop default has to match the rest of the toolbar row; the mobile
+  // caller overrides this with its own taller touch-target sizing.
+  className = `ml-1 ${TOOLBAR_CONTROL_HEIGHT} px-2.5`,
   label,
   onChange
 }: {
@@ -1013,7 +1074,7 @@ function YamlToggle({
   onChange: () => void;
 }) {
   return (
-    <div className={`flex items-center gap-2 rounded-md border border-border bg-background ${className}`}>
+    <div className={`flex items-center gap-2 rounded-xl border border-border bg-background ${className}`}>
       <button
         type="button"
         role="switch"
@@ -1090,37 +1151,12 @@ function ShareComboButton({
   onOpenShareDialog: () => void;
   onSharePdf: () => void | Promise<void>;
 }) {
-  const menuRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    function onClickOutside(event: MouseEvent) {
-      if (
-        menuRef.current && !menuRef.current.contains(event.target as Node) &&
-        triggerRef.current && !triggerRef.current.contains(event.target as Node)
-      ) {
-        onMenuOpenChange(false);
-      }
-    }
-
-    function onEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onMenuOpenChange(false);
-      }
-    }
-
-    document.addEventListener('mousedown', onClickOutside);
-    document.addEventListener('keydown', onEscape);
-    return () => {
-      document.removeEventListener('mousedown', onClickOutside);
-      document.removeEventListener('keydown', onEscape);
-    };
-  }, [menuOpen, onMenuOpenChange]);
 
   return (
     <div
+      ref={anchorRef}
       className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm"
       data-onboarding={dataOnboarding}
     >
@@ -1129,7 +1165,7 @@ function ShareComboButton({
         aria-label="Share PDF"
         disabled={disabled}
         onClick={() => void onSharePdf()}
-        className="inline-flex h-8 items-center gap-2 rounded-l-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+        className="inline-flex h-8 items-center gap-2 rounded-l-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <Share2 className="size-4" />
         <span className="whitespace-nowrap">Share</span>
@@ -1142,59 +1178,59 @@ function ShareComboButton({
         aria-expanded={menuOpen}
         disabled={disabled}
         onClick={() => onMenuOpenChange(!menuOpen)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-r-md border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-r-lg border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronDown className="size-3.5" />
       </button>
-      {menuOpen ? (
-        <div
-          ref={menuRef}
-          className="absolute right-0 top-full z-50 mt-1 min-w-52 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-          role="menu"
-        >
-          <ToolbarMenuItem
-            icon={<Share2 className="size-4" />}
-            label="Share PDF"
-            onClick={() => {
-              onMenuOpenChange(false);
-              void onSharePdf();
-            }}
-          />
-          <ToolbarMenuItem
-            icon={<Copy className="size-4" />}
-            label="Copy share link"
-            onClick={() => {
-              onMenuOpenChange(false);
-              void onCopyShareLink();
-            }}
-          />
-          <ToolbarMenuItem
-            icon={<GitCompareArrows className="size-4" />}
-            label="Copy review link"
-            onClick={() => {
-              onMenuOpenChange(false);
-              void onCopyReviewLink();
-            }}
-          />
-          <ToolbarMenuItem
-            icon={<FileDown className="size-4" />}
-            label="Copy PDF download link"
-            onClick={() => {
-              onMenuOpenChange(false);
-              void onCopyPdfLink();
-            }}
-          />
-          <div className="my-1 h-px bg-border/60" />
-          <ToolbarMenuItem
-            icon={<Share2 className="size-4" />}
-            label="More share options"
-            onClick={() => {
-              onMenuOpenChange(false);
-              onOpenShareDialog();
-            }}
-          />
-        </div>
-      ) : null}
+      <PositionedMenu
+        anchorRef={anchorRef}
+        className="min-w-52 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-md"
+        onClose={() => onMenuOpenChange(false)}
+        open={menuOpen}
+        triggerRef={triggerRef}
+      >
+        <ToolbarMenuItem
+          icon={<Share2 className="size-4" />}
+          label="Share PDF"
+          onClick={() => {
+            onMenuOpenChange(false);
+            void onSharePdf();
+          }}
+        />
+        <ToolbarMenuItem
+          icon={<Copy className="size-4" />}
+          label="Copy share link"
+          onClick={() => {
+            onMenuOpenChange(false);
+            void onCopyShareLink();
+          }}
+        />
+        <ToolbarMenuItem
+          icon={<GitCompareArrows className="size-4" />}
+          label="Copy review link"
+          onClick={() => {
+            onMenuOpenChange(false);
+            void onCopyReviewLink();
+          }}
+        />
+        <ToolbarMenuItem
+          icon={<FileDown className="size-4" />}
+          label="Copy PDF download link"
+          onClick={() => {
+            onMenuOpenChange(false);
+            void onCopyPdfLink();
+          }}
+        />
+        <div className="my-1 h-px bg-border/60" />
+        <ToolbarMenuItem
+          icon={<Share2 className="size-4" />}
+          label="More share options"
+          onClick={() => {
+            onMenuOpenChange(false);
+            onOpenShareDialog();
+          }}
+        />
+      </PositionedMenu>
     </div>
   );
 }
@@ -1222,37 +1258,12 @@ function DownloadComboButton({
   onMenuOpenChange: (open: boolean) => void;
   onOpenExportDialog: () => void;
 }) {
-  const menuRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    function onClickOutside(event: MouseEvent) {
-      if (
-        menuRef.current && !menuRef.current.contains(event.target as Node) &&
-        triggerRef.current && !triggerRef.current.contains(event.target as Node)
-      ) {
-        onMenuOpenChange(false);
-      }
-    }
-
-    function onEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onMenuOpenChange(false);
-      }
-    }
-
-    document.addEventListener('mousedown', onClickOutside);
-    document.addEventListener('keydown', onEscape);
-    return () => {
-      document.removeEventListener('mousedown', onClickOutside);
-      document.removeEventListener('keydown', onEscape);
-    };
-  }, [menuOpen, onMenuOpenChange]);
 
   return (
     <div
+      ref={anchorRef}
       className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm"
       data-onboarding={dataOnboarding}
     >
@@ -1261,7 +1272,7 @@ function DownloadComboButton({
         aria-label="Download PDF"
         disabled={disabled}
         onClick={() => void onDownloadPdf()}
-        className="inline-flex h-8 items-center gap-2 rounded-l-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+        className="inline-flex h-8 items-center gap-2 rounded-l-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <Download className="size-4" />
         <span className="whitespace-nowrap">Download</span>
@@ -1274,67 +1285,67 @@ function DownloadComboButton({
         aria-expanded={menuOpen}
         disabled={disabled}
         onClick={() => onMenuOpenChange(!menuOpen)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-r-md border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-r-lg border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronDown className="size-3.5" />
       </button>
-      {menuOpen ? (
-        <div
-          ref={menuRef}
-          className="absolute right-0 top-full z-50 mt-1 min-w-48 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-          role="menu"
-        >
-          <ToolbarMenuItem
-            icon={<Download className="size-4" />}
-            label="Download PDF"
-            onClick={() => {
-              onMenuOpenChange(false);
-              void onDownloadPdf();
-            }}
-          />
-          <ToolbarMenuItem
-            icon={<FileCode2 className="size-4" />}
-            label="Download source (.typ)"
-            onClick={() => {
-              onMenuOpenChange(false);
-              void onDownloadTypst();
-            }}
-          />
-          <ToolbarMenuItem
-            icon={<FileDown className="size-4" />}
-            label="Download JSON"
-            onClick={() => {
-              onMenuOpenChange(false);
-              void onDownloadJson();
-            }}
-          />
-          <ToolbarMenuItem
-            icon={<FileDown className="size-4" />}
-            label="Download Markdown"
-            onClick={() => {
-              onMenuOpenChange(false);
-              void onDownloadMarkdown();
-            }}
-          />
-          <ToolbarMenuItem
-            icon={<Copy className="size-4" />}
-            label="Copy as Markdown"
-            onClick={() => {
-              onMenuOpenChange(false);
-              void onCopyMarkdown();
-            }}
-          />
-          <div className="my-1 h-px bg-border/60" />
-          <ToolbarMenuItem
-            icon={<FileDown className="size-4" />}
-            label="More export options"
-            onClick={() => {
-              onMenuOpenChange(false);
-              onOpenExportDialog();
-            }}
-          />
-        </div>
-      ) : null}
+      <PositionedMenu
+        anchorRef={anchorRef}
+        className="min-w-48 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-md"
+        onClose={() => onMenuOpenChange(false)}
+        open={menuOpen}
+        triggerRef={triggerRef}
+      >
+        <ToolbarMenuItem
+          icon={<Download className="size-4" />}
+          label="Download PDF"
+          onClick={() => {
+            onMenuOpenChange(false);
+            void onDownloadPdf();
+          }}
+        />
+        <ToolbarMenuItem
+          icon={<FileCode2 className="size-4" />}
+          label="Download source (.typ)"
+          onClick={() => {
+            onMenuOpenChange(false);
+            void onDownloadTypst();
+          }}
+        />
+        <ToolbarMenuItem
+          icon={<FileDown className="size-4" />}
+          label="Download JSON"
+          onClick={() => {
+            onMenuOpenChange(false);
+            void onDownloadJson();
+          }}
+        />
+        <ToolbarMenuItem
+          icon={<FileDown className="size-4" />}
+          label="Download Markdown"
+          onClick={() => {
+            onMenuOpenChange(false);
+            void onDownloadMarkdown();
+          }}
+        />
+        <ToolbarMenuItem
+          icon={<Copy className="size-4" />}
+          label="Copy as Markdown"
+          onClick={() => {
+            onMenuOpenChange(false);
+            void onCopyMarkdown();
+          }}
+        />
+        <div className="my-1 h-px bg-border/60" />
+        <ToolbarMenuItem
+          icon={<FileDown className="size-4" />}
+          label="More export options"
+          onClick={() => {
+            onMenuOpenChange(false);
+            onOpenExportDialog();
+          }}
+        />
+      </PositionedMenu>
     </div>
   );
 }
@@ -1352,7 +1363,7 @@ function ToolbarMenuItem({
     <button
       type="button"
       role="menuitem"
-      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
       onClick={onClick}
     >
       {icon}
@@ -1600,6 +1611,7 @@ function ToolbarIconButton({
   dataOnboarding,
   disabled = false,
   onClick,
+  size = 'sm',
   variant = 'default'
 }: {
   active?: boolean;
@@ -1608,6 +1620,7 @@ function ToolbarIconButton({
   dataOnboarding?: string;
   disabled?: boolean;
   onClick: () => void | Promise<void>;
+  size?: keyof typeof TOOLBAR_ICON_SIZES;
   variant?: 'default' | 'ghost';
 }) {
   return (
@@ -1618,7 +1631,9 @@ function ToolbarIconButton({
         data-onboarding={dataOnboarding}
         disabled={disabled}
         onClick={() => void onClick()}
-        className={`inline-flex size-8 items-center justify-center rounded-md text-sm transition-colors ${
+        className={`inline-flex ${TOOLBAR_ICON_SIZES[size]} items-center justify-center ${
+          variant === 'ghost' ? TOOLBAR_NESTED_RADIUS : TOOLBAR_RADIUS
+        } text-sm transition-colors ${
           active
             ? variant === 'ghost'
               ? 'bg-primary/10 text-primary hover:bg-primary/15'
