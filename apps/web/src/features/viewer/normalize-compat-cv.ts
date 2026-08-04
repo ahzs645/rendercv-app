@@ -1400,6 +1400,16 @@ export function repairFlattenedPositionDatesInCvYaml(yamlText: string) {
   return YAML.stringify(parsed);
 }
 
+// Themes whose ExperienceEntry template reads the RCVSPACING position markers
+// to tell "next position at the same company" from "next company" apart. For
+// these the markers must survive into the render instead of being stripped, and
+// flattened `position | dates` strings must not be repaired back into columns.
+const POSITION_MARKER_THEMES = new Set(['ahmadstyle', 'tylerstyle']);
+
+export function themeUsesPositionSpacingMarkers(themeName: string | undefined) {
+  return themeName !== undefined && POSITION_MARKER_THEMES.has(themeName);
+}
+
 export function restoreAhmadStylePositionMarkersInCvYaml(yamlText: string) {
   let parsed: unknown;
   try {

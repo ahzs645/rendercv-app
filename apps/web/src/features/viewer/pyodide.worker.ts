@@ -280,7 +280,8 @@ legacy_base_dir.mkdir(parents=True, exist_ok=True)
 
 with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
     # A single archive may bundle several theme packages. The resume submodule
-    # ships ahmadstyle, phdjakes, phddeedy and phdresearch side by side, so the
+    # ships ahmadstyle, phdjakes, phddeedy, phdresearch and tylerstyle side by
+    # side, so the
     # bundled archives all contain every theme. Discover *all* packages that
     # declare a RenderCV theme name and extract each one; stopping at the first
     # match would register a sibling theme and leave the requested theme's

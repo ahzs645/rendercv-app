@@ -10,6 +10,7 @@ function encodeStaticFontFolder(fontFamily: string) {
 const STANDARD = ['Regular', 'Bold', 'Italic', 'BoldItalic'];
 
 export const FONT_VARIANTS: Record<string, string[]> = {
+  Carlito: STANDARD,
   'Open Sans': STANDARD,
   'Gentium Book Plus': STANDARD,
   Lato: [

@@ -11,7 +11,8 @@ export const THEME_LABELS: Record<string, string> = {
   phddeedy: 'PhD Deedy',
   phdjakes: 'PhD Jake',
   phdresearch: 'PhD Research CV',
-  sb2nov: 'Sb2nov'
+  sb2nov: 'Sb2nov',
+  tylerstyle: 'Tyler Style'
 };
 
 export const LOCALE_LABELS: Record<string, { flag: string; name: string }> = {

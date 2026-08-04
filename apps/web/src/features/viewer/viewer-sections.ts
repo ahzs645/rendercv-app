@@ -10,7 +10,8 @@ import {
   normalizeCompatibilityCvYaml,
   repairFlattenedPositionDatesInCvYaml,
   restoreAhmadStylePositionMarkersInCvYaml,
-  stripPositionMarkersFromCvYaml
+  stripPositionMarkersFromCvYaml,
+  themeUsesPositionSpacingMarkers
 } from './normalize-compat-cv';
 
 const LEGACY_DESIGN_KEY_PATTERN =
@@ -145,10 +146,9 @@ export function prepareViewerSections(
   const normalizedCv = normalizeCompatibilityCvYaml(sections.cv, { variant: variant ?? undefined });
   const themeName = readThemeName(design);
   const strippedCv = stripPositionMarkersFromCvYaml(normalizedCv);
-  const repairedCv =
-    themeName === 'ahmadstyle'
-      ? restoreAhmadStylePositionMarkersInCvYaml(strippedCv)
-      : repairFlattenedPositionDatesInCvYaml(strippedCv);
+  const repairedCv = themeUsesPositionSpacingMarkers(themeName)
+    ? restoreAhmadStylePositionMarkersInCvYaml(strippedCv)
+    : repairFlattenedPositionDatesInCvYaml(strippedCv);
 
   return {
     ...sections,

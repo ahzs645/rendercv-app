@@ -98,6 +98,41 @@ function errorFromWorker(payload: WorkerErrorPayload | string) {
   return error;
 }
 
+function attachTypstWorkerHandler(service: RendererWorkerService) {
+  service.typstWorker.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
+    const { id, type, payload } = event.data;
+    const pending = service.typstPending.get(id);
+    if (!pending) return;
+    if (type === 'ERROR') {
+      pending.reject(errorFromWorker(payload as WorkerErrorPayload));
+    } else {
+      pending.resolve(payload);
+    }
+    service.typstPending.delete(id);
+  };
+}
+
+// Typst's compiler reads its font set once, when it is built. Re-sending INIT
+// to a live worker therefore silently keeps the old fonts, and a theme that
+// asks for a family the first render did not need (Carlito for tylerstyle, EB
+// Garamond for ahmadstyle) renders in a fallback face instead. Replacing the
+// worker is what actually rebuilds the compiler. Only the Typst worker is
+// swapped -- Pyodide holds no font state and is far more expensive to restart.
+async function replaceTypstWorker(service: RendererWorkerService, fontUrls: string[]) {
+  const TypstWorker = (await import('./typst.worker?worker')).default;
+
+  service.typstWorker.terminate();
+  for (const pending of service.typstPending.values()) {
+    pending.reject(new Error('Typst worker restarted to load new fonts.'));
+  }
+  service.typstPending.clear();
+  service.nextTypstId = 0;
+  service.typstWorker = new TypstWorker();
+  attachTypstWorkerHandler(service);
+
+  await postRendererMessage(service, 'typst', 'INIT', { fontUrls });
+}
+
 async function getRendererWorkerService(fontUrls: string[]) {
   if (rendererWorkerService) {
     await rendererWorkerService.initPromise;
@@ -118,17 +153,7 @@ async function getRendererWorkerService(fontUrls: string[]) {
     initPromise: Promise.resolve()
   };
 
-  service.typstWorker.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
-    const { id, type, payload } = event.data;
-    const pending = service.typstPending.get(id);
-    if (!pending) return;
-    if (type === 'ERROR') {
-      pending.reject(errorFromWorker(payload as WorkerErrorPayload));
-    } else {
-      pending.resolve(payload);
-    }
-    service.typstPending.delete(id);
-  };
+  attachTypstWorkerHandler(service);
 
   service.pyodideWorker.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unknown }>) => {
     const { id, type, payload } = event.data;
@@ -378,14 +403,14 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
       if (!result.content) return null;
       const fontsChanged = checkAndLoadFonts(result.content);
-      if (fontsChanged) {
-        await postMessageToTypst('REINIT', { fontUrls: loadedFonts.current });
+      if (fontsChanged && rendererServiceRef.current) {
+        await replaceTypstWorker(rendererServiceRef.current, loadedFonts.current);
       }
       lastTypstSectionsKey.current = key;
       lastTypstContent.current = result.content;
       return result.content;
     },
-    [checkAndLoadFonts, loadValidationResult, postMessageToTypst, renderVersion]
+    [checkAndLoadFonts, loadValidationResult, renderVersion]
   );
 
   const renderToPdf = useCallback(
@@ -572,8 +597,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
           lastTypstContent.current = typst;
 
           const fontsChanged = checkAndLoadFonts(typst);
-          if (fontsChanged) {
-            await postMessageToTypst('REINIT', { fontUrls: loadedFonts.current });
+          if (fontsChanged && rendererServiceRef.current) {
+            await replaceTypstWorker(rendererServiceRef.current, loadedFonts.current);
           }
           if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
             continue;
