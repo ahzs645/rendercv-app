@@ -14,10 +14,10 @@ const generatedModulePath = path.join(
 
 // Every bundled theme ships from the same `themes/resume` submodule, and the
 // zip step archives the whole submodule. Emitting one archive per theme would
-// therefore produce four byte-identical copies. Instead we build a single
+// therefore produce several byte-identical copies. Instead we build a single
 // shared archive that every theme entry references, then let the worker extract
 // whichever package the requested theme needs (the worker registers every theme
-// package found in an archive, so one archive serves all four themes).
+// package found in an archive, so one archive serves them all).
 const submodulePath = path.join(projectRoot, 'themes/resume');
 const sharedArchiveBaseName = 'bundled-resume-themes';
 
@@ -41,6 +41,11 @@ const THEME_SOURCES = [
     design: 'design:\n  theme: phdresearch\n',
     packageDir: 'phdresearch',
     themeKey: 'phdresearch'
+  },
+  {
+    design: 'design:\n  theme: tylerstyle\n',
+    packageDir: 'tylerstyle',
+    themeKey: 'tylerstyle'
   }
 ];
 

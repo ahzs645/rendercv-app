@@ -151,6 +151,28 @@ describe('prepareViewerSections', () => {
     expect(sections.cv).not.toContain('RCVSPACINGDIFF:Student Research Assistant');
   });
 
+  it('keeps same-company spacing markers for tylerstyle groups too', () => {
+    const sections = prepareViewerSections({
+      cv: `cv:
+  sections:
+    experience:
+      - company: Northern Analytical Laboratory Services
+        position: Research Assistant | September 2022 – Present
+      - company: ""
+        position: Student Research Assistant | November 2020 – September 2022
+`,
+      design: `design:
+  theme: tylerstyle
+`,
+      locale: '',
+      settings: ''
+    });
+
+    expect(sections.cv).toContain('RCVSPACINGSAME:Research Assistant | September 2022 – Present');
+    expect(sections.cv).toContain('position: Student Research Assistant | November 2020 – September 2022');
+    expect(sections.cv).not.toContain('RCVSPACINGDIFF:Student Research Assistant');
+  });
+
   it('normalizes common top-level aliases like linkedin and address', () => {
     const sections = prepareViewerSections({
       cv: `cv:

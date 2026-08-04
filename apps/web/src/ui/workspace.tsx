@@ -15,7 +15,8 @@ import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
 import {
   normalizeCompatibilityCvYaml,
   repairFlattenedPositionDatesInCvYaml,
-  stripPositionMarkersFromCvYaml
+  stripPositionMarkersFromCvYaml,
+  themeUsesPositionSpacingMarkers
 } from '../features/viewer/normalize-compat-cv';
 import {
   normalizeLegacyDesignYaml,
@@ -381,7 +382,11 @@ export function Workspace({ active = true }: { active?: boolean }) {
   }, [active, preferences.onboardingCompletedAt, selectedFile]);
 
   useEffect(() => {
-    if (!selectedFile || selectedFile.selectedTheme === 'ahmadstyle' || !rawSections?.cv.includes(' | ')) {
+    if (
+      !selectedFile ||
+      themeUsesPositionSpacingMarkers(selectedFile.selectedTheme) ||
+      !rawSections?.cv.includes(' | ')
+    ) {
       return;
     }
 

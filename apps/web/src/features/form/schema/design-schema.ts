@@ -520,6 +520,74 @@ const themeSpecificDesignGroups: Record<string, FieldGroup[]> = {
         }
       ]
     }
+  ],
+  tylerstyle: [
+    {
+      title: 'Tyler Style',
+      fields: [
+        {
+          path: ['font_size'],
+          label: 'Body Font Size',
+          type: 'dimension',
+          description: 'Body font size for the Carlito text.'
+        },
+        {
+          path: ['section_heading_size'],
+          label: 'Section Heading Size',
+          type: 'dimension',
+          description: 'Font size for section headers such as EXPERIENCE.'
+        },
+        {
+          path: ['website_link_color'],
+          label: 'Header Links',
+          type: 'toggle',
+          options: [
+            { value: 'black', label: 'Black' },
+            { value: 'blue', label: 'Blue' }
+          ],
+          description: 'Blue reads as a hyperlink; black matches the body text.'
+        },
+        {
+          path: ['keep_sections_together'],
+          label: 'Keep Sections Together',
+          type: 'boolean',
+          description: 'Prevent page breaks within sections to keep content together.'
+        },
+        {
+          path: ['keep_entries_together'],
+          label: 'Keep Entries Together',
+          type: 'boolean',
+          description: 'Keep each entry and its highlights together on the same page when possible.'
+        },
+        {
+          path: ['prevent_orphaned_headers'],
+          label: 'Prevent Orphaned Headers',
+          type: 'boolean',
+          description: 'Avoid section headers appearing alone at the bottom of a page.'
+        }
+      ]
+    },
+    {
+      title: 'Tyler Style Sections',
+      fields: [
+        {
+          path: ['pagebreak_before_sections'],
+          label: 'Page Break Before',
+          type: 'string_list',
+          placeholder: 'Section name',
+          ordered: false,
+          description: 'Section titles that should start on a new page.'
+        },
+        {
+          path: ['custom_entries', 'show_time_span'],
+          label: 'Show Time Span In',
+          type: 'string_list',
+          placeholder: 'Section name',
+          ordered: false,
+          description: 'Section titles where Tyler Style should show entry time spans.'
+        }
+      ]
+    }
   ]
 };
 

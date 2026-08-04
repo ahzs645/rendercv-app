@@ -909,7 +909,11 @@ def strip_position_markers(cv_yaml_text):
     return safe_dump_yaml(parsed)
 
 
-if theme_name != "ahmadstyle":
+# Only the themes whose ExperienceEntry template reads the RCVSPACING markers
+# should see them; for every other theme they would render as literal text.
+POSITION_MARKER_THEMES = ("ahmadstyle", "tylerstyle")
+
+if theme_name not in POSITION_MARKER_THEMES:
     normalized_yaml_input_cv = strip_position_markers(normalized_yaml_input_cv)
 
 kwargs: BuildRendercvModelArguments = {}

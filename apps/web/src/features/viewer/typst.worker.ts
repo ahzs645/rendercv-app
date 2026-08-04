@@ -164,8 +164,10 @@ self.onmessage = (event: MessageEvent<{ id: number; type: string; payload?: unkn
 async function handleTypstMessage(id: number, type: string, payload: unknown) {
   try {
     switch (type) {
-      case 'INIT':
-      case 'REINIT': {
+      case 'INIT': {
+        // The font set is baked into the compiler when it is first built, so
+        // there is no in-place re-init: the main thread replaces this worker
+        // when a theme needs a family that is not loaded yet.
         const { fontUrls } = payload as { fontUrls: string[] };
         await initTypst(fontUrls);
         self.postMessage({ id, type: 'SUCCESS' });

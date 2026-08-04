@@ -8,27 +8,33 @@ export type BundledTheme = {
 
 export const BUNDLED_THEMES: BundledTheme[] = [
   {
-    "archiveName": "bundled-resume-themes-9e97d1b4c39e.zip",
-    "archivePath": "cdn/themes/bundled-resume-themes-9e97d1b4c39e.zip",
+    "archiveName": "bundled-resume-themes-5aa45b1cf720.zip",
+    "archivePath": "cdn/themes/bundled-resume-themes-5aa45b1cf720.zip",
     "design": "design:\n  theme: ahmadstyle\n",
     "themeKey": "ahmadstyle"
   },
   {
-    "archiveName": "bundled-resume-themes-9e97d1b4c39e.zip",
-    "archivePath": "cdn/themes/bundled-resume-themes-9e97d1b4c39e.zip",
+    "archiveName": "bundled-resume-themes-5aa45b1cf720.zip",
+    "archivePath": "cdn/themes/bundled-resume-themes-5aa45b1cf720.zip",
     "design": "design:\n  theme: phdjakes\n",
     "themeKey": "phdjakes"
   },
   {
-    "archiveName": "bundled-resume-themes-9e97d1b4c39e.zip",
-    "archivePath": "cdn/themes/bundled-resume-themes-9e97d1b4c39e.zip",
+    "archiveName": "bundled-resume-themes-5aa45b1cf720.zip",
+    "archivePath": "cdn/themes/bundled-resume-themes-5aa45b1cf720.zip",
     "design": "design:\n  theme: phddeedy\n",
     "themeKey": "phddeedy"
   },
   {
-    "archiveName": "bundled-resume-themes-9e97d1b4c39e.zip",
-    "archivePath": "cdn/themes/bundled-resume-themes-9e97d1b4c39e.zip",
+    "archiveName": "bundled-resume-themes-5aa45b1cf720.zip",
+    "archivePath": "cdn/themes/bundled-resume-themes-5aa45b1cf720.zip",
     "design": "design:\n  theme: phdresearch\n",
     "themeKey": "phdresearch"
+  },
+  {
+    "archiveName": "bundled-resume-themes-5aa45b1cf720.zip",
+    "archivePath": "cdn/themes/bundled-resume-themes-5aa45b1cf720.zip",
+    "design": "design:\n  theme: tylerstyle\n",
+    "themeKey": "tylerstyle"
   }
 ];

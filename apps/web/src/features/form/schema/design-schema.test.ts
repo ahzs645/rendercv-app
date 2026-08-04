@@ -27,4 +27,21 @@ describe('getDesignSchema', () => {
     expect(fieldPaths).toContain('website_link_color');
     expect(fieldPaths).toContain('custom_entries.show_time_span');
   });
+
+  it('adds Tyler Style-specific fields when the active theme is tylerstyle', () => {
+    const fieldPaths = listFieldPaths('tylerstyle');
+
+    expect(fieldPaths).toContain('font_size');
+    expect(fieldPaths).toContain('section_heading_size');
+    expect(fieldPaths).toContain('website_link_color');
+    expect(fieldPaths).toContain('keep_sections_together');
+    expect(fieldPaths).toContain('keep_entries_together');
+    expect(fieldPaths).toContain('prevent_orphaned_headers');
+    expect(fieldPaths).toContain('pagebreak_before_sections');
+    expect(fieldPaths).toContain('custom_entries.show_time_span');
+  });
+
+  it('does not leak Tyler Style-only fields into the Ahmad Style schema', () => {
+    expect(listFieldPaths('ahmadstyle')).not.toContain('pagebreak_before_sections');
+  });
 });

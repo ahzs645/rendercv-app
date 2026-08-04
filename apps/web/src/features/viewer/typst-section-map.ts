@@ -3,7 +3,7 @@
  *
  * Supports two rendering formats:
  *
- * 1. **ahmadstyle** (Jinja2 direct):
+ * 1. **ahmadstyle / tylerstyle** (Jinja2 direct):
  *    - Sections: `#section_heading("Title")`
  *    - Entries:  `#entry_content({...})`
  *
@@ -68,7 +68,7 @@ export function parseTypstSectionMap(typstContent: string): SectionMapResult {
   let entryLines = 0;
   let inEntry = false;
   let parenDepth = 0; // for rendercv-package entries which use parens
-  let braceDepth = 0; // for ahmadstyle entry_content which uses braces
+  let braceDepth = 0; // for ahmadstyle/tylerstyle entry_content which uses braces
   let entryStyle: 'brace' | 'paren' | null = null;
 
   function flushEntry() {
@@ -109,7 +109,7 @@ export function parseTypstSectionMap(typstContent: string): SectionMapResult {
       }
     }
 
-    // ── ahmadstyle: entry_content({ ... }) ──────────────────────────
+    // ── ahmadstyle/tylerstyle: entry_content({ ... }) ───────────────
     if (trimmed.includes('#entry_content(')) {
       flushEntry();
       inEntry = true;

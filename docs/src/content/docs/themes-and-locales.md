@@ -19,7 +19,7 @@ Use the theme library to browse available themes and apply one to the active CV.
 
 Changing themes updates visual presentation, not the underlying `cv` content.
 
-The theme library renders first-page thumbnails for available themes using the current CV content. Bundled custom importable themes include `ahmadstyle`, `phdjakes`, `phddeedy`, and `phdresearch`.
+The theme library renders first-page thumbnails for available themes using the current CV content. Bundled custom importable themes include `ahmadstyle`, `tylerstyle`, `phdjakes`, `phddeedy`, and `phdresearch`.
 
 ## Design YAML
 
