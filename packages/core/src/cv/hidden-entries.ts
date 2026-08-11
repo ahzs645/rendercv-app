@@ -1,4 +1,16 @@
 import YAML from 'yaml';
+import {
+  entryFingerprint,
+  topLevelEntryListFromKey
+} from '@rendercv/primitives';
+
+export {
+  entryFingerprint,
+  TOP_LEVEL_ENTRY_LISTS,
+  topLevelEntryListFromKey,
+  topLevelEntryListKey,
+  type TopLevelEntryList
+} from '@rendercv/primitives';
 
 /**
  * Non-destructive entry hiding.
@@ -13,30 +25,6 @@ import YAML from 'yaml';
  * visible again — a safe default (we never silently hide edited content).
  */
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value ?? null);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
-  }
-  const record = value as Record<string, unknown>;
-  const keys = Object.keys(record).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(',')}}`;
-}
-
-/** Stable, short content hash for a single CV entry (string or object). */
-export function entryFingerprint(entry: unknown): string {
-  const serialized = stableStringify(entry);
-  // FNV-1a 32-bit — fast, deterministic, good enough for de-duplicating entries.
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < serialized.length; index += 1) {
-    hash ^= serialized.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(36);
-}
-
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -47,27 +35,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * `cv:` prefix so they can never collide with a user section that happens to be
  * called "social_networks".
  */
-export const TOP_LEVEL_ENTRY_LISTS = ['social_networks', 'custom_connections'] as const;
-
-export type TopLevelEntryList = (typeof TOP_LEVEL_ENTRY_LISTS)[number];
-
-const TOP_LEVEL_PREFIX = 'cv:';
-
-/** Hidden-entry key for one of the top-level `cv:` lists. */
-export function topLevelEntryListKey(list: TopLevelEntryList): string {
-  return `${TOP_LEVEL_PREFIX}${list}`;
-}
-
-/** The top-level list a hidden-entry key addresses, or null for a section key. */
-export function topLevelEntryListFromKey(key: string): TopLevelEntryList | null {
-  if (!key.startsWith(TOP_LEVEL_PREFIX)) {
-    return null;
-  }
-
-  const list = key.slice(TOP_LEVEL_PREFIX.length) as TopLevelEntryList;
-  return TOP_LEVEL_ENTRY_LISTS.includes(list) ? list : null;
-}
-
 function hasHidden(hidden: Record<string, string[]> | undefined): hidden is Record<string, string[]> {
   return Boolean(hidden && Object.values(hidden).some((list) => list.length > 0));
 }

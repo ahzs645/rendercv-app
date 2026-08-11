@@ -2,48 +2,16 @@ import type { CvFile, CvFileSections, CvVariantDefinition } from '@rendercv/cont
 import {
   filterDisabledSectionsFromCvYaml,
   filterHiddenEntriesFromCvYaml,
-  resolveFileSections,
-  stripEmptySectionsFromCvYaml
+  resolveFileSections
 } from '@rendercv/core';
+import { compileRenderCvSections } from '@rendercv/primitives';
 import YAML from 'yaml';
-import {
-  normalizeCompatibilityCvYaml,
-  repairFlattenedPositionDatesInCvYaml,
-  restoreAhmadStylePositionMarkersInCvYaml,
-  stripPositionMarkersFromCvYaml,
-  themeUsesPositionSpacingMarkers
-} from './normalize-compat-cv';
 
 const LEGACY_DESIGN_KEY_PATTERN =
   /^\s*(font_size|page_size|keep_sections_together|keep_entries_together|prevent_orphaned_headers|section_heading_size)\s*:/m;
 
 function looksLikeLegacyDesignSchema(design: string) {
   return LEGACY_DESIGN_KEY_PATTERN.test(design);
-}
-
-function readThemeName(designContent: string | undefined) {
-  if (!designContent?.trim()) {
-    return undefined;
-  }
-
-  try {
-    const parsed = YAML.parse(designContent);
-    if (
-      parsed &&
-      typeof parsed === 'object' &&
-      'design' in parsed &&
-      parsed.design &&
-      typeof parsed.design === 'object' &&
-      'theme' in parsed.design &&
-      typeof parsed.design.theme === 'string'
-    ) {
-      return parsed.design.theme;
-    }
-  } catch {
-    return undefined;
-  }
-
-  return undefined;
 }
 
 export function normalizeLegacyDesignYaml(designContent: string | undefined) {
@@ -143,17 +111,8 @@ export function prepareViewerSections(
   variant?: CvVariantDefinition | null
 ): CvFileSections {
   const design = normalizeLegacyDesignYaml(sections.design) ?? sections.design;
-  const normalizedCv = normalizeCompatibilityCvYaml(sections.cv, { variant: variant ?? undefined });
-  const themeName = readThemeName(design);
-  const strippedCv = stripPositionMarkersFromCvYaml(normalizedCv);
-  const repairedCv = themeUsesPositionSpacingMarkers(themeName)
-    ? restoreAhmadStylePositionMarkersInCvYaml(strippedCv)
-    : repairFlattenedPositionDatesInCvYaml(strippedCv);
-
-  return {
-    ...sections,
-    // Never render a section header with no entries under it.
-    cv: stripEmptySectionsFromCvYaml(repairedCv),
-    design
-  };
+  return compileRenderCvSections({
+    sections: { ...sections, design },
+    variant: variant ?? undefined
+  }).sections;
 }

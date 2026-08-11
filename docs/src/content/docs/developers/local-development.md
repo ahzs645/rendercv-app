@@ -8,8 +8,11 @@ Use pnpm from the repository root.
 ## Install
 
 ```sh
+git submodule update --init --recursive
 pnpm install
 ```
+
+The recursive checkout pins both the shared `rendercv-toolkit` compiler and the theme repository. Update either submodule deliberately and commit the resulting gitlink.
 
 The repository declares the pnpm version in the root `package.json`.
 

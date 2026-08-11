@@ -11,13 +11,13 @@ import { useIsMobile } from '../lib/use-mobile';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
-import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
 import {
+  parseCvVariantsYaml,
   normalizeCompatibilityCvYaml,
   repairFlattenedPositionDatesInCvYaml,
   stripPositionMarkersFromCvYaml,
   themeUsesPositionSpacingMarkers
-} from '../features/viewer/normalize-compat-cv';
+} from '@rendercv/primitives';
 import {
   normalizeLegacyDesignYaml,
   prepareViewerSections,
