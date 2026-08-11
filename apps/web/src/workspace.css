@@ -34,18 +34,110 @@
 @media (hover: none) {
   .sidebar-file-menu-trigger {
     opacity: 1;
-    width: 1.75rem;
-    height: 1.75rem;
-    top: 0.125rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    top: 0;
   }
 
   .sidebar-file-row-button {
-    padding-right: 2rem;
+    padding-right: 3rem;
+    min-height: 2.75rem;
+  }
+
+  /* Sidebar actions and footer links: 36-40px rows on a touch screen. */
+  [data-sidebar-mode] button,
+  [data-sidebar-mode] a {
+    min-height: 2.75rem;
+  }
+}
+
+/*
+ * Touch sizing for the form editor. These controls are laid out at desktop
+ * sizes -- 36px icon buttons, and text actions ("Add", "Flavor") only as tall
+ * as their 11px type -- which leaves several of them well under the 44px
+ * guideline on a phone. Grow the hit area without moving anything: the icon
+ * buttons get real height, and the text actions get a transparent overlay that
+ * extends past their box.
+ */
+@media (hover: none) {
+  .form-touch-target {
+    position: relative;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  /* For inline text actions, keep the type where it is and grow the hit box. */
+  .form-touch-inline {
+    position: relative;
+  }
+
+  .form-touch-inline::after {
+    content: '';
+    position: absolute;
+    inset: -1rem -0.75rem;
+  }
+
+  /*
+   * Hit area only -- no layout width. The entry expand/collapse chevrons sit in
+   * a grid column that the field content lines up against, so giving them a
+   * 44px min-width shoved the whole text column 30px to the right on a screen
+   * that has none to spare.
+   */
+  .form-touch-hit {
+    position: relative;
+  }
+
+  .form-touch-hit::after {
+    content: '';
+    position: absolute;
+    inset: -0.75rem -1rem;
   }
 }
 
 .prose pre {
   white-space: pre-wrap;
+}
+
+/*
+ * Scroll containers that cut their last visible row through the middle of the
+ * text -- dropdown lists, the fit-to-page section list, the mobile actions
+ * sheet -- read as a rendering bug rather than an invitation to scroll. Fade
+ * the clipped edge so the cut is obviously a boundary, and drop the fade when
+ * there is nothing more to scroll to.
+ */
+.scroll-fade {
+  --scroll-fade-size: 1.75rem;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--scroll-fade-size),
+    #000 calc(100% - var(--scroll-fade-size)),
+    transparent 100%
+  );
+  animation: scroll-fade-edges linear both;
+  animation-timeline: scroll(self block);
+}
+
+/* Only fade the edge that actually has content beyond it. */
+@keyframes scroll-fade-edges {
+  0% {
+    mask-image: linear-gradient(
+      to bottom,
+      #000 0,
+      #000 calc(100% - var(--scroll-fade-size)),
+      transparent 100%
+    );
+  }
+  100% {
+    mask-image: linear-gradient(to bottom, transparent 0, #000 var(--scroll-fade-size), #000 100%);
+  }
+}
+
+/* Without scroll-driven animations, keep a static fade on both edges. */
+@supports not (animation-timeline: scroll(self block)) {
+  .scroll-fade {
+    animation: none;
+  }
 }
 
 @keyframes section-flash {

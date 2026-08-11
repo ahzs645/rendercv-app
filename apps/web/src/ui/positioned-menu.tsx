@@ -195,7 +195,7 @@ export function PositionedMenu({
       // overflow-x is pinned explicitly: leaving it `visible` next to an `auto`
       // y-axis would make the browser compute it to `auto` and add a stray
       // horizontal scrollbar.
-      className={`z-50 overflow-y-auto overflow-x-hidden ${className}`}
+      className={`scroll-fade z-50 overflow-y-auto overflow-x-hidden ${className}`}
       role={role === 'none' ? undefined : role}
       style={
         style ?? {

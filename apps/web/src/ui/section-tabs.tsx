@@ -80,9 +80,18 @@ export function SectionTabs({
   const showVariantControls = Boolean(variant && variant.options.length > 0);
 
   return (
-    <div className="shrink-0 border-b border-border px-3 pt-2 sm:px-2 sm:pt-1" data-onboarding="section-tabs">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:flex-1 sm:px-0">
+    <div className="shrink-0 border-b border-border px-3 pt-1 pb-1 sm:px-2 sm:pt-1 sm:pb-0" data-onboarding="section-tabs">
+      {/* Two behaviours from one row. On a phone the tabs and the variant/theme
+          controls share a single horizontally scrollable band, which reclaims
+          the ~50px the second row used to cost on a screen where the header was
+          already taking a quarter of the viewport. From `sm` up the row wraps
+          instead: the tab strip keeps its intrinsic width, so when the two no
+          longer fit side by side — which happens well above the mobile
+          breakpoint, since this row lives inside the editor pane — the variant
+          controls drop to their own line rather than pushing "Settings" out of
+          view. */}
+      <div className="-mx-1 flex items-center gap-x-3 gap-y-1 overflow-x-auto px-1 sm:mx-0 sm:flex-wrap sm:overflow-x-visible sm:px-0">
+        <div className="shrink-0 sm:max-w-full sm:overflow-x-auto">
           <div className="inline-flex min-h-11 min-w-max items-center justify-center rounded-lg bg-transparent p-[3px] text-muted-foreground sm:h-9 sm:min-h-0">
           {TAB_ORDER.map((section) => (
             <button
@@ -104,7 +113,7 @@ export function SectionTabs({
 
         {showVariantControls || (active === 'cv' && selectedFile) ? (
           <div
-            className="-mx-1 flex flex-nowrap items-center gap-1 overflow-visible px-1 sm:ml-3 sm:shrink-0 sm:gap-0.5 sm:px-0"
+            className="flex shrink-0 flex-nowrap items-center gap-1 overflow-visible sm:ml-auto sm:gap-0.5"
             data-testid="variant-selector"
           >
             {active === 'cv' && selectedFile ? (

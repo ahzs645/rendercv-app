@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/*
+ * Without this plugin every `prose` class in the app is a no-op, and Tailwind's
+ * preflight has already reset headings to inherit their size — so the Privacy
+ * and Terms pages and the assistant's markdown replies rendered as one
+ * undifferentiated block of body text.
+ */
+@plugin "@tailwindcss/typography";
+
 @theme {
   --font-sans: "DM Sans Variable", sans-serif;
   --radius: 0.625rem;

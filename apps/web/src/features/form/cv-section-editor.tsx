@@ -390,7 +390,8 @@ function SectionEditor({
           label="section"
         />
         <input
-          className={`ml-6 min-w-0 flex-1 border-b border-muted-foreground/40 bg-transparent py-2 pr-[76px] text-base font-semibold outline-none sm:ml-0 sm:py-0 sm:pr-2 sm:text-[15px] ${
+          aria-label="Section title"
+          className={`ml-10 min-h-11 min-w-0 flex-1 border-b border-muted-foreground/40 bg-transparent py-2 pr-[76px] text-base font-semibold outline-none sm:ml-0 sm:min-h-0 sm:py-0 sm:pr-2 sm:text-[15px] ${
             hiddenFromResume ? 'text-foreground/40 line-through decoration-1' : 'text-foreground/80'
           }`}
           value={title}
@@ -417,7 +418,7 @@ function SectionEditor({
           {onToggleDisabled ? (
             <button
               type="button"
-              className={`flex size-9 items-center justify-center rounded-md transition-opacity hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
+              className={`form-touch-target flex size-9 items-center justify-center rounded-md transition-opacity hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
                 variantExcluded
                   ? 'text-primary opacity-100'
                   : disabled
@@ -449,7 +450,7 @@ function SectionEditor({
           ) : null}
           <button
             type="button"
-            className="flex size-9 items-center justify-center rounded-md text-muted-foreground/70 opacity-90 transition-opacity hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 sm:size-6 sm:rounded-none sm:hover:bg-transparent md:opacity-60 md:group-hover/section:opacity-100"
+            className="form-touch-target flex size-9 items-center justify-center rounded-md text-muted-foreground/70 opacity-90 transition-opacity hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 sm:size-6 sm:rounded-none sm:hover:bg-transparent md:opacity-60 md:group-hover/section:opacity-100"
             aria-label="Delete section"
             onClick={onDelete}
           >
@@ -609,7 +610,7 @@ function AddSectionMenu({
 
 function EntryTypeChooser({ onChoose }: { onChoose: (entryType: string) => void }) {
   return (
-    <div className="flex flex-col gap-2 pt-1 pb-3 pl-4">
+    <div className="flex flex-col gap-2 pt-1 pb-3 pl-1 sm:pl-4">
       <p className="text-[11px] tracking-wider text-muted-foreground/50 uppercase">Entry type</p>
       <div className="flex flex-wrap gap-1">
         {entryTypeOptions.map((option) => (

@@ -111,6 +111,20 @@ export const MonacoEditor = forwardRef<MonacoEditorHandle, MonacoEditorProps>(fu
     };
   }, []);
 
+  // The theme above is only read when the editor is constructed, so without
+  // this the editor stayed on `vs` after switching the app to dark and only
+  // caught up when a section change remounted it. `setTheme` is global to
+  // monaco, which is what we want — every editor instance follows the app.
+  useEffect(() => {
+    const root = document.documentElement;
+    const sync = () => monaco.editor.setTheme(root.classList.contains('dark') ? 'vs-dark' : 'vs');
+
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) {

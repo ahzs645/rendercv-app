@@ -1,5 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+
+/**
+ * Only one tooltip may be open at a time. Hover and focus open independently,
+ * so clicking a toolbar button (which leaves it focused) and then having a
+ * sibling appear under the pointer used to render two bubbles stacked on top of
+ * each other. Claiming a shared slot makes the newest one win.
+ */
+const openListeners = new Map<string, () => void>();
+
+function claimTooltipSlot(id: string) {
+  for (const [otherId, close] of openListeners) {
+    if (otherId !== id) {
+      close();
+    }
+  }
+}
 
 export function StyledTooltip({
   children,
@@ -14,6 +30,26 @@ export function StyledTooltip({
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [visible, setVisible] = useState(false);
   const bubbleRef = useRef<HTMLSpanElement>(null);
+  const id = useId();
+
+  const show = useCallback(() => {
+    claimTooltipSlot(id);
+    setVisible(true);
+  }, [id]);
+
+  const hide = useCallback(() => setVisible(false), []);
+
+  useEffect(() => {
+    if (!visible) {
+      openListeners.delete(id);
+      return;
+    }
+
+    openListeners.set(id, () => setVisible(false));
+    return () => {
+      openListeners.delete(id);
+    };
+  }, [id, visible]);
 
   useEffect(() => {
     if (!visible || !triggerRef.current) {
@@ -48,10 +84,10 @@ export function StyledTooltip({
     <span
       ref={triggerRef}
       className="group/tooltip relative inline-flex"
-      onMouseEnter={() => setVisible(true)}
-      onMouseLeave={() => setVisible(false)}
-      onFocus={() => setVisible(true)}
-      onBlur={() => setVisible(false)}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
     >
       {children}
       {visible && pos ? (

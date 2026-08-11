@@ -728,6 +728,14 @@ export function useViewerRenderer(sections?: CvFileSections) {
     [loadValidationResult]
   );
 
+  // Renders can fail for reasons that have nothing to do with the CV — the
+  // typesetting package is fetched over the network at render time — so the
+  // error state needs a way back without reloading the app.
+  const retryRender = useCallback(() => {
+    setRenderErrors([]);
+    setRenderVersion((current) => current + 1);
+  }, []);
+
   const zoomIn = useCallback(() => {
     setZoomFactor((current) => clampZoom(current + ZOOM_STEP));
   }, []);
@@ -759,6 +767,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomOut,
       zoomReset,
       setZoom,
+      retryRender,
       renderToPdf,
       renderToSvg,
       renderToTypst,
@@ -779,6 +788,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       zoomOut,
       zoomReset,
       setZoom,
+      retryRender,
       renderToPdf,
       renderToSvg,
       renderToTypst,

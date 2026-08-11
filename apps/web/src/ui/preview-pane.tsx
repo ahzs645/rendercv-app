@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import { AppWindow, Download, Eye, EyeOff, FileCode2, Minus, Plus, X } from 'lucide-react';
+import { AppWindow, Download, Eye, EyeOff, FileCode2, Minus, Plus, RotateCw, TriangleAlert, X } from 'lucide-react';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { preferencesStore } from '@rendercv/core';
 import { downloadBlob } from '../features/viewer/download';
@@ -20,6 +20,73 @@ import { formatRenderErrorMessage } from '../features/viewer/render-error-format
 import { attachZoomGestures } from '../features/viewer/zoom-gestures';
 
 export type ViewerRenderer = ReturnType<typeof useViewerRenderer>;
+
+/**
+ * The renderer downloads its typesetting packages at render time, so a flaky
+ * connection produces a wasm stack trace hundreds of characters long. Dumping
+ * that into the preview told the user nothing and offered no way out, so the
+ * raw text now sits behind a disclosure under a plain-language summary.
+ */
+const NETWORK_ERROR_HINTS = [
+  'failed to load package',
+  'networkerror',
+  'failed to fetch',
+  'failed to execute \'send\'',
+  'err_internet_disconnected'
+];
+
+function looksLikeNetworkFailure(detail: string) {
+  const haystack = detail.toLowerCase();
+  return NETWORK_ERROR_HINTS.some((hint) => haystack.includes(hint));
+}
+
+function RenderFailure({
+  detail,
+  onRetry,
+  variant
+}: {
+  detail: string;
+  onRetry: () => void;
+  variant: 'init' | 'render';
+}) {
+  const isNetwork = looksLikeNetworkFailure(detail);
+  const title = isNetwork
+    ? "Couldn't download the typesetting packages"
+    : variant === 'init'
+      ? "The preview engine couldn't start"
+      : "This CV couldn't be rendered";
+  const body = isNetwork
+    ? 'RenderCV fetches its Typst packages the first time it renders. Check your connection — or any network filtering — and try again.'
+    : variant === 'init'
+      ? 'Reloading usually clears this. If it keeps happening, the browser may be blocking WebAssembly or local storage.'
+      : 'Check the highlighted fields in the editor, then render again.';
+
+  return (
+    <div className="mx-auto flex max-w-lg flex-col items-start gap-3 rounded-2xl border border-border bg-card p-5 text-sm shadow-sm">
+      <div className="flex items-center gap-2 text-destructive">
+        <TriangleAlert className="size-4 shrink-0" />
+        <p className="font-semibold">{title}</p>
+      </div>
+      <p className="text-muted-foreground">{body}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        <RotateCw className="size-3.5" />
+        Try again
+      </button>
+      <details className="w-full">
+        <summary className="cursor-pointer text-xs text-muted-foreground transition-colors hover:text-foreground">
+          Technical details
+        </summary>
+        <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-muted p-3 text-[11px] leading-relaxed whitespace-pre-wrap break-words text-muted-foreground">
+          {detail}
+        </pre>
+      </details>
+    </div>
+  );
+}
 
 export function PreviewPane({
   fileName,
@@ -431,7 +498,7 @@ function PreviewCanvas({
   const invertPreview = isDark && preferences.previewDarkMode;
 
   const [dismissedWarningsKey, setDismissedWarningsKey] = useState<string | null>(null);
-  const warningsKey = viewer.renderWarnings.join(' ');
+  const warningsKey = viewer.renderWarnings.join('\u0000');
   const showWarningsBanner =
     viewer.renderWarnings.length > 0 && dismissedWarningsKey !== warningsKey;
 
@@ -439,17 +506,22 @@ function PreviewCanvas({
     <div className={shellClassName}>
       <div
         ref={scrollContainerRef}
-        className="h-full overflow-auto rounded-2xl border border-border bg-sidebar p-3 sm:p-6"
+        // Extra bottom padding so the floating "Fit to page" pill has something
+        // to sit over other than the last lines of the resume, and so the page
+        // can be scrolled clear of it. Needed on desktop too: the pill is
+        // anchored to the pane, not the page, so a full-width render runs under
+        // it there as well.
+        className="h-full overflow-auto rounded-2xl border border-border bg-sidebar p-3 pb-20 sm:p-6 sm:pb-24"
         data-zoom-container
       >
         {viewer.initError ? (
-          <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{viewer.initError}</div>
-        ) : viewer.renderErrors.length > 0 ? (
-          <div className="space-y-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-            {viewer.renderErrors.map((error, index) => (
-              <p key={`${error.message}-${index}`}>{formatRenderErrorMessage(error)}</p>
-            ))}
-          </div>
+          <RenderFailure detail={viewer.initError} onRetry={viewer.retryRender} variant="init" />
+        ) : viewer.renderErrors.length > 0 && viewer.svgPages.length === 0 ? (
+          <RenderFailure
+            detail={viewer.renderErrors.map(formatRenderErrorMessage).join('\n\n')}
+            onRetry={viewer.retryRender}
+            variant="render"
+          />
         ) : viewer.svgPages.length > 0 ? (
           <div
             className="mx-auto flex max-w-4xl flex-col gap-4 sm:gap-6"
@@ -457,8 +529,23 @@ function PreviewCanvas({
             data-zoom-layer
             style={{ width: `${viewer.zoomFactor * 100}%` }}
           >
+            {/* A render can fail after a good one has already been shown. Keep
+                the last good pages on screen and say they're stale, rather than
+                replacing the user's work with an error card. */}
+            {viewer.renderErrors.length > 0 ? (
+              <div className="space-y-1 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                <p className="font-medium">
+                  Showing the last successful render — the newest changes couldn't be rendered.
+                </p>
+                <ul className="list-inside list-disc space-y-0.5">
+                  {viewer.renderErrors.map((error, index) => (
+                    <li key={`${error.message}-${index}`}>{formatRenderErrorMessage(error)}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {showWarningsBanner ? (
-              <div className="relative space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 pr-9 text-xs text-amber-900">
+              <div className="relative space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 pr-9 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
                 <p className="font-medium">
                   Some fields in your CV weren't directly supported — they were mapped, rendered as generic entries, or removed.
                 </p>
@@ -471,7 +558,7 @@ function PreviewCanvas({
                   type="button"
                   onClick={() => setDismissedWarningsKey(warningsKey)}
                   aria-label="Dismiss warnings"
-                  className="absolute right-2 top-2 rounded p-1 text-amber-700 transition hover:bg-amber-100 hover:text-amber-900"
+                  className="absolute right-2 top-2 rounded p-1 text-amber-700 transition hover:bg-amber-100 hover:text-amber-900 dark:text-amber-300 dark:hover:bg-amber-500/20 dark:hover:text-amber-100"
                 >
                   <X className="size-3.5" />
                 </button>

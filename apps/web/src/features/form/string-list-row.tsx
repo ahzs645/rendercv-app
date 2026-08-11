@@ -113,14 +113,15 @@ function SortableStringItem({
         />
         <button
           type="button"
-          className="form-item-control absolute top-0 right-0 flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:top-1/2 sm:right-3 sm:size-6 sm:-translate-y-1/2 sm:rounded-none sm:hover:bg-transparent"
+          className="form-item-control form-touch-target absolute top-0 right-0 flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:top-1/2 sm:right-3 sm:size-6 sm:-translate-y-1/2 sm:rounded-none sm:hover:bg-transparent"
           onClick={() => onRemove(index)}
           aria-label="Remove"
         >
           <X className="size-4 sm:size-3" />
         </button>
-        <div className="pr-9 pl-6 sm:pr-7 sm:pl-0">
+        <div className="pr-11 pl-10 sm:pr-7 sm:pl-0">
           <TextRow
+            ariaLabel={`Item ${index + 1}`}
             value={item}
             onChange={(nextValue) => onUpdate(index, nextValue)}
             placeholder={placeholder}
@@ -311,9 +312,10 @@ export function StringListRow({
                 ))}
                 <button
                   type="button"
-                  className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground"
+                  className="form-touch-inline flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground"
                   onClick={addFlavor}
                   aria-label="Add flavor"
+                  title="Flavors are alternate wordings of the same bullet — RenderCV picks one per variant, so you can tailor a resume without duplicating the entry."
                 >
                   <Plus className="size-2.5" />
                 </button>
@@ -322,9 +324,9 @@ export function StringListRow({
             {allowFlavors && !hasFlavors && (
               <button
                 type="button"
-                className="flex items-center gap-0.5 text-[11px] text-muted-foreground/40 transition-colors hover:text-foreground"
+                className="form-touch-inline flex items-center gap-0.5 text-[11px] text-muted-foreground/40 transition-colors hover:text-foreground"
                 onClick={addFlavor}
-                title="Add flavor variants"
+                title="Flavors are alternate wordings of the same bullet — RenderCV picks one per variant, so you can tailor a resume without duplicating the entry."
               >
                 <Plus className="size-2.5" />
                 Flavor
@@ -332,7 +334,7 @@ export function StringListRow({
             )}
             <button
               type="button"
-              className="flex items-center gap-0.5 text-[11px] text-muted-foreground/70 hover:text-foreground"
+              className="form-touch-inline flex items-center gap-0.5 text-[11px] text-muted-foreground/70 hover:text-foreground"
               onClick={addItem}
             >
               <Plus className="size-3" />
