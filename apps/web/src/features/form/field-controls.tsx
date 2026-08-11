@@ -407,6 +407,7 @@ function DimensionRow({
         <input
           type="number"
           step="0.01"
+          aria-label={label}
           className="[appearance:textfield] bg-transparent py-2 text-base outline-none select-text placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50 sm:py-0 sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none cursor-ew-resize"
           style={{ width: `${Math.max((num || '0').length * 0.62 + 0.5, 0.75)}rem` }}
           value={num}
@@ -478,6 +479,7 @@ function BooleanRow({
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-label={label}
         className={`inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-transparent transition-all outline-none sm:h-[1.15rem] sm:w-8 ${
           checked ? 'bg-primary' : 'bg-input'
         }`}
@@ -526,6 +528,7 @@ function ColorRow({
       />
       <input
         type="text"
+        aria-label={label}
         placeholder="#000000"
         className="min-w-0 flex-1 bg-transparent py-2 font-mono text-base outline-none select-text placeholder:text-muted-foreground/50 sm:ml-2 sm:py-0.5 sm:text-sm"
         value={value}
@@ -589,29 +592,35 @@ function DateRow({
         {field.label}
       </span>
       <div className="flex min-w-0 flex-1 items-center gap-1">
+        <textarea
+          rows={1}
+          aria-label={field.label}
+          className="field-sizing-content min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2 text-base outline-none select-text placeholder:text-muted-foreground/50 sm:min-h-0 sm:py-0 sm:text-sm"
+          value={value}
+          placeholder={field.placeholder}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {/* Sits after the value, not before it. Leading the row with a grey
+            "Present" made it look like a label describing the date that
+            followed — so an end date of 2023-05 read as "Present 2023-05". */}
         {isEndDate && (
           <button
             type="button"
-            className={`shrink-0 rounded-md px-3 py-2 text-xs transition-colors sm:px-1.5 sm:py-0.5 sm:text-[11px] ${
+            aria-pressed={isPresent}
+            title={isPresent ? 'Set a specific end date' : 'Mark this as ongoing'}
+            className={`min-h-11 shrink-0 rounded-md border px-3 py-2 text-xs transition-colors sm:min-h-0 sm:px-1.5 sm:py-0.5 sm:text-[11px] ${
               isPresent
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                ? 'border-primary/30 bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
             onClick={() => onChange(isPresent ? '' : 'present')}
           >
             Present
           </button>
         )}
-        <textarea
-          rows={1}
-          className="field-sizing-content min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2 text-base outline-none select-text placeholder:text-muted-foreground/50 sm:min-h-0 sm:py-0 sm:text-sm"
-          value={value}
-          placeholder={field.placeholder}
-          onChange={(event) => onChange(event.target.value)}
-        />
         <button
           type="button"
-          className={`inline-flex size-10 shrink-0 items-center justify-center rounded-md transition-colors sm:size-auto sm:rounded sm:p-0.5 ${
+          className={`inline-flex size-11 shrink-0 items-center justify-center rounded-md transition-colors sm:size-auto sm:rounded sm:p-0.5 ${
             open
               ? 'bg-primary/10 text-primary'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'

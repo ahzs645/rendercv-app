@@ -207,7 +207,7 @@ export function ThemeLibraryDialog({
                             src={thumbnail.url}
                           />
                         ) : thumbnail?.status === 'error' ? (
-                          <div className="flex h-full items-center justify-center bg-amber-50 p-4 text-center text-xs text-amber-900">
+                          <div className="flex h-full items-center justify-center bg-amber-50 p-4 text-center text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
                             {thumbnail.message}
                           </div>
                         ) : (

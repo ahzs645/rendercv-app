@@ -484,7 +484,7 @@ export function WorkspaceToolbar({
 
   if (isMobile) {
     return (
-      <div className="flex flex-col gap-3 px-4 py-3">
+      <div className="flex flex-col gap-2 px-4 py-2">
         <div className="flex items-center gap-2">
           <ToolbarIconButton
             active={!sidebarCollapsed}
@@ -493,12 +493,12 @@ export function WorkspaceToolbar({
           >
             <PanelLeft className="size-4" />
           </ToolbarIconButton>
+          {/* No "Resume workspace" eyebrow: it labelled the only screen there
+              is, cost a line of a header that already took a quarter of a
+              phone, and wrapped to two lines at 320px. */}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-foreground">
               {selectedFile?.name ?? 'RenderCV'}
-            </p>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Resume workspace
             </p>
           </div>
           {!isReadOnly ? (
@@ -553,36 +553,43 @@ export function WorkspaceToolbar({
                           onChange={() => preferencesStore.patch({ yamlEditor: !preferences.yamlEditor })}
                         />
                       </div>
+                      {/* Source order is render order in a grid: Bold sat next
+                          to Link with Italic pushed alone onto a second row. */}
                       {!isReadOnly ? (
                         <div className="grid grid-cols-3 gap-2">
-                          <MobileSheetButton
-                            disabled={preferences.yamlEditor}
-                            label={preferences.entriesExpanded ? 'Collapse' : 'Expand'}
-                            onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
-                          >
-                            <ChevronsDownUp className="size-4" />
-                          </MobileSheetButton>
-                          <MobileSheetButton
-                            disabled={!canFormat}
-                            label="Bold"
-                            onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
-                          >
-                            <Bold className="size-4" />
-                          </MobileSheetButton>
-                          <MobileSheetButton
-                            disabled={!canFormat}
-                            label="Link"
-                            onClick={() => editorRef.current?.insertMarkdownLink()}
-                          >
-                            <LinkIcon className="size-4" />
-                          </MobileSheetButton>
-                          <MobileSheetButton
-                            disabled={!canFormat}
-                            label="Italic"
-                            onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
-                          >
-                            <Italic className="size-4" />
-                          </MobileSheetButton>
+                          {preferences.yamlEditor ? (
+                            <>
+                              <MobileSheetButton
+                                disabled={!canFormat}
+                                label="Bold"
+                                onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
+                              >
+                                <Bold className="size-4" />
+                              </MobileSheetButton>
+                              <MobileSheetButton
+                                disabled={!canFormat}
+                                label="Italic"
+                                onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
+                              >
+                                <Italic className="size-4" />
+                              </MobileSheetButton>
+                              <MobileSheetButton
+                                disabled={!canFormat}
+                                label="Link"
+                                onClick={() => editorRef.current?.insertMarkdownLink()}
+                              >
+                                <LinkIcon className="size-4" />
+                              </MobileSheetButton>
+                            </>
+                          ) : (
+                            <MobileSheetButton
+                              className="col-span-3"
+                              label={preferences.entriesExpanded ? 'Collapse all entries' : 'Expand all entries'}
+                              onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
+                            >
+                              <ChevronsDownUp className="size-4" />
+                            </MobileSheetButton>
+                          )}
                         </div>
                       ) : null}
                       {preferences.yamlEditor ? (
@@ -700,12 +707,10 @@ export function WorkspaceToolbar({
         <div className="flex items-center gap-2">
           <MobilePaneSwitch activePane={mobilePane} onChange={onMobilePaneChange} />
           {showMobileEditorControls ? (
+            // Copy YAML lives in the actions sheet only. Having it here too
+            // meant the same control was on screen twice whenever the sheet was
+            // open, on the layout with the least room to spare.
             <div className="ml-auto flex items-center gap-2">
-              {preferences.yamlEditor ? (
-                <ToolbarIconButton ariaLabel="Copy YAML source" onClick={() => void copyYamlSource()}>
-                  <Copy className="size-4" />
-                </ToolbarIconButton>
-              ) : null}
               <YamlToggle
                 checked={preferences.yamlEditor}
                 className={`${MOBILE_CONTROL_HEIGHT} px-2.5`}
@@ -797,8 +802,12 @@ export function WorkspaceToolbar({
   }
 
   return (
-    <div className="flex min-h-12 flex-nowrap items-center justify-between gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
+    // Wraps rather than scrolls. The row needs ~1045px at its widest, so on any
+    // window under ~1400px a nowrap row pushed the right-hand controls off the
+    // edge — and the scrollbar used to be hidden, so nothing said they were
+    // there. Letting the two groups stack is the honest degradation.
+    <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-2 gap-y-2 px-4 py-3">
+      <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-1.5">
         <ToolbarIconButton
           active={!sidebarCollapsed}
           ariaLabel={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
@@ -807,7 +816,10 @@ export function WorkspaceToolbar({
         >
           <PanelLeft className="size-4" />
         </ToolbarIconButton>
-        <div className="mr-1 hidden max-w-32 min-w-0 xl:block">
+        {/* The sidebar turns into an overlay drawer below 1223px, so if this
+            label only appeared at `xl` there was a band where nothing on screen
+            named the CV being edited. */}
+        <div className="mr-1 max-w-40 min-w-0">
           <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {selectedFile?.name ?? 'RenderCV'}
           </p>
@@ -834,38 +846,46 @@ export function WorkspaceToolbar({
             >
               <Redo2 className="size-4" />
             </ToolbarIconButton>
-            <ToolbarIconButton
-              ariaLabel={preferences.entriesExpanded ? 'Collapse all entries' : 'Expand all entries'}
-              disabled={preferences.yamlEditor}
-              onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
-              size="md"
-            >
-              <ChevronsDownUp className="size-4" />
-            </ToolbarIconButton>
-            <ToolbarIconButton
-              ariaLabel="Bold"
-              disabled={!canFormat}
-              onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
-              size="md"
-            >
-              <Bold className="size-4" />
-            </ToolbarIconButton>
-            <ToolbarIconButton
-              ariaLabel="Italic"
-              disabled={!canFormat}
-              onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
-              size="md"
-            >
-              <Italic className="size-4" />
-            </ToolbarIconButton>
-            <ToolbarIconButton
-              ariaLabel="Insert link"
-              disabled={!canFormat}
-              onClick={() => editorRef.current?.insertMarkdownLink()}
-              size="md"
-            >
-              <LinkIcon className="size-4" />
-            </ToolbarIconButton>
+            {/* These four are mode-specific: collapse/expand only means
+                something in the form editor, and the markdown formatters only
+                in YAML. Showing the inapplicable set greyed out kept four dead
+                controls in a row that was already too wide. */}
+            {!preferences.yamlEditor ? (
+              <ToolbarIconButton
+                ariaLabel={preferences.entriesExpanded ? 'Collapse all entries' : 'Expand all entries'}
+                onClick={() => preferencesStore.patch({ entriesExpanded: !preferences.entriesExpanded })}
+                size="md"
+              >
+                <ChevronsDownUp className="size-4" />
+              </ToolbarIconButton>
+            ) : (
+              <>
+                <ToolbarIconButton
+                  ariaLabel="Bold"
+                  disabled={!canFormat}
+                  onClick={() => editorRef.current?.surroundSelection('**', '**', 'bold text')}
+                  size="md"
+                >
+                  <Bold className="size-4" />
+                </ToolbarIconButton>
+                <ToolbarIconButton
+                  ariaLabel="Italic"
+                  disabled={!canFormat}
+                  onClick={() => editorRef.current?.surroundSelection('_', '_', 'italic text')}
+                  size="md"
+                >
+                  <Italic className="size-4" />
+                </ToolbarIconButton>
+                <ToolbarIconButton
+                  ariaLabel="Insert link"
+                  disabled={!canFormat}
+                  onClick={() => editorRef.current?.insertMarkdownLink()}
+                  size="md"
+                >
+                  <LinkIcon className="size-4" />
+                </ToolbarIconButton>
+              </>
+            )}
           </>
         ) : null}
         <YamlToggle
@@ -884,7 +904,7 @@ export function WorkspaceToolbar({
         ) : null}
         {!isReadOnly ? <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} /> : null}
       </div>
-      <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
+      <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1.5">
         <ToolbarControlGroup>
           <ToolbarIconButton
             ariaLabel="Zoom out"
@@ -1073,26 +1093,32 @@ function YamlToggle({
   label: string;
   onChange: () => void;
 }) {
+  // One button wrapping both the track and the word. Only the 32x18px track
+  // used to be clickable while the label beside it was inert text, which is a
+  // hard target on a phone and a surprising one anywhere.
   return (
-    <div className={`flex items-center gap-2 rounded-xl border border-border bg-background ${className}`}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={`Toggle ${label} editor`}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={`Toggle ${label} editor`}
+      onClick={onChange}
+      className={`flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background transition-colors hover:bg-accent ${className}`}
+    >
+      <span
+        aria-hidden="true"
         className={`inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent transition-all ${
           checked ? 'bg-primary' : 'bg-input'
         }`}
-        onClick={onChange}
       >
         <span
           className={`block size-4 rounded-full bg-background transition-transform ${
             checked ? 'translate-x-[calc(100%-2px)]' : 'translate-x-0'
           }`}
         />
-      </button>
+      </span>
       <span className="text-xs font-medium text-foreground">{label}</span>
-    </div>
+    </button>
   );
 }
 
@@ -1222,9 +1248,13 @@ function ShareComboButton({
           }}
         />
         <div className="my-1 h-px bg-border/60" />
+        {/* Named for what the dialog actually adds. It used to read "More share
+            options", which opened a dialog listing the same four actions again
+            plus the export ones — two levels of disclosure to reach a superset
+            of what was already on screen. */}
         <ToolbarMenuItem
-          icon={<Share2 className="size-4" />}
-          label="More share options"
+          icon={<FileUp className="size-4" />}
+          label="Export, backup and review…"
           onClick={() => {
             onMenuOpenChange(false);
             onOpenShareDialog();

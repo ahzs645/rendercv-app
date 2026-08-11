@@ -312,3 +312,48 @@ export function insertRecordEntryAt(
   entries.splice(clampedIndex, 0, [key, value]);
   return Object.fromEntries(entries);
 }
+
+/**
+ * RenderCV dates are either a single `date` or a `start_date`/`end_date` range —
+ * never both. The templates declare all three, so the form used to render an
+ * empty "Date" field above a filled-in range on every dated entry, which read
+ * as something the user had forgotten to fill in.
+ *
+ * Show whichever scheme the entry is actually using, defaulting to the range.
+ */
+export function activeDateScheme(entry: Record<string, unknown>): 'single' | 'range' {
+  const hasSingle = stringValue(getNestedValue(entry, ['date'])).trim().length > 0;
+  if (hasSingle) {
+    return 'single';
+  }
+  return 'range';
+}
+
+const RANGE_DATE_KEYS = new Set(['start_date', 'end_date']);
+
+export function filterDateFields<T extends { path: string[] }>(
+  fields: T[],
+  entry: Record<string, unknown>
+): T[] {
+  const scheme = activeDateScheme(entry);
+  return fields.filter((field) => {
+    if (field.path.length !== 1) {
+      return true;
+    }
+    const key = field.path[0]!;
+    if (key === 'date') {
+      return scheme === 'single';
+    }
+    if (RANGE_DATE_KEYS.has(key)) {
+      return scheme === 'range';
+    }
+    return true;
+  });
+}
+
+/** True when the entry has any date field at all, single or range. */
+export function hasDateFields<T extends { path: string[] }>(fields: T[]): boolean {
+  return fields.some(
+    (field) => field.path.length === 1 && (field.path[0] === 'date' || RANGE_DATE_KEYS.has(field.path[0]!))
+  );
+}

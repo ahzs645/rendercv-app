@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { GitCompareArrows, Check, Pencil, Upload, WandSparkles, X } from 'lucide-react';
+import { GitCompareArrows, Check, FilePlus2, FileText, Pencil, Upload, WandSparkles, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, preferencesStore, resolveFileSections, reviewStore, variantLabel } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
@@ -530,7 +530,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
     <Sidebar prepareYamlImport={prepareYamlImport} validateYamlImport={validateYamlImport} />
   );
 
-  const sectionTabsElement = (
+  const sectionTabsElement = !selectedFile ? null : (
     <SectionTabs
       active={activeSection}
       onSelect={(section) => {
@@ -651,7 +651,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
             Changed fields are highlighted in the form view.
           </span>
         </div>
-      ) : selectedReviewSession?.linkedFileId === selectedFile?.id ? (
+      ) : selectedFile && selectedReviewSession?.linkedFileId === selectedFile.id ? (
         <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/5 px-4 py-2 text-xs text-primary">
           <GitCompareArrows className="size-3.5 shrink-0" />
           <span>
@@ -661,7 +661,9 @@ export function Workspace({ active = true }: { active?: boolean }) {
         </div>
       ) : null}
       <div className="min-h-0 flex-1 p-4 pt-3 sm:p-5 sm:pt-4">
-        {preferences.yamlEditor ? (
+        {!selectedFile ? (
+          <NoCvSelected onImportYaml={importYamlFile} />
+        ) : preferences.yamlEditor ? (
           <Suspense fallback={<EditorLoadingSkeleton />}>
             <MonacoEditor
               key={activeSection}
@@ -732,7 +734,13 @@ export function Workspace({ active = true }: { active?: boolean }) {
 
   const canFit = Boolean(selectedFile && !selectedFile.isReadOnly && rawSections?.cv);
   const hiddenEntryCount = countHiddenEntries(selectedFile?.hiddenEntries);
-  const previewPane = (
+  const previewPane = !selectedFile ? (
+    <div className="flex h-full items-center justify-center p-6">
+      <p className="max-w-xs text-center text-sm text-muted-foreground">
+        The rendered CV appears here once you create or import one.
+      </p>
+    </div>
+  ) : (
     <div className="relative h-full">
       <PreviewPaneView
         fileName={selectedFile?.name ?? 'RenderCV'}
@@ -889,6 +897,61 @@ export function Workspace({ active = true }: { active?: boolean }) {
   );
 }
 
+/**
+ * With no CVs the workspace used to render a live one-line editor and a blank
+ * preview skeleton, with the only guidance tucked into a sidebar that is an
+ * overlay drawer below 1223px. Put the way forward in the main pane instead.
+ */
+function NoCvSelected({ onImportYaml }: { onImportYaml: (file: File) => void | Promise<unknown> }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="flex h-full min-h-0 items-center justify-center p-4">
+      <div className="flex w-full max-w-sm flex-col items-center text-center">
+        <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <FileText className="size-6" />
+        </div>
+        <h2 className="text-base font-semibold text-foreground">No CV open</h2>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Start a new CV from the built-in template, or bring in an existing <code>cv.yaml</code>.
+        </p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => fileStore.createFile()}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <FilePlus2 className="size-4" />
+            Create new CV
+          </button>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <Upload className="size-4" />
+            Import YAML
+          </button>
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground">You can also drop a cv.yaml anywhere on this page.</p>
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".yaml,.yml"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (file) {
+              void onImportYaml(file);
+            }
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function YamlDropOverlay({ pending }: { pending: boolean }) {
   return (
     <div className="pointer-events-none fixed inset-0 z-[80] flex items-center justify-center bg-background/70 p-6 backdrop-blur-sm">
@@ -968,6 +1031,17 @@ function MobileSidebarDrawer({
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
+        {/* The drawer covers the button that opened it and a phone has no
+            Escape key, which left tapping the sliver of backdrop as the only
+            way out. */}
+        <button
+          type="button"
+          aria-label="Close CV list"
+          onClick={onClose}
+          className="absolute top-2 right-2 z-10 inline-flex size-11 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <X className="size-4" />
+        </button>
         {children}
       </div>
     </>

@@ -45,7 +45,10 @@ import {
   labelWidthForFields,
   labelWidthForTemplate,
   dynamicEntryMarker,
-  entryAddLabel
+  entryAddLabel,
+  activeDateScheme,
+  filterDateFields,
+  hasDateFields
 } from './utils';
 
 export function EntryArrayEditor({
@@ -154,7 +157,7 @@ export function EntryArrayEditor({
               </span>
               <div className="flex flex-1 items-center justify-end gap-3">
                 <button
-                  className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:min-h-0 sm:px-0 sm:text-[11px]"
+                  className="form-touch-inline inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground/70 hover:bg-muted hover:text-foreground sm:min-h-0 sm:px-0 sm:text-[11px]"
                   onClick={addEntry}
                   type="button"
                 >
@@ -164,7 +167,7 @@ export function EntryArrayEditor({
               </div>
             </div>
           </div>
-          <div className="pl-2 sm:pl-4">
+          <div className="pl-0 sm:pl-4">
             {entries.length > 0 ? (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
@@ -177,7 +180,7 @@ export function EntryArrayEditor({
         </>
       ) : null}
       {!showHeader ? (
-        <div className="pl-2 sm:pl-4">
+        <div className="pl-0 sm:pl-4">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
               <AnimatePresence initial={false}>{entryList}</AnimatePresence>
@@ -185,7 +188,7 @@ export function EntryArrayEditor({
           </DndContext>
           <button
             type="button"
-            className="mt-2 inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground sm:mt-1.5 sm:min-h-0 sm:px-0 sm:text-xs"
+            className="form-touch-inline mt-2 inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground sm:mt-1.5 sm:min-h-0 sm:px-0 sm:text-xs"
             onClick={addEntry}
           >
             <Plus className="size-3.5" />
@@ -270,11 +273,24 @@ function SortableEntryArrayItem({
       {/* The `-mx-7` gutter only exists from `sm` up: on mobile the form pane has
           less side padding than the gutter, so pulling rows outwards made the
           whole editor scroll sideways. Mobile keeps its controls inside the row. */}
-      <div className="form-item-wrapper form-item-enter-anim relative sm:-mx-7 sm:px-7">
+      {/* Entries used to butt straight up against each other with the same
+          hairline between them as between two fields inside one entry, so the
+          seam between "this job" and "the next job" was invisible. A rule and
+          real spacing from the second entry on gives each one an edge. */}
+      <div
+        className={`form-item-wrapper form-item-enter-anim relative sm:-mx-7 sm:px-7 ${
+          index > 0 ? 'mt-3 border-t border-border pt-3' : ''
+        }`}
+      >
+        {/* Anchored to the top of the entry, not its middle: centring put the
+            handle and the hide/delete cluster beside whichever field happened
+            to fall halfway down, where they read as that row's controls. */}
         <div
           ref={setActivatorNodeRef}
           {...listeners}
-          className="form-item-control absolute top-1/2 left-1 hidden size-6 -translate-y-1/2 items-center justify-center rounded-none cursor-grab touch-none text-muted-foreground/40 active:cursor-grabbing sm:flex"
+          className={`form-item-control absolute left-1 hidden size-6 items-center justify-center rounded-none cursor-grab touch-none text-muted-foreground/40 active:cursor-grabbing sm:flex ${
+            index > 0 ? 'top-4' : 'top-1'
+          }`}
         >
           <GripVertical className="size-3.5" />
         </div>
@@ -284,7 +300,11 @@ function SortableEntryArrayItem({
           onMove={(direction) => onMove(index, direction)}
           label="entry"
         />
-        <div className="absolute top-0 right-0 flex items-center gap-0.5 sm:top-1/2 sm:right-1 sm:-translate-y-1/2 sm:gap-1">
+        <div
+          className={`absolute right-0 flex items-center gap-0.5 sm:right-1 sm:gap-1 ${
+            index > 0 ? 'top-3 sm:top-4' : 'top-0 sm:top-1'
+          }`}
+        >
           {isArchived ? (
             <span
               className="hidden shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline"
@@ -303,7 +323,7 @@ function SortableEntryArrayItem({
           {hiddenState ? (
             <button
               type="button"
-              className={`form-item-control flex size-9 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
+              className={`form-item-control form-touch-target flex size-9 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
                 hiddenByVariant
                   ? 'text-primary'
                   : isHidden
@@ -327,18 +347,20 @@ function SortableEntryArrayItem({
           ) : null}
           <button
             type="button"
-            className="form-item-control flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-6 sm:rounded-none sm:hover:bg-transparent"
+            className="form-item-control form-touch-target flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-6 sm:rounded-none sm:hover:bg-transparent"
             onClick={() => onRemove(index)}
             aria-label="Remove"
           >
             <X className="size-4 sm:size-3" />
           </button>
         </div>
-        <div
-          className={`pl-6 ${hiddenState ? 'pr-[74px]' : 'pr-10'} sm:pr-12 sm:pl-0 ${
-            isHidden ? 'opacity-45' : ''
-          }`}
-        >
+        {/* On phones the right-hand reserve used to run the full height of the
+            entry, even though the controls only occupy its top-right corner and
+            the collapsed-header row already carries its own `pr-16`. Reserving
+            it everywhere stacked with each nested row's own gutter and left a
+            highlight roughly a third of the screen wide. The status badges it
+            also cleared are `sm:inline` only, so none of it applied on mobile. */}
+        <div className={`pl-10 sm:pr-12 sm:pl-0 ${isHidden ? 'opacity-45' : ''}`}>
           {template === 'text' ? (
             <TextRow
               value={typeof entry === 'string' ? entry : ''}
@@ -412,16 +434,17 @@ function TemplateEntryFields({
       );
     }
 
+    const compactFields = filterDateFields(template.fields, entry);
     return (
       <div style={{ '--label-width': labelWidthForTemplate(template) } as CSSProperties}>
-        {template.fields.map((field, fieldIndex) => (
+        {compactFields.map((field, fieldIndex) => (
           <Fragment key={`${index}-${field.path.join('.')}`}>
             <FieldControl
               field={field}
               value={getNestedValue(entry, field.path)}
               onChange={(nextValue) => updateField(field.path, nextValue)}
             />
-            {fieldIndex < template.fields.length - 1 ? <Divider /> : null}
+            {fieldIndex < compactFields.length - 1 ? <Divider /> : null}
           </Fragment>
         ))}
       </div>
@@ -462,14 +485,25 @@ function TemplateEntryFields({
     });
   }
 
-  const [firstField, ...restFields] = template.fields;
+  const [firstField, ...restFields] = filterDateFields(template.fields, entry);
   if (!firstField) {
     return null;
   }
 
+  function switchDateScheme() {
+    const scheme = activeDateScheme(entry);
+    if (scheme === 'single') {
+      const { date, ...rest } = entry;
+      onChange({ ...rest, start_date: stringValue(date), end_date: '' });
+      return;
+    }
+    const { start_date, end_date, ...rest } = entry;
+    onChange({ ...rest, date: stringValue(start_date) });
+  }
+
   return (
     <div className="-ml-0.5 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1">
-      <button type="button" className="row-start-1" onClick={() => setExpanded((value) => !value)}>
+      <button type="button" aria-label="Toggle entry details" className="form-touch-hit row-start-1" onClick={() => setExpanded((value) => !value)}>
         <ChevronRight
           className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${
             expanded ? 'rotate-90' : ''
@@ -495,12 +529,26 @@ function TemplateEntryFields({
                 {fieldIndex < restFields.length - 1 ? <Divider /> : null}
               </Fragment>
             ))}
+            {hasDateFields(template.fields) ? (
+              <>
+                <Divider />
+                <button
+                  type="button"
+                  className="form-touch-inline mt-1.5 flex items-center gap-1 text-xs text-muted-foreground/50 transition-colors hover:text-foreground"
+                  onClick={switchDateScheme}
+                >
+                  {activeDateScheme(entry) === 'single'
+                    ? 'Use a start and end date instead'
+                    : 'Use a single date instead'}
+                </button>
+              </>
+            ) : null}
             {template.name === 'experience' ? (
               <>
                 <Divider />
                 <button
                   type="button"
-                  className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground/50 transition-colors hover:text-foreground"
+                  className="form-touch-inline mt-1.5 flex items-center gap-1 text-xs text-muted-foreground/50 transition-colors hover:text-foreground"
                   onClick={convertToNestedPositions}
                 >
                   <Plus className="size-3" />
@@ -579,7 +627,7 @@ function NestedExperienceFields({
 
   return (
     <div className="-ml-0.5 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1">
-      <button type="button" className="row-start-1" onClick={() => setExpanded((v) => !v)}>
+      <button type="button" aria-label="Toggle entry details" className="form-touch-hit row-start-1" onClick={() => setExpanded((v) => !v)}>
         <ChevronRight
           className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${expanded ? 'rotate-90' : ''}`}
         />
@@ -614,7 +662,7 @@ function NestedExperienceFields({
                 <div className="flex flex-1 items-center justify-end">
                   <button
                     type="button"
-                    className="flex items-center gap-0.5 text-[11px] text-muted-foreground/70 hover:text-foreground"
+                    className="form-touch-inline flex items-center gap-0.5 text-[11px] text-muted-foreground/70 hover:text-foreground"
                     onClick={addPosition}
                   >
                     <Plus className="size-3" />
@@ -707,7 +755,7 @@ function PositionItem({
         </button>
       </div>
       <div className="-ml-0.5 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1">
-        <button type="button" className="row-start-1" onClick={() => setExpanded((v) => !v)}>
+        <button type="button" aria-label="Toggle entry details" className="form-touch-hit row-start-1" onClick={() => setExpanded((v) => !v)}>
           <ChevronRight
             className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${expanded ? 'rotate-90' : ''}`}
           />

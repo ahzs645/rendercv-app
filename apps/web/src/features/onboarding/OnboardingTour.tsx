@@ -52,7 +52,22 @@ export function OnboardingTour({
       popoverOffset: 12,
       onPopoverRender: (popover: { footer: HTMLElement }) => {
         const { footer } = popover;
-        if (!footer || footer.querySelector('[data-onboarding-skip]')) {
+        if (!footer) {
+          return;
+        }
+
+        // driver.js renders "Previous" on step 1 looking exactly as it does on
+        // step 4, where it works. Disable it when there is nothing to go back
+        // to. Runs on every popover render, before the skip-button guard.
+        const previous = footer.querySelector<HTMLButtonElement>('.driver-popover-prev-btn');
+        if (previous) {
+          const isFirstStep = driverRef.current?.getActiveIndex() === 0;
+          previous.disabled = isFirstStep;
+          previous.style.opacity = isFirstStep ? '0.4' : '';
+          previous.style.cursor = isFirstStep ? 'not-allowed' : '';
+        }
+
+        if (footer.querySelector('[data-onboarding-skip]')) {
           return;
         }
         const skip = document.createElement('button');

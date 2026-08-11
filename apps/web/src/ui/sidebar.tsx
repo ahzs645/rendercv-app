@@ -166,7 +166,7 @@ export function Sidebar({
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/60">
               CVs
             </p>
-            <span className="text-[11px] text-sidebar-foreground/45">{activeFiles.length}</span>
+            <span className="text-[11px] text-sidebar-foreground/70">{activeFiles.length}</span>
           </div>
         ) : null}
         <ul className="space-y-1">
@@ -213,7 +213,7 @@ export function Sidebar({
                   <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/60">
                     Resumes in Review
                   </p>
-                  <span className="text-[11px] text-sidebar-foreground/45">{reviewSessions.length}</span>
+                  <span className="text-[11px] text-sidebar-foreground/70">{reviewSessions.length}</span>
                 </div>
                 <ul className="space-y-1">
                   {reviewSessions.map((session) => {
@@ -253,7 +253,7 @@ export function Sidebar({
                   <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/60">
                     Review Archive
                   </p>
-                  <span className="text-[11px] text-sidebar-foreground/45">{archivedReviewSessions.length}</span>
+                  <span className="text-[11px] text-sidebar-foreground/70">{archivedReviewSessions.length}</span>
                 </div>
                 <ul className="space-y-1">
                   {archivedReviewSessions.map((session) => (
@@ -504,7 +504,14 @@ function SidebarFileRow({
                 ? 'opacity-100'
                 : 'opacity-0 group-hover/menu-item:opacity-100 focus-visible:opacity-100'
             }`}
-            onClick={() => setMenuOpen((open) => !open)}
+            // The menu advertises ⌘K / ⌘D / ⌘⌫, but the global handler resolves
+            // those against the *selected* file. Opening the menu on a CV that
+            // wasn't selected therefore showed shortcuts that would act on a
+            // different one. Selecting on open makes the hints true.
+            onClick={() => {
+              fileStore.selectFile(file.id);
+              setMenuOpen((open) => !open);
+            }}
             type="button"
           >
             <EllipsisVertical className="size-4" />

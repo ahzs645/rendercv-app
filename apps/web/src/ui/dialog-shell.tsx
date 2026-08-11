@@ -76,7 +76,7 @@ export function DialogShell({
         </Dialog.Close>
       </div>
       {subheader}
-      <div className={`min-h-0 flex-1 overflow-auto px-6 py-5 ${bodyClassName ?? ''}`}>{children}</div>
+      <div className={`scroll-fade min-h-0 flex-1 overflow-auto px-6 py-5 ${bodyClassName ?? ''}`}>{children}</div>
       {footer ? (
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card/40 px-6 py-3">
           {footer}
