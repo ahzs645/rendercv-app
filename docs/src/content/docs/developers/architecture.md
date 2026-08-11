@@ -15,6 +15,7 @@ The repository is a pnpm workspace with a React web app, an API app, shared cont
 - `static`: browser-served runtime assets, fonts, wheels, and WASM bundles.
 - `docs`: Astro Starlight documentation site.
 - `themes/resume`: Python RenderCV theme and theme test tooling.
+- `vendor/rendercv-toolkit`: pinned shared parser/compiler and renderer contracts used by RenderCV app and Zoer.
 
 ## Web App
 
@@ -46,6 +47,8 @@ Important stores include:
 The shared contracts package defines `CvFile`, `CvFileSections`, API DTOs, preferences, billing, public CV, feedback, GitHub, AI, and review types.
 
 ## Rendering
+
+`@rendercv/primitives` from the pinned toolkit submodule is the source of truth for variants parsing, compatibility normalization, entry fingerprints, and effective YAML compilation. The app keeps only its browser transport locally.
 
 Rendering is split across browser workers:
 

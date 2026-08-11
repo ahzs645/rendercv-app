@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { fileStore } from '@rendercv/core';
 import { toast } from 'sonner';
-import { parseCvVariantsYaml } from '../features/viewer/cv-variants';
+import { parseCvVariantsYaml } from '@rendercv/primitives';
 import { deriveName, fetchYamlText } from './cv-url-import';
 
 /**

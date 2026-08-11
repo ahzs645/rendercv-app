@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@rendercv/contracts": "workspace:*",
+    "@rendercv/primitives": "workspace:*",
     "yaml": "^2.8.2"
   },
   "devDependencies": {

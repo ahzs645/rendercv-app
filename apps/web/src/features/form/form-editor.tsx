@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { CvFileSections, CvVariantDefinition, SectionKey } from '@rendercv/contracts';
-import { computeVariantVisibility } from '../viewer/variant-visibility';
+import { computeVariantVisibility } from '@rendercv/primitives';
 import { VariantVisibilityProvider } from './variant-visibility-context';
 import { Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import YAML from 'yaml';

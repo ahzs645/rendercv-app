@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { entryFingerprint } from '@rendercv/core';
-import type { VariantVisibility } from '../viewer/variant-visibility';
+import type { VariantVisibility } from '@rendercv/primitives';
 
 interface VariantVisibilityValue {
   /** Key of the active variant, or null when none is selected. */

@@ -2,3 +2,4 @@ packages:
   - apps/*
   - docs
   - packages/*
+  - vendor/rendercv-toolkit/packages/*

@@ -2,3 +2,6 @@
 	path = themes/resume
 	url = https://github.com/ahzs645/resume.git
 	branch = main
+[submodule "vendor/rendercv-toolkit"]
+	path = vendor/rendercv-toolkit
+	url = https://github.com/ahzs645/rendercv-toolkit.git

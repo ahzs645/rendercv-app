@@ -23,6 +23,7 @@
     "@radix-ui/react-dialog": "^1.1.14",
     "@rendercv/contracts": "workspace:*",
     "@rendercv/core": "workspace:*",
+    "@rendercv/primitives": "workspace:*",
     "@sentry/react": "^10.42.0",
     "@tailwindcss/vite": "^4.1.18",
     "buffer": "^6.0.3",

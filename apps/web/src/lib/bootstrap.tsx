@@ -14,7 +14,7 @@ import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import {
   normalizeCompatibilityCvYaml,
   stripPositionMarkersFromCvYaml
-} from '../features/viewer/normalize-compat-cv';
+} from '@rendercv/primitives';
 import { normalizeLegacyDesignYaml } from '../features/viewer/viewer-sections';
 
 const BUILT_IN_THEME_KEYS = new Set(Object.keys(defaultDesigns));
