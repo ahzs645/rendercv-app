@@ -1,6 +1,10 @@
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  assertRuntimeThemeArchiveEntries,
+  readZipArchiveEntries
+} from './bundled-theme-runtime.mjs';
 
 // Post-build guard: every theme declared in bundled-themes.generated.ts must
 // have its archive present in the build output. A themeless build otherwise
@@ -49,4 +53,11 @@ if (missing.length > 0) {
   );
 }
 
-console.log(`[verify-bundled-themes] OK — ${archivePaths.length} theme archive(s) present in dist/.`);
+for (const archivePath of archivePaths) {
+  const absolutePath = path.join(distDir, archivePath);
+  assertRuntimeThemeArchiveEntries(readZipArchiveEntries(absolutePath), `dist/${archivePath}`);
+}
+
+console.log(
+  `[verify-bundled-themes] OK — ${archivePaths.length} runtime-only theme archive(s) present in dist/.`
+);

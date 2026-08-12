@@ -1,8 +1,13 @@
 import { createHash } from 'node:crypto';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { access, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  assertRuntimeThemeArchiveEntries,
+  collectRuntimeThemeSourceFiles,
+  readZipArchiveEntries
+} from './bundled-theme-runtime.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../../..');
@@ -12,12 +17,11 @@ const generatedModulePath = path.join(
   'apps/web/src/features/viewer/bundled-themes.generated.ts'
 );
 
-// Every bundled theme ships from the same `themes/resume` submodule, and the
-// zip step archives the whole submodule. Emitting one archive per theme would
-// therefore produce several byte-identical copies. Instead we build a single
-// shared archive that every theme entry references, then let the worker extract
-// whichever package the requested theme needs (the worker registers every theme
-// package found in an archive, so one archive serves them all).
+// Every bundled theme ships from the same `themes/resume` submodule. The public
+// archive intentionally contains only runtime Python/templates/fonts from the
+// five theme packages plus their shared font directory. Resume data, variants,
+// fixtures, tests, build tooling and repository metadata must never be shipped.
+// A single shared archive avoids emitting five byte-identical runtime bundles.
 const submodulePath = path.join(projectRoot, 'themes/resume');
 const sharedArchiveBaseName = 'bundled-resume-themes';
 
@@ -67,14 +71,12 @@ async function assertThemeSourceReady(themeSource) {
   }
 }
 
-function createZipFromSubmodule(submodulePath) {
-  const archiveBuffer = execSync(
-    "zip -q -X -r - . -x '.git/*' '.venv/*' '*/__pycache__/*' '.DS_Store'",
-    {
+function createRuntimeZip(submodulePath, runtimeFiles) {
+  const archiveBuffer = execFileSync('zip', ['-q', '-X', '-', '-@'], {
     cwd: submodulePath,
+    input: `${runtimeFiles.join('\n')}\n`,
     maxBuffer: 50 * 1024 * 1024
-    }
-  );
+  });
   return Buffer.from(archiveBuffer);
 }
 
@@ -104,7 +106,8 @@ async function syncSharedArchive() {
     await assertThemeSourceReady(themeSource);
   }
 
-  const archiveBytes = createZipFromSubmodule(submodulePath);
+  const runtimeFiles = await collectRuntimeThemeSourceFiles(submodulePath);
+  const archiveBytes = createRuntimeZip(submodulePath, runtimeFiles);
   const hash = createHash('sha256').update(archiveBytes).digest('hex').slice(0, 12);
   const archiveName = `${sharedArchiveBaseName}-${hash}.zip`;
   const archivePath = path.join(outputDir, archiveName);
@@ -118,6 +121,7 @@ async function syncSharedArchive() {
   }
 
   await writeFileIfChanged(archivePath, archiveBytes);
+  assertRuntimeThemeArchiveEntries(readZipArchiveEntries(archivePath), archiveName);
 
   return {
     archiveName,
@@ -152,7 +156,12 @@ async function existingManifestIsUsable() {
 
   for (const archivePath of archivePaths) {
     try {
-      await access(path.join(projectRoot, 'static', archivePath));
+      const absolutePath = path.join(projectRoot, 'static', archivePath);
+      await access(absolutePath);
+      assertRuntimeThemeArchiveEntries(
+        readZipArchiveEntries(absolutePath),
+        `fallback ${archivePath}`
+      );
     } catch {
       return false;
     }
