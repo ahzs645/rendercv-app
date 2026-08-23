@@ -1,6 +1,15 @@
 import YAML from 'yaml';
 import yamlToTypstPy from './yaml_to_typst.py?raw';
 import { BUNDLED_THEMES } from './bundled-themes.generated';
+import {
+  decodePhotoDataUri,
+  fetchPhoto,
+  isPhotoDataUri,
+  readPhotoSource,
+  withAbsolutePhotoPath,
+  withResolvedPhotoPath,
+  type ResolvedPhoto
+} from './photo';
 import { PYODIDE_CACHE_DB_NAME } from '../../lib/storage-keys';
 
 interface WorkerErrorPayload {
@@ -580,6 +589,49 @@ function setYamlInputGlobals(sections: {
   }
 }
 
+/**
+ * Resolve `cv.photo` and make it readable by RenderCV.
+ *
+ * RenderCV validates the photo as a path that must exist and its own URL
+ * support downloads with `urllib`, which has no working transport under
+ * Pyodide. Doing the fetch here and writing the bytes into the Pyodide file
+ * system satisfies the validator and keeps the photo out of the Python layer.
+ */
+async function resolvePhotoForRender(cvYaml: string): Promise<{
+  cv: string;
+  photo: ResolvedPhoto | null;
+  warning: string | null;
+}> {
+  const source = readPhotoSource(cvYaml);
+  if (!source) {
+    return { cv: cvYaml, photo: null, warning: null };
+  }
+
+  let photo: ResolvedPhoto;
+  try {
+    photo = isPhotoDataUri(source) ? decodePhotoDataUri(source) : await fetchPhoto(source);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    // A photo that cannot be resolved must not fail the whole render: drop it
+    // and let the CV render without one.
+    return {
+      cv: withResolvedPhotoPath(cvYaml, ''),
+      photo: null,
+      warning: `The header photo was skipped. ${reason}`
+    };
+  }
+
+  pyodide.globals.set('_photo_bytes', photo.bytes);
+  pyodide.globals.set('_photo_name', photo.fileName);
+  await pyodide.runPythonAsync(`
+import pathlib
+pathlib.Path(_photo_name).write_bytes(bytes(_photo_bytes.to_py()))
+del _photo_bytes, _photo_name
+`);
+
+  return { cv: withResolvedPhotoPath(cvYaml, photo.fileName), photo, warning: null };
+}
+
 async function renderSectionsWithFallback(sections: {
   cv: string;
   design: string;
@@ -587,6 +639,9 @@ async function renderSectionsWithFallback(sections: {
   settings: string;
 }) {
   await ensureThemeRegistered(readDesignThemeName(sections.design));
+
+  const { cv, photo, warning: photoWarning } = await resolvePhotoForRender(sections.cv);
+  sections = { ...sections, cv };
   setYamlInputGlobals(sections);
 
   const firstResult = JSON.parse(toJsValue(await pyodide.runPythonAsync(YAML_TO_TYPST_RENDER_RESULT)) as string) as {
@@ -595,6 +650,20 @@ async function renderSectionsWithFallback(sections: {
     normalized_cv?: string | null;
     warnings?: string[] | null;
   };
+
+  // The header's `image()` call has to point at the shadow file the Typst
+  // worker maps, and the photo travels with the result so it can be mapped.
+  const withPhoto = <
+    T extends { content: string | null; normalized_cv?: string | null; warnings?: string[] | null }
+  >(
+    result: T
+  ) => ({
+    ...result,
+    content: result.content && photo ? withAbsolutePhotoPath(result.content, photo) : result.content,
+    photo,
+    normalizedCv: result.normalized_cv ?? null,
+    warnings: [...(result.warnings ?? []), ...(photoWarning ? [photoWarning] : [])]
+  });
 
   const hasMissingCustomThemeError = firstResult.errors?.some(
     (error) =>
@@ -605,9 +674,7 @@ async function renderSectionsWithFallback(sections: {
 
   if (!hasMissingCustomThemeError) {
     return {
-      ...firstResult,
-      normalizedCv: firstResult.normalized_cv ?? null,
-      warnings: firstResult.warnings ?? null,
+      ...withPhoto(firstResult),
       effectiveDesign: sections.design,
       usedFallbackTheme: false
     };
@@ -620,9 +687,7 @@ async function renderSectionsWithFallback(sections: {
 
   if (fallbackDesign === sections.design) {
     return {
-      ...firstResult,
-      normalizedCv: firstResult.normalized_cv ?? null,
-      warnings: firstResult.warnings ?? null,
+      ...withPhoto(firstResult),
       effectiveDesign: sections.design,
       usedFallbackTheme: false
     };
@@ -642,9 +707,8 @@ async function renderSectionsWithFallback(sections: {
     warnings?: string[] | null;
   };
   return {
-    ...fallbackResult,
+    ...withPhoto(fallbackResult),
     normalizedCv: fallbackResult.normalized_cv ?? firstResult.normalized_cv ?? null,
-    warnings: fallbackResult.warnings ?? firstResult.warnings ?? null,
     effectiveDesign: fallbackDesign,
     usedFallbackTheme: true
   };

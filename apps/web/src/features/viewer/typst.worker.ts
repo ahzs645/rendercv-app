@@ -4,8 +4,27 @@
 interface TypstModule {
   svg: (opts: { mainContent: string }) => Promise<string>;
   pdf: (opts: { mainContent: string }) => Promise<Uint8Array>;
+  mapShadow: (path: string, content: Uint8Array) => Promise<void>;
   setCompilerInitOptions: (opts: unknown) => void;
   setRendererInitOptions: (opts: unknown) => void;
+}
+
+/**
+ * A file the source reads but the compiler has no file system for.
+ *
+ * `mainContent` is compiled from a bare string, so a header photo has to be
+ * handed to the compiler separately as a shadow file at the absolute path the
+ * rewritten `image()` call points at.
+ */
+interface TypstAsset {
+  path: string;
+  bytes: Uint8Array;
+}
+
+async function mapAssets(module: TypstModule, assets: TypstAsset[] | undefined) {
+  for (const asset of assets ?? []) {
+    await module.mapShadow(asset.path, asset.bytes);
+  }
 }
 
 interface TypstSnippetConstructor {
@@ -175,14 +194,16 @@ async function handleTypstMessage(id: number, type: string, payload: unknown) {
       }
       case 'SVG': {
         if (!typst) throw new Error('Typst not initialized');
-        const { content } = payload as { content: string };
+        const { content, assets } = payload as { content: string; assets?: TypstAsset[] };
+        await mapAssets(typst, assets);
         const svg = await typst.svg({ mainContent: content });
         self.postMessage({ id, type: 'SUCCESS', payload: extractSvgPages(svg) });
         break;
       }
       case 'PDF': {
         if (!typst) throw new Error('Typst not initialized');
-        const { content } = payload as { content: string };
+        const { content, assets } = payload as { content: string; assets?: TypstAsset[] };
+        await mapAssets(typst, assets);
         const pdf = await typst.pdf({ mainContent: content });
         self.postMessage({ id, type: 'SUCCESS', payload: pdf }, { transfer: [pdf.buffer] });
         break;

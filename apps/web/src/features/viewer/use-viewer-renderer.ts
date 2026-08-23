@@ -20,8 +20,16 @@ export interface RenderError {
   yaml_location: [[number, number], [number, number]] | null;
 }
 
+/** A header photo the worker resolved, ready to hand to the Typst compiler. */
+export interface ViewerPhoto {
+  fileName: string;
+  typstPath: string;
+  bytes: Uint8Array;
+}
+
 export interface ViewerValidationResult {
   content: string | null;
+  photo?: ViewerPhoto | null;
   errors: Array<{
     message: string;
     schema_location: string[] | null;
@@ -72,6 +80,18 @@ const YAML_SOURCE_TO_SECTION: Record<string, SectionKey> = {
 };
 
 let rendererWorkerService: RendererWorkerService | null = null;
+
+function typstAssetsFor(photo: ViewerPhoto | null | undefined) {
+  return photo ? [{ path: photo.typstPath, bytes: photo.bytes }] : [];
+}
+
+function sameBytes(left: Uint8Array, right: Uint8Array) {
+  if (left.byteLength !== right.byteLength) return false;
+  for (let index = 0; index < left.byteLength; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
+}
 
 function logViewerDebug(label: string, details: Record<string, unknown>) {
   if (!import.meta.env.DEV) {
@@ -316,6 +336,11 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const previewRenderLoopActive = useRef(false);
   const lastTypstSectionsKey = useRef<string | null>(null);
   const lastTypstContent = useRef<string | null>(null);
+  const lastTypstAssets = useRef<{ path: string; bytes: Uint8Array }[]>([]);
+  // Every edit produces a new validation cache entry while the photo usually
+  // stays the same, so results share one buffer instead of each retaining a
+  // copy of it.
+  const photoBuffer = useRef<ViewerPhoto | null>(null);
   const lastTypstSvgPages = useRef<string[] | null>(null);
   const lastPdfTypstContent = useRef<string | null>(null);
   const lastPdfBytes = useRef<Uint8Array | null>(null);
@@ -355,6 +380,14 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
       const request = postMessageToPyodide<ViewerValidationResult>('RENDER', renderSections)
         .then((result) => {
+          const photo = result.photo ?? null;
+          const previous = photoBuffer.current;
+          if (photo && previous && sameBytes(previous.bytes, photo.bytes)) {
+            result.photo = previous;
+          } else {
+            photoBuffer.current = photo;
+          }
+
           storeValidationResult(validationCache.current, key, result);
           return result;
         })
@@ -409,6 +442,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       }
       lastTypstSectionsKey.current = key;
       lastTypstContent.current = result.content;
+      lastTypstAssets.current = typstAssetsFor(result.photo);
       return result.content;
     },
     [checkAndLoadFonts, loadValidationResult, renderVersion]
@@ -428,7 +462,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
         return existingRequest;
       }
 
-      const request = postMessageToTypst('PDF', { content: typst })
+      const request = postMessageToTypst('PDF', { content: typst, assets: lastTypstAssets.current })
         .then((bytes) => {
           const pdfBytes = bytes as Uint8Array;
           lastPdfTypstContent.current = typst;
@@ -449,7 +483,10 @@ export function useViewerRenderer(sections?: CvFileSections) {
     async (renderSections: CvFileSections) => {
       const typst = await renderToTypst(renderSections);
       if (!typst) return null;
-      return (await postMessageToTypst('SVG', { content: typst })) as string[];
+      return (await postMessageToTypst('SVG', {
+        content: typst,
+        assets: lastTypstAssets.current
+      })) as string[];
     },
     [postMessageToTypst, renderToTypst]
   );
@@ -492,6 +529,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
       pageUrls.current = [];
       lastTypstSectionsKey.current = null;
       lastTypstContent.current = null;
+      lastTypstAssets.current = [];
+      photoBuffer.current = null;
       lastTypstSvgPages.current = null;
       lastPdfTypstContent.current = null;
       lastPdfBytes.current = null;
@@ -505,6 +544,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
     validationInFlight.current.clear();
     lastTypstSectionsKey.current = null;
     lastTypstContent.current = null;
+    lastTypstAssets.current = [];
+    photoBuffer.current = null;
     lastTypstSvgPages.current = null;
     lastPdfTypstContent.current = null;
     lastPdfBytes.current = null;
@@ -596,6 +637,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
           lastTypstSectionsKey.current = typstSectionsKey;
           lastTypstContent.current = typst;
+          lastTypstAssets.current = typstAssetsFor(result.photo);
 
           const fontsChanged = checkAndLoadFonts(typst);
           if (fontsChanged && rendererServiceRef.current) {
@@ -607,7 +649,8 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
           const svgStartedAt = performance.now();
           const svg = (await postMessageToTypst('SVG', {
-            content: typst
+            content: typst,
+            assets: lastTypstAssets.current
           })) as string[];
           const svgMs = performance.now() - svgStartedAt;
 
