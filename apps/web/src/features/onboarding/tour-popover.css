@@ -28,10 +28,18 @@
   max-width: min(300px, calc(100vw - 2rem));
 }
 
-/* The footer packs "Skip tour", the progress counter and the nav buttons on one
-   line; without a gap the first two render as one run-on string ("Skip tour1 of 7"). */
+/* The footer packs the skip link, the progress counter and the nav buttons on
+   one line; without a gap the first two render as one run-on string
+   ("Skip tour1 of 7"). Translated labels are longer than the English ones, so
+   nothing here may wrap mid-word. */
 .driver-popover-footer {
   gap: 0.75rem;
+  flex-wrap: nowrap;
+}
+
+.driver-popover-footer .driver-popover-progress-text,
+.driver-popover-footer button {
+  white-space: nowrap;
 }
 
 /* "Skip tour" is injected at the front of the footer so it sits on the left,

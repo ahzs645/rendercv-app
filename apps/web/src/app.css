@@ -142,6 +142,15 @@
     font-family: var(--font-sans), sans-serif;
   }
 
+  /* Korean permits a line break between any two characters, so the default
+     wrapping splits words mid-token (어/시스턴트). `keep-all` restricts breaks
+     to spaces, which is how Korean is meant to wrap; `break-word` keeps a long
+     unbroken run from overflowing its container. */
+  html[lang='ko'] body {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
   *::-webkit-scrollbar {
     width: 12px;
     height: 12px;
