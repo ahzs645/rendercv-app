@@ -63,10 +63,12 @@ describe('the bundled Korean résumé', () => {
 
   it('carries a photo the renderer can decode without a network round trip', () => {
     const source = readPhotoSource(compiled.cv);
-    expect(source).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(source).toMatch(/^data:image\/jpeg;base64,/);
 
     const photo = decodePhotoDataUri(source as string);
-    expect(photo.fileName).toBe('rendercv-photo.svg');
-    expect(new TextDecoder().decode(photo.bytes)).toContain('<svg');
+    expect(photo.fileName).toBe('rendercv-photo.jpg');
+    expect(photo.typstPath).toBe('/rendercv-photo.jpg');
+    // JPEG SOI marker, so the bytes really are a decodable image.
+    expect(Array.from(photo.bytes.slice(0, 3))).toEqual([0xff, 0xd8, 0xff]);
   });
 });
