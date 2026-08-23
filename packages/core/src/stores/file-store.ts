@@ -8,6 +8,7 @@ import type {
 import YAML from 'yaml';
 import { preferencesStore } from './preferences-store';
 import { createStore } from './store';
+import { toKeySlug } from '../utils/keys';
 import { generateId } from '../utils/uuid';
 import {
   classicTheme,
@@ -194,11 +195,7 @@ export function readLocaleName(localeContent: string | undefined) {
 
 /** Turn a human label into a variant key (snake_case, safe for YAML keys). */
 function slugifyVariantKey(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+  return toKeySlug(name);
 }
 
 function createUniqueVariantKey(variants: CvVariants, baseName: string): string {

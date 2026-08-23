@@ -1,4 +1,5 @@
 import YAML from 'yaml';
+import { compactKeyText } from '@rendercv/core';
 
 export interface SvgTextBox {
   text: string;
@@ -53,7 +54,7 @@ function normalizeMatchText(value: string) {
 }
 
 function compactMatchText(value: string) {
-  return normalizeMatchText(value).replace(/[^a-z0-9]+/g, '');
+  return compactKeyText(normalizeMatchText(value));
 }
 
 function sectionKeyToTitle(value: string) {

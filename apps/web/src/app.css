@@ -9,7 +9,12 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --font-sans: "DM Sans Variable", sans-serif;
+  /* DM Sans carries no Hangul, Han or Kana. Naming the platform CJK faces
+     ahead of the generic fallback keeps Korean UI text and Korean CV content
+     on a real UI font instead of whatever the browser picks last. */
+  --font-sans:
+    "DM Sans Variable", "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic",
+    "Noto Sans KR", "Hiragino Sans", "Yu Gothic UI", "Microsoft YaHei", sans-serif;
   --radius: 0.625rem;
   --radius-xs: 0.125rem;
   --radius-2xl: 1rem;

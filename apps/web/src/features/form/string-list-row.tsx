@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Plus, X } from 'lucide-react';
 import type { FieldDef } from './schema/types';
 import { MobileReorderControls, TextRow } from './primitives';
+import { toKeySlug } from '@rendercv/core';
 
 function getFlavorsInfo(value: unknown): {
   flavorKeys: string[];
@@ -248,7 +249,7 @@ export function StringListRow({
 
   function renameFlavor(oldKey: string, newKey: string) {
     if (!hasFlavors || !flavorsObj || !newKey || newKey === oldKey) return;
-    const sanitized = newKey.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const sanitized = toKeySlug(newKey);
     if (!sanitized || sanitized === oldKey || Object.hasOwn(flavorsObj, sanitized)) return;
     const nextFlavors: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(flavorsObj)) {
