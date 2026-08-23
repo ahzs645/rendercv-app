@@ -42,6 +42,7 @@ import {
   moveRecordEntry,
   insertRecordEntryAt
 } from './utils';
+import { useTranslation } from '../../lib/i18n/use-translation';
 
 type DragHandleProps = {
   setActivatorNodeRef: (element: HTMLElement | null) => void;
@@ -345,6 +346,7 @@ function SectionEditor({
   onChangeEntries: (entries: unknown[]) => void;
   dragHandle: DragHandleProps;
 }) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(dictionaryKeyToTitle(sectionKey));
   const detectedTemplate = detectEntryType(entries[0]);
   const isEmpty = entries.length === 0;
@@ -377,7 +379,7 @@ function SectionEditor({
         <div
           ref={dragHandle.setActivatorNodeRef}
           {...dragHandle.listeners}
-          aria-label="Drag to reorder section"
+          aria-label={t('form.dragSection')}
           className="form-item-control absolute top-1/2 left-1 hidden size-6 -translate-y-1/2 cursor-grab touch-none items-center justify-center rounded-none text-muted-foreground/40 active:cursor-grabbing sm:flex"
         >
           <GripVertical className="size-3.5" />
@@ -390,7 +392,7 @@ function SectionEditor({
           label="section"
         />
         <input
-          aria-label="Section title"
+          aria-label={t('form.sectionTitle')}
           className={`ml-10 min-h-11 min-w-0 flex-1 border-b border-muted-foreground/40 bg-transparent py-2 pr-[76px] text-base font-semibold outline-none sm:ml-0 sm:min-h-0 sm:py-0 sm:pr-2 sm:text-[15px] ${
             hiddenFromResume ? 'text-foreground/40 line-through decoration-1' : 'text-foreground/80'
           }`}
@@ -451,7 +453,7 @@ function SectionEditor({
           <button
             type="button"
             className="form-touch-target flex size-9 items-center justify-center rounded-md text-muted-foreground/70 opacity-90 transition-opacity hover:bg-muted hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50 sm:size-6 sm:rounded-none sm:hover:bg-transparent md:opacity-60 md:group-hover/section:opacity-100"
-            aria-label="Delete section"
+            aria-label={t('form.deleteSection')}
             onClick={onDelete}
           >
             <X className="size-4 sm:size-3" />
@@ -609,9 +611,10 @@ function AddSectionMenu({
 }
 
 function EntryTypeChooser({ onChoose }: { onChoose: (entryType: string) => void }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col gap-2 pt-1 pb-3 pl-1 sm:pl-4">
-      <p className="text-[11px] tracking-wider text-muted-foreground/50 uppercase">Entry type</p>
+      <p className="text-[11px] tracking-wider text-muted-foreground/50 uppercase">{t('form.entryType')}</p>
       <div className="flex flex-wrap gap-1">
         {entryTypeOptions.map((option) => (
           <button

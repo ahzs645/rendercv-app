@@ -9,8 +9,8 @@ import { DialogOverlay, DialogShell } from './dialog-shell';
 import { LOCAL_STORAGE_KEYS, PYODIDE_CACHE_DB_NAME } from '../lib/storage-keys';
 import { downloadBlob } from '../features/viewer/download';
 import type { ZipFile } from '../features/files/zip.worker';
-import { useTranslation } from '../lib/i18n/use-translation';
 import { UI_LANGUAGES, type UiLanguage } from '../lib/i18n/messages';
+import { useTranslation } from '../lib/i18n/use-translation';
 
 export type SettingsTab = 'ai' | 'appearance' | 'data';
 
@@ -296,6 +296,7 @@ function AppearancePanel() {
 }
 
 function DataPanel() {
+  const { t } = useTranslation();
   const snapshot = useStore(fileStore);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -395,7 +396,7 @@ function DataPanel() {
         <div className="flex items-start gap-3">
           <FolderDown className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground">Download all data</p>
+            <p className="text-sm font-medium text-foreground">{t('settings.downloadAll')}</p>
             <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
               A zip of every CV — {activeCount} active, {archivedCount} archived, {trashedFiles.length} in
               trash — with archived and trashed CVs in their own folders.
@@ -416,7 +417,7 @@ function DataPanel() {
         <div className="flex items-start gap-3">
           <Trash2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground">Empty trash</p>
+            <p className="text-sm font-medium text-foreground">{t('settings.emptyTrash')}</p>
             <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
               {trashedFiles.length === 0
                 ? 'Trash is empty.'
@@ -438,7 +439,7 @@ function DataPanel() {
         <div className="flex items-start gap-3">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground">Clear all data</p>
+            <p className="text-sm font-medium text-foreground">{t('settings.clearAll')}</p>
             <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
               Deletes every CV, review session, custom theme, and preference — including saved AI API keys —
               from this browser. Download a backup first; this cannot be undone.

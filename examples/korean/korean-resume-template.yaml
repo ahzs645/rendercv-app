@@ -1,0 +1,102 @@
+# 한국식 이력서 / 자기소개서 템플릿 — RenderCV
+# Korean résumé template for RenderCV.
+#
+# 이 한 파일에 cv / design / locale / settings 가 모두 들어 있습니다.
+# Everything lives in this one file: import it with "Import YAML".
+
+cv:
+  # 이름. name 은 필수이고, 나머지 표기는 선택입니다.
+  # Only `name` is required. The alternate renderings below are optional and
+  # are folded into the headline (or next to the name on themes that have no
+  # headline slot).
+  name: 홍길동
+  name_hanja: 洪吉童        # 한자 이름 / hanja
+  name_english: Gildong Hong # 로마자 이름 / Latin
+
+  location: 서울특별시
+  email: your.name@example.com
+  phone: "+82 10-0000-0000"
+  # date_of_birth 는 머리말의 연락처 줄에 아이콘과 함께 표시됩니다.
+  date_of_birth: 2000-01-01
+
+  # 사진: URL 또는 base64 데이터 URI.
+  # Photo: an https:// URL, or an inline `data:image/jpeg;base64,…` URI.
+  # 비워 두면 사진 없이 렌더링됩니다. Leave blank for no photo.
+  photo:
+
+  sections:
+    # 섹션 이름은 자유롭게 정할 수 있고, 그대로 제목이 됩니다.
+    # Section keys are arbitrary and are used verbatim as the printed title.
+    지원 부문:
+      - label: 응시부문
+        details: 지원 직무를 적으세요
+      - label: 기관/지역
+        details: 지원 기관 / 근무 지역
+      - label: 파견업체
+        details: 해당 시 기재
+
+    경력사항:
+      - company: 회사명
+        position: 직위 / 담당업무
+        # 고용구분처럼 RenderCV 가 모르는 항목도 그대로 쓸 수 있습니다.
+        # Extra fields like 고용구분 are folded into the entry summary rather
+        # than rejected, and keep the label you gave them.
+        고용구분: 정규직
+        start_date: 2023-01
+        end_date: present      # 재직 중이면 present
+        highlights:
+          - 담당했던 업무를 한 줄씩 적으세요
+
+    학력사항:
+      - institution: 학교명
+        area: 전공
+        degree: 학사           # 짧게 쓰세요. 학위 칸은 폭이 좁습니다.
+        location: 도시, 국가
+        start_date: 2019-03
+        end_date: 2023-02
+        highlights:
+          - 졸업 / 수료 여부 등
+
+    자격증:
+      - label: 자격(면허)명
+        details: 취득년월 · 발행처
+
+    외국어:
+      - label: 영어
+        details: TOEIC 000 (0000/00)
+
+    # 자기소개서는 "질문: 답변" 형태로 쓰면 항목으로 변환됩니다.
+    # A self-introduction written as `prompt: answer` pairs becomes entries.
+    # 답변이 모두 짧으면 한 줄짜리 항목으로, 하나라도 길면 문단 항목으로
+    # 렌더링됩니다 (RenderCV 는 한 섹션에 한 가지 항목 유형만 허용합니다).
+    자기소개서:
+      본인을 나타내는 단어 3가지:
+        - 성실함
+        - 열정
+        - 적응력
+      지원 동기: >-
+        지원하게 된 이유를 적으세요.
+      장점과 단점: >-
+        본인의 장점과 단점을 적으세요.
+      가장 어려웠던 경험과 극복 방안: >-
+        어려웠던 경험과 어떻게 극복했는지 적으세요.
+
+design:
+  theme: classic       # classic, ember, harvard, ink, opal, moderncv, sb2nov 등
+  page:
+    size: a4
+  header:
+    photo_width: 3cm
+    photo_position: right
+  entries:
+    degree_width: 1.6cm
+
+locale:
+  # 이 값이 월 이름과 "현재" 표기를 한국어로 만듭니다.
+  # This is what puts month names and "present" into Korean.
+  language: korean
+
+settings:
+  current_date: today
+  bold_keywords: []
+  pdf_title: NAME - 이력서

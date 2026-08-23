@@ -50,6 +50,7 @@ import {
   filterDateFields,
   hasDateFields
 } from './utils';
+import { useTranslation } from '../../lib/i18n/use-translation';
 
 export function EntryArrayEditor({
   title,
@@ -227,6 +228,7 @@ function SortableEntryArrayItem({
   originPath?: (string | number)[];
   hideArchivedEntries?: boolean;
 }) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -308,7 +310,7 @@ function SortableEntryArrayItem({
           {isArchived ? (
             <span
               className="hidden shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline"
-              title="Tagged archived — always excluded from the PDF"
+              title={t('form.archivedHint')}
             >
               Archived
             </span>
@@ -349,7 +351,7 @@ function SortableEntryArrayItem({
             type="button"
             className="form-item-control form-touch-target flex size-9 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-6 sm:rounded-none sm:hover:bg-transparent"
             onClick={() => onRemove(index)}
-            aria-label="Remove"
+            aria-label={t('form.remove')}
           >
             <X className="size-4 sm:size-3" />
           </button>
@@ -410,6 +412,7 @@ function TemplateEntryFields({
   template: EntryTemplate;
   onChange: (value: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(entriesExpanded);
   const dynamicLabel = dynamicEntryMarker(template.name, index, total);
 
@@ -503,7 +506,7 @@ function TemplateEntryFields({
 
   return (
     <div className="-ml-0.5 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1">
-      <button type="button" aria-label="Toggle entry details" className="form-touch-hit row-start-1" onClick={() => setExpanded((value) => !value)}>
+      <button type="button" aria-label={t('form.toggleDetails')} className="form-touch-hit row-start-1" onClick={() => setExpanded((value) => !value)}>
         <ChevronRight
           className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${
             expanded ? 'rotate-90' : ''
@@ -578,6 +581,7 @@ function NestedExperienceFields({
   template: EntryTemplate;
   onChange: (value: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation();
   const positions = asArray(entry.positions);
   const companyLevelPaths = ['company', 'position', 'location', 'summary'];
   const companyFields = template.fields.filter((f) => companyLevelPaths.includes(f.path[0]!));
@@ -627,7 +631,7 @@ function NestedExperienceFields({
 
   return (
     <div className="-ml-0.5 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1">
-      <button type="button" aria-label="Toggle entry details" className="form-touch-hit row-start-1" onClick={() => setExpanded((v) => !v)}>
+      <button type="button" aria-label={t('form.toggleDetails')} className="form-touch-hit row-start-1" onClick={() => setExpanded((v) => !v)}>
         <ChevronRight
           className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${expanded ? 'rotate-90' : ''}`}
         />
@@ -710,6 +714,7 @@ function PositionItem({
   onRemove: () => void;
   onMove: (direction: -1 | 1) => void;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
 
   function updateField(path: string[], nextValue: unknown) {
@@ -730,7 +735,7 @@ function PositionItem({
             type="button"
             className="flex size-8 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground sm:size-5 sm:rounded sm:text-muted-foreground/40 sm:hover:bg-transparent"
             onClick={() => onMove(-1)}
-            aria-label="Move position up"
+            aria-label={t('form.movePositionUp')}
           >
             <ArrowUp className="size-3.5 sm:size-2.5" />
           </button>
@@ -740,7 +745,7 @@ function PositionItem({
             type="button"
             className="flex size-8 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-foreground sm:size-5 sm:rounded sm:text-muted-foreground/40 sm:hover:bg-transparent"
             onClick={() => onMove(1)}
-            aria-label="Move position down"
+            aria-label={t('form.movePositionDown')}
           >
             <ArrowDown className="size-3.5 sm:size-2.5" />
           </button>
@@ -749,13 +754,13 @@ function PositionItem({
           type="button"
           className="flex size-8 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-muted hover:text-destructive sm:size-5 sm:rounded sm:text-muted-foreground/40 sm:hover:bg-transparent"
           onClick={onRemove}
-          aria-label="Remove position"
+          aria-label={t('form.removePosition')}
         >
           <X className="size-3.5 sm:size-2.5" />
         </button>
       </div>
       <div className="-ml-0.5 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1">
-        <button type="button" aria-label="Toggle entry details" className="form-touch-hit row-start-1" onClick={() => setExpanded((v) => !v)}>
+        <button type="button" aria-label={t('form.toggleDetails')} className="form-touch-hit row-start-1" onClick={() => setExpanded((v) => !v)}>
           <ChevronRight
             className={`mt-[9px] size-3.5 text-muted-foreground/60 transition-transform ${expanded ? 'rotate-90' : ''}`}
           />

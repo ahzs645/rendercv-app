@@ -540,7 +540,7 @@ export function WorkspaceToolbar({
               <DialogShell
                 closeLabel="Close workspace actions"
                 description="Formatting, exports, sharing, and display controls."
-                title="Workspace actions"
+                title={t('toolbar.workspaceActions')}
               >
                 <div className="space-y-5">
                   {showMobileEditorControls ? (
@@ -797,7 +797,7 @@ export function WorkspaceToolbar({
           onConfirm={(name, note) => void handleReviewerConfirm(name, note)}
           onOpenChange={setReviewerDialogOpen}
           open={reviewerDialogOpen}
-          title="Reviewer name"
+          title={t('review.reviewerName')}
         />
       </div>
     );
@@ -1039,7 +1039,7 @@ export function WorkspaceToolbar({
         onConfirm={(name, note) => void handleReviewerConfirm(name, note)}
         onOpenChange={setReviewerDialogOpen}
         open={reviewerDialogOpen}
-        title="Reviewer name"
+        title={t('review.reviewerName')}
       />
     </div>
   );
@@ -1459,41 +1459,41 @@ function DownloadShareDialog({
         <DialogShell
           closeLabel="Close download and share dialog"
           description={`Export ${fileName ?? 'this resume'}, copy links, or exchange review packages.`}
-          title="Share and export"
+          title={t('toolbar.shareAndExport')}
           width="lg"
         >
             <div className="grid gap-7 lg:grid-cols-2 lg:gap-x-8">
               <DialogActionSection
                 description="Finished files you can send or keep outside the app."
-                title="Export files"
+                title={t('toolbar.exportFiles')}
               >
                 <DialogActionButton
                   description="Save the current resume as a polished PDF."
                   disabled={!canPreviewActions}
                   icon={<Download className="size-4" />}
                   onClick={onDownloadPdf}
-                  title="Export PDF"
+                  title={t('toolbar.exportPdf')}
                 />
                 <DialogActionButton
                   description="Save the underlying source file for advanced editing workflows."
                   disabled={!canPreviewActions}
                   icon={<FileCode2 className="size-4" />}
                   onClick={onDownloadTypst}
-                  title="Export source (.typ)"
+                  title={t('toolbar.exportSource')}
                 />
                 <DialogActionButton
                   description="Save the CV data as JSON for programmatic use."
                   disabled={!canPreviewActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onDownloadJson}
-                  title="Export JSON"
+                  title={t('toolbar.exportJson')}
                 />
                 <DialogActionButton
                   description="Save a plain-text Markdown version of the CV."
                   disabled={!canPreviewActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onDownloadMarkdown}
-                  title="Export Markdown"
+                  title={t('toolbar.exportMarkdown')}
                 />
                 <DialogActionButton
                   description="Copy the CV as Markdown to paste into emails or docs."
@@ -1506,14 +1506,14 @@ function DownloadShareDialog({
 
               <DialogActionSection
                 description="Links for viewing, editing a review copy, or downloading a PDF."
-                title="Share links"
+                title={t('toolbar.shareLinks')}
               >
                 <DialogActionButton
                   description="Open your device share sheet with the rendered PDF when available."
                   disabled={!canPreviewActions}
                   icon={<Share2 className="size-4" />}
                   onClick={onSharePdf}
-                  title="Send PDF"
+                  title={t('toolbar.sendPdf')}
                 />
                 <DialogActionButton
                   description="Copy a link that opens this resume in RenderCV."
@@ -1527,7 +1527,7 @@ function DownloadShareDialog({
                   disabled={!canLinkActions}
                   icon={<GitCompareArrows className="size-4" />}
                   onClick={onCopyReviewLink}
-                  title="Copy review-copy link"
+                  title={t('review.copyLink')}
                 />
                 <DialogActionButton
                   description="Copy a direct link that downloads the PDF version."
@@ -1540,25 +1540,25 @@ function DownloadShareDialog({
 
               <DialogActionSection
                 description="Move a resume between browsers or keep a local backup for later edits."
-                title="Backup files"
+                title={t('toolbar.backupFiles')}
               >
                 <DialogActionButton
                   description="Download a backup file with the current resume contents."
                   disabled={!canLinkActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onExportJson}
-                  title="Backup file"
+                  title={t('toolbar.backupFile')}
                 />
                 <DialogActionButton
                   description="Import a backup or review-copy file into this workspace."
                   icon={<FileUp className="size-4" />}
                   onClick={onImportJson}
-                  title="Import backup or review copy"
+                  title={t('toolbar.importBackup')}
                 />
               </DialogActionSection>
               <DialogActionSection
                 description="Use these after a review copy has been edited or when someone sends a proposal back."
-                title="Review proposals"
+                title={t('review.proposals')}
               >
                 <DialogActionButton
                   description="Package the current edits as a proposal and copy a link when it fits."
@@ -1572,13 +1572,13 @@ function DownloadShareDialog({
                   disabled={!canReviewActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onExportReviewPackage}
-                  title="Export review package"
+                  title={t('review.exportPackage')}
                 />
                 <DialogActionButton
                   description="Import a returned review proposal into the local review inbox."
                   icon={<FileUp className="size-4" />}
                   onClick={onImportReviewPackage}
-                  title="Import review package"
+                  title={t('review.importPackage')}
                 />
               </DialogActionSection>
             </div>

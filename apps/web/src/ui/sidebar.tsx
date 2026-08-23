@@ -166,7 +166,7 @@ export function Sidebar({
         {!isMini ? (
           <div className="mb-2 flex items-center justify-between px-2">
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/60">
-              CVs
+              {t('sidebar.cvs')}
             </p>
             <span className="text-[11px] text-sidebar-foreground/70">{activeFiles.length}</span>
           </div>
@@ -293,7 +293,7 @@ export function Sidebar({
       <footer className="border-t border-sidebar-border px-2 py-2">
         {!isMini ? (
           <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/60">
-            Links
+            {t('sidebar.links')}
           </p>
         ) : null}
         <nav className={`grid gap-1 ${isMini ? 'grid-cols-2' : ''}`}>
@@ -387,6 +387,7 @@ function FileGroup({
   selectedFileId?: string;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="mt-5">
       <button
@@ -413,7 +414,7 @@ function FileGroup({
           </ul>
         ) : (
           <div className="rounded-lg border border-dashed border-sidebar-border px-3 py-3 text-sm text-sidebar-foreground/60">
-            {label === 'Archive' ? 'No archived CVs.' : 'Trash is empty.'}
+            {label === 'Archive' ? t('sidebar.noArchived') : t('sidebar.trashEmpty')}
           </div>
         )
       ) : null}

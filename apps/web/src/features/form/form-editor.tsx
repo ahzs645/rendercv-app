@@ -28,6 +28,7 @@ import {
   labelWidthForFields,
   updateObjectField
 } from './utils';
+import { useTranslation } from '../../lib/i18n/use-translation';
 
 export function FormEditor({
   section,
@@ -256,6 +257,7 @@ function ThemeRow({
   value?: string;
   onChange: (theme: string) => void;
 }) {
+  const { t } = useTranslation();
   const currentIndex = value ? options.indexOf(value) : -1;
   const canCycle = options.length > 1 && currentIndex >= 0;
 
@@ -280,7 +282,7 @@ function ThemeRow({
         <div className="flex min-w-0 items-center gap-1">
           <button
             type="button"
-            aria-label="Previous theme"
+            aria-label={t('form.previousTheme')}
             className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             disabled={!canCycle || currentIndex <= 0}
             onClick={goPrev}
@@ -290,7 +292,7 @@ function ThemeRow({
           <ThemeDropdown options={options} value={value} onChange={onChange} />
           <button
             type="button"
-            aria-label="Next theme"
+            aria-label={t('form.nextTheme')}
             className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             disabled={!canCycle || currentIndex >= options.length - 1}
             onClick={goNext}
