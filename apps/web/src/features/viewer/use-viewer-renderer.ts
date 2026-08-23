@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CvFileSections, SectionKey } from '@rendercv/contracts';
 import { ZOOM_STEP } from './zoom-config';
 import { clampZoom } from './zoom-math';
-import { DEFAULT_FONT_FAMILIES, FONT_VARIANTS, getDefaultFontUrls, getFontUrls } from './fonts';
+import {
+  DEFAULT_FONT_FAMILIES,
+  FONT_VARIANTS,
+  getDefaultFontUrls,
+  getFontUrls,
+  parseRequestedFontFamilies
+} from './fonts';
 import { parseTypstSectionMap } from './typst-section-map';
 import type { SectionMapResult } from './typst-section-map';
 
@@ -364,12 +370,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
 
   const checkAndLoadFonts = useCallback((typstContent: string) => {
     let fontsAdded = false;
-    const requestedFonts = new Set(
-      Array.from(
-        typstContent.matchAll(/(?:font-family-\w+|font)\s*:\s*"([^"]+)"/g),
-        (match) => match[1]
-      )
-    );
+    const requestedFonts = parseRequestedFontFamilies(typstContent);
 
     for (const fontFamily of Object.keys(FONT_VARIANTS)) {
       if (!loadedFontFamilies.current.has(fontFamily) && requestedFonts.has(fontFamily)) {

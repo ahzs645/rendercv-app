@@ -4,6 +4,7 @@ import type { CvFile, CvFileSections, SectionKey } from '@rendercv/contracts';
 import { SECTION_LABELS } from '@rendercv/contracts';
 import {
   defaultDesigns,
+  defaultLocales,
   fileStore,
   localeLabel,
   preferencesStore,
@@ -17,6 +18,7 @@ import { ThemeLibraryDialog } from './theme-library-dialog';
 
 const TAB_ORDER = Object.keys(SECTION_LABELS) as SectionKey[];
 const BUILT_IN_THEME_KEYS = Object.keys(defaultDesigns);
+const BUILT_IN_LOCALE_KEYS = Object.keys(defaultLocales);
 
 export function SectionTabs({
   active,
@@ -64,7 +66,12 @@ export function SectionTabs({
       : active === 'locale'
         ? {
             label: 'Locale',
-            options: Object.keys(selectedFile?.locales ?? {}),
+            // Every locale RenderCV ships is offered, not just the ones this
+            // file already carries: picking one falls back to its built-in
+            // definition until the file overrides it, the same way themes work.
+            options: Array.from(
+              new Set([...BUILT_IN_LOCALE_KEYS, ...Object.keys(selectedFile?.locales ?? {})])
+            ),
             renderLabel: localeLabel,
             value: selectedFile?.selectedLocale,
             onChange: (value: string) => {

@@ -1711,8 +1711,80 @@ export const defaultLocales = {english:`locale:
     - Ekim
     - Kasım
     - Aralık
+`,hungarian:`locale:
+  language: hungarian
+  last_updated: Utoljára frissítve
+  month: hónap
+  months: hónap
+  year: év
+  years: év
+  present: jelenleg
+  phrases:
+    degree_with_area: DEGREE AREA szakon
+  month_abbreviations:
+    - Jan
+    - Febr
+    - Márc
+    - Ápr
+    - Máj
+    - Jún
+    - Júl
+    - Aug
+    - Szept
+    - Okt
+    - Nov
+    - Dec
+  month_names:
+    - Január
+    - Február
+    - Március
+    - Április
+    - Május
+    - Június
+    - Július
+    - Augusztus
+    - Szeptember
+    - Október
+    - November
+    - December
+`,vietnamese:`locale:
+  language: vietnamese
+  last_updated: Cập nhật lần cuối vào
+  month: tháng
+  months: tháng
+  year: năm
+  years: năm
+  present: hiện tại
+  phrases:
+    degree_with_area: DEGREE ngành AREA
+  month_abbreviations:
+    - Th01
+    - Th02
+    - Th03
+    - Th04
+    - Th05
+    - Th06
+    - Th07
+    - Th08
+    - Th09
+    - Th10
+    - Th11
+    - Th12
+  month_names:
+    - Tháng Một
+    - Tháng Hai
+    - Tháng Ba
+    - Tháng Tư
+    - Tháng Năm
+    - Tháng Sáu
+    - Tháng Bảy
+    - Tháng Tám
+    - Tháng Chín
+    - Tháng Mười
+    - Tháng Mười Một
+    - Tháng Mười Hai
 `};
 
 export const themes = ["classic","ember","engineeringclassic","engineeringresumes","harvard","ink","moderncv","opal","sb2nov"];
 
-export const locales = ["english","arabic","danish","dutch","french","german","hebrew","hindi","indonesian","italian","japanese","korean","mandarin_chinese","norwegian_bokmål","norwegian_nynorsk","persian","portuguese","russian","spanish","turkish"];
+export const locales = ["english","arabic","danish","dutch","french","german","hebrew","hindi","indonesian","italian","japanese","korean","mandarin_chinese","norwegian_bokmål","norwegian_nynorsk","persian","portuguese","russian","spanish","turkish","hungarian","vietnamese"];
