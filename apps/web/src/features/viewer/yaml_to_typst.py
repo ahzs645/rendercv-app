@@ -816,10 +816,16 @@ CJK_CHARACTER_PATTERN = re.compile(
     "[ᄀ-ᇿ⺀-⿟　-ヿ㄰-㆏ㇰ-ㇿ"
     "㐀-䶿一-鿿ꥠ-꥿가-퟿豈-﫿]"
 )
-# The parameter names are hyphenated, e.g. `typography-font-family-section-titles`.
-FONT_FAMILY_PARAMETER_PATTERN = re.compile(
-    r'(typography-font-family-[\w-]+:\s*)"([^"]+)"'
+# Themes set fonts either through the shared preamble's hyphenated parameters
+# (`typography-font-family-section-titles`) or, as ahmadstyle and tylerstyle do
+# in their own preambles, with a bare `font:` on a Typst text element.
+FONT_PARAMETER_PATTERN = re.compile(
+    r'((?:typography-font-family-[\w-]+|font):\s*)"([^"]+)"'
 )
+# Icon fonts are addressed by codepoints that only they carry, so a CJK
+# fallback behind them would never be used and only risks substituting a glyph
+# where the icon font intends none.
+ICON_FONT_FAMILY_PREFIX = "Font Awesome"
 
 
 def patch_cjk_font_fallback(typst_content):
@@ -835,11 +841,11 @@ def patch_cjk_font_fallback(typst_content):
 
     def add_fallback(match):
         prefix, family = match.group(1), match.group(2)
-        if family == CJK_FALLBACK_FONT_FAMILY:
+        if family == CJK_FALLBACK_FONT_FAMILY or family.startswith(ICON_FONT_FAMILY_PREFIX):
             return match.group(0)
         return f'{prefix}("{family}", "{CJK_FALLBACK_FONT_FAMILY}")'
 
-    return FONT_FAMILY_PARAMETER_PATTERN.sub(add_fallback, typst_content)
+    return FONT_PARAMETER_PATTERN.sub(add_fallback, typst_content)
 
 
 def patch_header_connection_icons(typst_content):
