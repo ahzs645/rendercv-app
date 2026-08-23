@@ -816,8 +816,9 @@ CJK_CHARACTER_PATTERN = re.compile(
     "[ᄀ-ᇿ⺀-⿟　-ヿ㄰-㆏ㇰ-ㇿ"
     "㐀-䶿一-鿿ꥠ-꥿가-퟿豈-﫿]"
 )
+# The parameter names are hyphenated, e.g. `typography-font-family-section-titles`.
 FONT_FAMILY_PARAMETER_PATTERN = re.compile(
-    r'(typography-font-family-\w+:\s*)"([^"]+)"'
+    r'(typography-font-family-[\w-]+:\s*)"([^"]+)"'
 )
 
 

@@ -73,8 +73,9 @@ export function containsCjkText(text: string) {
 export function parseRequestedFontFamilies(typstContent: string) {
   const requested = new Set<string>();
 
+  // Parameter names are hyphenated, e.g. `typography-font-family-section-titles`.
   for (const [, value] of typstContent.matchAll(
-    /(?:font-family-\w+|font)\s*:\s*(\([^()]*\)|"[^"]*")/g
+    /(?:font-family-[\w-]+|font)\s*:\s*(\([^()]*\)|"[^"]*")/g
   )) {
     for (const [, family] of value.matchAll(/"([^"]+)"/g)) {
       requested.add(family);

@@ -9,6 +9,7 @@ export * from './utils/uuid';
 export * from './preview/channel';
 export * from './labels/variants';
 export * from './data/rendercv-examples';
+export * from './data/rendercv-korean-example';
 export * from './data/rendercv-schema';
 export * from './data/rendercv-variants';
 export * from './templates/cover-letter';
