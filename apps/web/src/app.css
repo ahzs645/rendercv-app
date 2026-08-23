@@ -9,7 +9,12 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --font-sans: "DM Sans Variable", sans-serif;
+  /* DM Sans carries no Hangul, Han or Kana. Naming the platform CJK faces
+     ahead of the generic fallback keeps Korean UI text and Korean CV content
+     on a real UI font instead of whatever the browser picks last. */
+  --font-sans:
+    "DM Sans Variable", "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic",
+    "Noto Sans KR", "Hiragino Sans", "Yu Gothic UI", "Microsoft YaHei", sans-serif;
   --radius: 0.625rem;
   --radius-xs: 0.125rem;
   --radius-2xl: 1rem;
@@ -135,6 +140,15 @@
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans), sans-serif;
+  }
+
+  /* Korean permits a line break between any two characters, so the default
+     wrapping splits words mid-token (어/시스턴트). `keep-all` restricts breaks
+     to spaces, which is how Korean is meant to wrap; `break-word` keeps a long
+     unbroken run from overflowing its container. */
+  html[lang='ko'] body {
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
 
   *::-webkit-scrollbar {

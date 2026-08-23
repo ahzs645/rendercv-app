@@ -7,6 +7,11 @@ import { useStore } from '../../lib/use-store';
 import { buildTourSteps } from './tour-config';
 import { onboardingTour } from './tour-state';
 import { ENABLE_AI_EDITOR } from '../../lib/feature-flags';
+import { i18nStore, translate } from '../../lib/i18n/i18n-store';
+import type { MessageKey } from '../../lib/i18n/messages';
+
+/** The tour is built once when it starts, so the language cannot change mid-tour. */
+const tr = (key: MessageKey) => translate(i18nStore.getSnapshot(), key);
 
 export function OnboardingTour({
   isMobile,
@@ -42,8 +47,11 @@ export function OnboardingTour({
     const tour = driver({
       animate: true,
       showProgress: true,
+      progressText: tr('tour.progress'),
       showButtons: ['next', 'previous', 'close'],
-      doneBtnText: 'Done',
+      nextBtnText: tr('tour.next'),
+      prevBtnText: tr('tour.previous'),
+      doneBtnText: tr('tour.done'),
       allowClose: true,
       overlayColor: 'black',
       overlayOpacity: 0.7,
@@ -72,7 +80,7 @@ export function OnboardingTour({
         }
         const skip = document.createElement('button');
         skip.type = 'button';
-        skip.textContent = 'Skip tour';
+        skip.textContent = tr('tour.skip');
         // The class must NOT contain "driver-popover": driver.js runs a
         // capture-phase document listener that calls stopImmediatePropagation()
         // on every popover child whose className includes that string, which

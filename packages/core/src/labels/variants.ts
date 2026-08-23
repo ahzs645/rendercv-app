@@ -24,6 +24,7 @@ export const LOCALE_LABELS: Record<string, { flag: string; name: string }> = {
   german: { flag: '🇩🇪', name: 'German' },
   hebrew: { flag: '🇮🇱', name: 'Hebrew' },
   hindi: { flag: '🇮🇳', name: 'Hindi' },
+  hungarian: { flag: '🇭🇺', name: 'Hungarian' },
   indonesian: { flag: '🇮🇩', name: 'Indonesian' },
   italian: { flag: '🇮🇹', name: 'Italian' },
   japanese: { flag: '🇯🇵', name: 'Japanese' },
@@ -35,7 +36,8 @@ export const LOCALE_LABELS: Record<string, { flag: string; name: string }> = {
   portuguese: { flag: '🇵🇹', name: 'Portuguese' },
   russian: { flag: '🇷🇺', name: 'Russian' },
   spanish: { flag: '🇪🇸', name: 'Spanish' },
-  turkish: { flag: '🇹🇷', name: 'Turkish' }
+  turkish: { flag: '🇹🇷', name: 'Turkish' },
+  vietnamese: { flag: '🇻🇳', name: 'Vietnamese' }
 };
 
 export function themeLabel(key: string) {

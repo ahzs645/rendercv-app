@@ -18,6 +18,7 @@ import {
 import type { SectionMapEntry, SectionMapResult } from '../features/viewer/typst-section-map';
 import { formatRenderErrorMessage } from '../features/viewer/render-error-format';
 import { attachZoomGestures } from '../features/viewer/zoom-gestures';
+import { useTranslation } from '../lib/i18n/use-translation';
 
 export type ViewerRenderer = ReturnType<typeof useViewerRenderer>;
 
@@ -400,6 +401,7 @@ function PreviewCanvas({
   workspaceInset: boolean;
   onSectionClick?: (sectionKey: string, entryIndex: number) => void;
 }) {
+  const { t } = useTranslation();
   const shellClassName = workspaceInset
     ? 'min-h-0 flex-1 p-4 pt-3 sm:p-6 sm:pt-4'
     : 'min-h-0 flex-1';
@@ -557,7 +559,7 @@ function PreviewCanvas({
                 <button
                   type="button"
                   onClick={() => setDismissedWarningsKey(warningsKey)}
-                  aria-label="Dismiss warnings"
+                  aria-label={t('preview.dismissWarnings')}
                   className="absolute right-2 top-2 rounded p-1 text-amber-700 transition hover:bg-amber-100 hover:text-amber-900 dark:text-amber-300 dark:hover:bg-amber-500/20 dark:hover:text-amber-100"
                 >
                   <X className="size-3.5" />
@@ -670,6 +672,7 @@ function PreviewPaneHeader({
   viewer: ViewerRenderer;
   onOpenPopup?: () => void;
 }) {
+  const { t } = useTranslation();
   const resolvedControls = {
     downloadPdf: controls?.downloadPdf ?? true,
     downloadTypst: controls?.downloadTypst ?? true,
@@ -679,7 +682,7 @@ function PreviewPaneHeader({
   return (
     <header className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
       <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Preview</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{t('preview.title')}</p>
         <h2 className="mt-2 text-2xl font-semibold">{fileName}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Rendered with the ported Pyodide and Typst workers.

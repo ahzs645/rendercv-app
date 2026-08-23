@@ -63,6 +63,7 @@ import type { ViewerRenderer } from './preview-pane';
 import { PositionedMenu } from './positioned-menu';
 import { StyledTooltip } from './styled-tooltip';
 import { WorkspaceAiEditor } from './workspace-ai-editor';
+import { useTranslation } from '../lib/i18n/use-translation';
 
 /**
  * Height every standalone control in the desktop toolbar row has to hit so the
@@ -128,6 +129,7 @@ export function WorkspaceToolbar({
   sidebarCollapsed: boolean;
   viewer: ViewerRenderer;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const preferences = useStore(preferencesStore);
   const fileSnapshot = useStore(fileStore);
@@ -538,7 +540,7 @@ export function WorkspaceToolbar({
               <DialogShell
                 closeLabel="Close workspace actions"
                 description="Formatting, exports, sharing, and display controls."
-                title="Workspace actions"
+                title={t('toolbar.workspaceActions')}
               >
                 <div className="space-y-5">
                   {showMobileEditorControls ? (
@@ -612,7 +614,7 @@ export function WorkspaceToolbar({
                       Preview
                     </p>
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3 py-2.5">
-                      <span className="text-sm font-medium text-foreground">Zoom</span>
+                      <span className="text-sm font-medium text-foreground">{t('toolbar.zoom')}</span>
                       <div className="flex items-center gap-1">
                         <ToolbarIconButton
                           ariaLabel="Zoom out"
@@ -624,7 +626,7 @@ export function WorkspaceToolbar({
                         </ToolbarIconButton>
                         <button
                           type="button"
-                          aria-label="Reset zoom"
+                          aria-label={t('toolbar.resetZoom')}
                           className="inline-flex h-8 min-w-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                           disabled={!canPreviewActions}
                           onClick={viewer.zoomReset}
@@ -734,7 +736,7 @@ export function WorkspaceToolbar({
                 </ToolbarIconButton>
                 <button
                   type="button"
-                  aria-label="Reset zoom"
+                  aria-label={t('toolbar.resetZoom')}
                   className="inline-flex h-7 min-w-10 items-center justify-center rounded-lg px-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                   disabled={!canPreviewActions}
                   onClick={viewer.zoomReset}
@@ -795,7 +797,7 @@ export function WorkspaceToolbar({
           onConfirm={(name, note) => void handleReviewerConfirm(name, note)}
           onOpenChange={setReviewerDialogOpen}
           open={reviewerDialogOpen}
-          title="Reviewer name"
+          title={t('review.reviewerName')}
         />
       </div>
     );
@@ -916,7 +918,7 @@ export function WorkspaceToolbar({
           </ToolbarIconButton>
           <button
             type="button"
-            aria-label="Reset zoom"
+            aria-label={t('toolbar.resetZoom')}
             className="inline-flex h-8 min-w-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
             disabled={!canPreviewActions}
             onClick={viewer.zoomReset}
@@ -1037,7 +1039,7 @@ export function WorkspaceToolbar({
         onConfirm={(name, note) => void handleReviewerConfirm(name, note)}
         onOpenChange={setReviewerDialogOpen}
         open={reviewerDialogOpen}
-        title="Reviewer name"
+        title={t('review.reviewerName')}
       />
     </div>
   );
@@ -1177,6 +1179,7 @@ function ShareComboButton({
   onOpenShareDialog: () => void;
   onSharePdf: () => void | Promise<void>;
 }) {
+  const { t } = useTranslation();
   const anchorRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -1188,18 +1191,18 @@ function ShareComboButton({
     >
       <button
         type="button"
-        aria-label="Share PDF"
+        aria-label={t('toolbar.sharePdf')}
         disabled={disabled}
         onClick={() => void onSharePdf()}
         className="inline-flex h-8 items-center gap-2 rounded-l-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <Share2 className="size-4" />
-        <span className="whitespace-nowrap">Share</span>
+        <span className="whitespace-nowrap">{t('toolbar.share')}</span>
       </button>
       <button
         ref={triggerRef}
         type="button"
-        aria-label="More share options"
+        aria-label={t('toolbar.moreShare')}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         disabled={disabled}
@@ -1288,6 +1291,7 @@ function DownloadComboButton({
   onMenuOpenChange: (open: boolean) => void;
   onOpenExportDialog: () => void;
 }) {
+  const { t } = useTranslation();
   const anchorRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -1299,18 +1303,18 @@ function DownloadComboButton({
     >
       <button
         type="button"
-        aria-label="Download PDF"
+        aria-label={t('toolbar.downloadPdf')}
         disabled={disabled}
         onClick={() => void onDownloadPdf()}
         className="inline-flex h-8 items-center gap-2 rounded-l-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <Download className="size-4" />
-        <span className="whitespace-nowrap">Download</span>
+        <span className="whitespace-nowrap">{t('toolbar.download')}</span>
       </button>
       <button
         ref={triggerRef}
         type="button"
-        aria-label="More download options"
+        aria-label={t('toolbar.moreDownload')}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         disabled={disabled}
@@ -1447,6 +1451,7 @@ function DownloadShareDialog({
   sendProposalLabel: string;
   open: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -1454,106 +1459,106 @@ function DownloadShareDialog({
         <DialogShell
           closeLabel="Close download and share dialog"
           description={`Export ${fileName ?? 'this resume'}, copy links, or exchange review packages.`}
-          title="Share and export"
+          title={t('toolbar.shareAndExport')}
           width="lg"
         >
             <div className="grid gap-7 lg:grid-cols-2 lg:gap-x-8">
               <DialogActionSection
                 description="Finished files you can send or keep outside the app."
-                title="Export files"
+                title={t('toolbar.exportFiles')}
               >
                 <DialogActionButton
                   description="Save the current resume as a polished PDF."
                   disabled={!canPreviewActions}
                   icon={<Download className="size-4" />}
                   onClick={onDownloadPdf}
-                  title="Export PDF"
+                  title={t('toolbar.exportPdf')}
                 />
                 <DialogActionButton
                   description="Save the underlying source file for advanced editing workflows."
                   disabled={!canPreviewActions}
                   icon={<FileCode2 className="size-4" />}
                   onClick={onDownloadTypst}
-                  title="Export source (.typ)"
+                  title={t('toolbar.exportSource')}
                 />
                 <DialogActionButton
                   description="Save the CV data as JSON for programmatic use."
                   disabled={!canPreviewActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onDownloadJson}
-                  title="Export JSON"
+                  title={t('toolbar.exportJson')}
                 />
                 <DialogActionButton
                   description="Save a plain-text Markdown version of the CV."
                   disabled={!canPreviewActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onDownloadMarkdown}
-                  title="Export Markdown"
+                  title={t('toolbar.exportMarkdown')}
                 />
                 <DialogActionButton
                   description="Copy the CV as Markdown to paste into emails or docs."
                   disabled={!canPreviewActions}
                   icon={<Copy className="size-4" />}
                   onClick={onCopyMarkdown}
-                  title="Copy as Markdown"
+                  title={t('toolbar.copyMarkdown')}
                 />
               </DialogActionSection>
 
               <DialogActionSection
                 description="Links for viewing, editing a review copy, or downloading a PDF."
-                title="Share links"
+                title={t('toolbar.shareLinks')}
               >
                 <DialogActionButton
                   description="Open your device share sheet with the rendered PDF when available."
                   disabled={!canPreviewActions}
                   icon={<Share2 className="size-4" />}
                   onClick={onSharePdf}
-                  title="Send PDF"
+                  title={t('toolbar.sendPdf')}
                 />
                 <DialogActionButton
                   description="Copy a link that opens this resume in RenderCV."
                   disabled={!canLinkActions}
                   icon={<Copy className="size-4" />}
                   onClick={onCopyShareLink}
-                  title="Copy share link"
+                  title={t('toolbar.copyShareLink')}
                 />
                 <DialogActionButton
                   description="Copy an editable copy. The recipient can make changes and send a proposal back."
                   disabled={!canLinkActions}
                   icon={<GitCompareArrows className="size-4" />}
                   onClick={onCopyReviewLink}
-                  title="Copy review-copy link"
+                  title={t('review.copyLink')}
                 />
                 <DialogActionButton
                   description="Copy a direct link that downloads the PDF version."
                   disabled={!canLinkActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onCopyPdfLink}
-                  title="Copy PDF download link"
+                  title={t('toolbar.copyPdfLink')}
                 />
               </DialogActionSection>
 
               <DialogActionSection
                 description="Move a resume between browsers or keep a local backup for later edits."
-                title="Backup files"
+                title={t('toolbar.backupFiles')}
               >
                 <DialogActionButton
                   description="Download a backup file with the current resume contents."
                   disabled={!canLinkActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onExportJson}
-                  title="Backup file"
+                  title={t('toolbar.backupFile')}
                 />
                 <DialogActionButton
                   description="Import a backup or review-copy file into this workspace."
                   icon={<FileUp className="size-4" />}
                   onClick={onImportJson}
-                  title="Import backup or review copy"
+                  title={t('toolbar.importBackup')}
                 />
               </DialogActionSection>
               <DialogActionSection
                 description="Use these after a review copy has been edited or when someone sends a proposal back."
-                title="Review proposals"
+                title={t('review.proposals')}
               >
                 <DialogActionButton
                   description="Package the current edits as a proposal and copy a link when it fits."
@@ -1567,13 +1572,13 @@ function DownloadShareDialog({
                   disabled={!canReviewActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onExportReviewPackage}
-                  title="Export review package"
+                  title={t('review.exportPackage')}
                 />
                 <DialogActionButton
                   description="Import a returned review proposal into the local review inbox."
                   icon={<FileUp className="size-4" />}
                   onClick={onImportReviewPackage}
-                  title="Import review package"
+                  title={t('review.importPackage')}
                 />
               </DialogActionSection>
             </div>

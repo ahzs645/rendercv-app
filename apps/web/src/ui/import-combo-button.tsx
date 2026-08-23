@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { importCvFromUrl } from './cv-url-import';
 import { DialogOverlay, DialogShell } from './dialog-shell';
 import { useYamlImport, type YamlImportOptions } from './yaml-import-button';
+import { useTranslation } from '../lib/i18n/use-translation';
 
 /**
  * Split button for importing a CV: the primary action picks a local YAML file,
@@ -18,6 +19,7 @@ export function ImportComboButton({
 }: YamlImportOptions & {
   mode?: 'full' | 'compact' | 'mini';
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -108,11 +110,11 @@ export function ImportComboButton({
             className="inline-flex h-10 w-full items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             disabled={busy}
             onClick={() => setMenuOpen((value) => !value)}
-            title="Import YAML"
+            title={t('files.importYaml')}
             type="button"
           >
             <Upload className="size-4 shrink-0" />
-            <span className="sr-only">{busy ? 'Importing…' : 'Import YAML'}</span>
+            <span className="sr-only">{busy ? t('section.importingVariants') : t('files.importYaml')}</span>
           </button>
         ) : (
           <div className="flex w-full items-center rounded-md transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
@@ -120,11 +122,11 @@ export function ImportComboButton({
               className="inline-flex h-10 flex-1 items-center justify-start gap-2 rounded-l-md px-3 text-sm font-medium disabled:pointer-events-none disabled:opacity-50"
               disabled={busy}
               onClick={pickFile}
-              title="Import YAML"
+              title={t('files.importYaml')}
               type="button"
             >
               <Upload className="size-4 shrink-0" />
-              <span>{busy ? 'Importing YAML…' : 'Import YAML'}</span>
+              <span>{busy ? t('files.importingYaml') : t('files.importYaml')}</span>
             </button>
             <button
               ref={triggerRef}
@@ -154,7 +156,7 @@ export function ImportComboButton({
               type="button"
             >
               <Upload className="size-4" />
-              <span>Import YAML file</span>
+              <span>{t('files.importYamlFile')}</span>
             </button>
             <button
               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground"

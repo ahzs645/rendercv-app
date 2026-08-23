@@ -9,7 +9,7 @@ export const cvPersonalInfoGroup: FieldGroup = {
     { path: ['email'], label: 'Email', type: 'string', placeholder: 'email@example.com' },
     { path: ['phone'], label: 'Phone', type: 'string', placeholder: '+1 555 123 4567' },
     { path: ['website'], label: 'Website', type: 'string', placeholder: 'https://' },
-    { path: ['photo'], label: 'Photo URL', type: 'string', placeholder: 'https://' }
+    { path: ['photo'], label: 'Photo', type: 'string', placeholder: 'https:// or data:image/…' }
   ]
 };
 

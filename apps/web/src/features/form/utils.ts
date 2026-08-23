@@ -1,4 +1,5 @@
 import type { EntryTemplate, FieldDef } from './schema/types';
+import { toKeySlug } from '@rendercv/core';
 
 export const DIMENSION_UNITS = ['cm', 'mm', 'in', 'pt', 'em', 'ex'] as const;
 
@@ -256,11 +257,7 @@ export function dictionaryKeyToTitle(value: string) {
 }
 
 export function properSectionTitleToKey(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+  return toKeySlug(value);
 }
 
 export function createUniqueSectionKey(sections: Record<string, unknown>, base: string) {

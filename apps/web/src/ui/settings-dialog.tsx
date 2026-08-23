@@ -9,11 +9,14 @@ import { DialogOverlay, DialogShell } from './dialog-shell';
 import { LOCAL_STORAGE_KEYS, PYODIDE_CACHE_DB_NAME } from '../lib/storage-keys';
 import { downloadBlob } from '../features/viewer/download';
 import type { ZipFile } from '../features/files/zip.worker';
+import { UI_LANGUAGES, type UiLanguage } from '../lib/i18n/messages';
+import { useTranslation } from '../lib/i18n/use-translation';
 
-export type SettingsTab = 'ai' | 'data';
+export type SettingsTab = 'ai' | 'appearance' | 'data';
 
 const TABS: ReadonlyArray<{ id: SettingsTab; label: string }> = [
   { id: 'ai', label: 'AI providers' },
+  { id: 'appearance', label: 'Appearance' },
   { id: 'data', label: 'Data' }
 ];
 
@@ -79,7 +82,9 @@ export function SettingsDialog({
           description={
             tab === 'ai'
               ? 'Choose which model powers the AI editor. Bring your own API key to bypass the workspace quota — keys are stored only in this browser.'
-              : 'Export or erase everything this browser has stored for RenderCV.'
+              : tab === 'appearance'
+                ? 'How the app itself is presented. These settings live in this browser only.'
+                : 'Export or erase everything this browser has stored for RenderCV.'
           }
           footer={
             tab === 'ai' ? (
@@ -127,7 +132,13 @@ export function SettingsDialog({
           title="Settings"
           width="md"
         >
-          {tab === 'ai' ? <AiProvidersPanel form={aiForm} /> : <DataPanel />}
+          {tab === 'ai' ? (
+            <AiProvidersPanel form={aiForm} />
+          ) : tab === 'appearance' ? (
+            <AppearancePanel />
+          ) : (
+            <DataPanel />
+          )}
         </DialogShell>
       </Dialog.Portal>
     </Dialog.Root>
@@ -249,7 +260,43 @@ function AiProvidersPanel({ form }: { form: AiProviderForm }) {
   );
 }
 
+/**
+ * Interface language only. The CV's own `locale:` section decides how the
+ * rendered document reads and is edited on the Locale tab, so the two are kept
+ * deliberately apart.
+ */
+function AppearancePanel() {
+  const { t, language, setLanguage } = useTranslation();
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <label
+          className="text-sm font-medium text-foreground"
+          htmlFor="settings-ui-language"
+        >
+          {t('settings.language')}
+        </label>
+        <select
+          id="settings-ui-language"
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+          value={language}
+          onChange={(event) => setLanguage(event.target.value as UiLanguage)}
+        >
+          {Object.entries(UI_LANGUAGES).map(([value, option]) => (
+            <option key={value} value={value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">{t('settings.language.help')}</p>
+      </div>
+    </div>
+  );
+}
+
 function DataPanel() {
+  const { t } = useTranslation();
   const snapshot = useStore(fileStore);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -349,7 +396,7 @@ function DataPanel() {
         <div className="flex items-start gap-3">
           <FolderDown className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground">Download all data</p>
+            <p className="text-sm font-medium text-foreground">{t('settings.downloadAll')}</p>
             <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
               A zip of every CV — {activeCount} active, {archivedCount} archived, {trashedFiles.length} in
               trash — with archived and trashed CVs in their own folders.
@@ -370,7 +417,7 @@ function DataPanel() {
         <div className="flex items-start gap-3">
           <Trash2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground">Empty trash</p>
+            <p className="text-sm font-medium text-foreground">{t('settings.emptyTrash')}</p>
             <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
               {trashedFiles.length === 0
                 ? 'Trash is empty.'
@@ -392,7 +439,7 @@ function DataPanel() {
         <div className="flex items-start gap-3">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground">Clear all data</p>
+            <p className="text-sm font-medium text-foreground">{t('settings.clearAll')}</p>
             <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
               Deletes every CV, review session, custom theme, and preference — including saved AI API keys —
               from this browser. Download a backup first; this cannot be undone.

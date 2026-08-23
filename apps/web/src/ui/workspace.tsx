@@ -35,6 +35,7 @@ import { OnboardingTour } from '../features/onboarding/OnboardingTour';
 import { onboardingTour } from '../features/onboarding/tour-state';
 import { useYamlImport } from './yaml-import-button';
 import { useUrlCvLoader } from './use-url-cv-loader';
+import { useTranslation } from '../lib/i18n/use-translation';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
@@ -114,6 +115,7 @@ function isInteractiveElementFocused(): boolean {
 }
 
 export function Workspace({ active = true }: { active?: boolean }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const fileSnapshot = useStore(fileStore);
   const reviewSnapshot = useStore(reviewStore);
@@ -756,7 +758,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
           className="absolute bottom-5 right-5 z-10 inline-flex items-center gap-2 rounded-full border border-border bg-background/90 px-4 py-2.5 text-sm font-medium text-foreground shadow-lg backdrop-blur transition-colors hover:bg-accent hover:text-accent-foreground sm:bottom-8 sm:right-8"
         >
           <WandSparkles className="size-4" />
-          Fit to page
+          {t('preview.fitToPage')}
           {hiddenEntryCount > 0 ? (
             <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
               {hiddenEntryCount} hidden
@@ -903,6 +905,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
  * overlay drawer below 1223px. Put the way forward in the main pane instead.
  */
 function NoCvSelected({ onImportYaml }: { onImportYaml: (file: File) => void | Promise<unknown> }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -911,7 +914,7 @@ function NoCvSelected({ onImportYaml }: { onImportYaml: (file: File) => void | P
         <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <FileText className="size-6" />
         </div>
-        <h2 className="text-base font-semibold text-foreground">No CV open</h2>
+        <h2 className="text-base font-semibold text-foreground">{t('workspace.noCvOpen')}</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
           Start a new CV from the built-in template, or bring in an existing <code>cv.yaml</code>.
         </p>
@@ -933,7 +936,7 @@ function NoCvSelected({ onImportYaml }: { onImportYaml: (file: File) => void | P
             Import YAML
           </button>
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">You can also drop a cv.yaml anywhere on this page.</p>
+        <p className="mt-4 text-xs text-muted-foreground">{t('workspace.dropHint')}</p>
         <input
           ref={inputRef}
           type="file"
@@ -953,6 +956,7 @@ function NoCvSelected({ onImportYaml }: { onImportYaml: (file: File) => void | P
 }
 
 function YamlDropOverlay({ pending }: { pending: boolean }) {
+  const { t } = useTranslation();
   return (
     <div className="pointer-events-none fixed inset-0 z-[80] flex items-center justify-center bg-background/70 p-6 backdrop-blur-sm">
       <div className="flex w-full max-w-sm flex-col items-center rounded-lg border border-dashed border-primary bg-card px-6 py-8 text-center shadow-lg">
@@ -962,7 +966,7 @@ function YamlDropOverlay({ pending }: { pending: boolean }) {
         <p className="text-sm font-semibold text-foreground">
           {pending ? 'Importing YAML...' : 'Drop cv.yaml to import'}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">A new CV will be created from the file.</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t('workspace.newFromFile')}</p>
       </div>
     </div>
   );
@@ -994,6 +998,7 @@ function MobileSidebarDrawer({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!open) return;
     function handler(e: KeyboardEvent) {
@@ -1036,7 +1041,7 @@ function MobileSidebarDrawer({
             way out. */}
         <button
           type="button"
-          aria-label="Close CV list"
+          aria-label={t('sidebar.closeList')}
           onClick={onClose}
           className="absolute top-2 right-2 z-10 inline-flex size-11 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >

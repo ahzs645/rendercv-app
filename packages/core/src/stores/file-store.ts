@@ -8,6 +8,7 @@ import type {
 import YAML from 'yaml';
 import { preferencesStore } from './preferences-store';
 import { createStore } from './store';
+import { toKeySlug } from '../utils/keys';
 import { generateId } from '../utils/uuid';
 import {
   classicTheme,
@@ -20,6 +21,7 @@ import {
   opalTheme,
   sb2novTheme
 } from '../data/rendercv-examples';
+import { koreanResume } from '../data/rendercv-korean-example';
 import { defaultDesigns, defaultLocales } from '../data/rendercv-variants';
 
 const designDefaults = defaultDesigns as Record<string, string>;
@@ -88,7 +90,14 @@ const DEFAULT_EXAMPLES = [
   { id: 'default-ink', name: 'CV (Ink)', theme: 'ink', sections: inkTheme },
   { id: 'default-moderncv', name: 'CV (Moderncv)', theme: 'moderncv', sections: moderncvTheme },
   { id: 'default-opal', name: 'CV (Opal)', theme: 'opal', sections: opalTheme },
-  { id: 'default-sb2nov', name: 'CV (Sb2nov)', theme: 'sb2nov', sections: sb2novTheme }
+  { id: 'default-sb2nov', name: 'CV (Sb2nov)', theme: 'sb2nov', sections: sb2novTheme },
+  {
+    id: 'default-korean',
+    name: '이력서 (Korean)',
+    theme: 'classic',
+    locale: 'korean',
+    sections: koreanResume
+  }
 ] as const;
 
 export const DEFAULT_FILE_IDS = new Set(DEFAULT_EXAMPLES.map((example) => example.id));
@@ -186,11 +195,7 @@ export function readLocaleName(localeContent: string | undefined) {
 
 /** Turn a human label into a variant key (snake_case, safe for YAML keys). */
 function slugifyVariantKey(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+  return toKeySlug(name);
 }
 
 function createUniqueVariantKey(variants: CvVariants, baseName: string): string {
@@ -272,16 +277,18 @@ function withReadOnly(file: Omit<CvFile, 'isReadOnly'>): CvFile {
 
 function createDefaultFiles(): CvFile[] {
   const timestamp = Date.now();
-  return DEFAULT_EXAMPLES.map((example) =>
-    withReadOnly({
+  return DEFAULT_EXAMPLES.map((example) => {
+    const locale = 'locale' in example ? example.locale : 'english';
+
+    return withReadOnly({
       id: generateId(),
       name: example.name,
       cv: example.sections.cv,
       settings: example.sections.settings,
       designs: { [example.theme]: example.sections.design },
-      locales: { english: example.sections.locale },
+      locales: { [locale]: example.sections.locale },
       selectedTheme: example.theme,
-      selectedLocale: 'english',
+      selectedLocale: locale,
       isLocked: false,
       isArchived: false,
       isTrashed: false,
@@ -289,8 +296,8 @@ function createDefaultFiles(): CvFile[] {
       chatMessages: [],
       editCount: 0,
       lastEdited: timestamp
-    })
-  );
+    });
+  });
 }
 
 export function resolveFileSections(file: CvFile): CvFileSections {

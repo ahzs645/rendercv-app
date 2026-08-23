@@ -1,5 +1,6 @@
 # ruff: noqa: F821
 
+import re
 from dataclasses import asdict
 from io import StringIO
 from urllib.parse import quote, urlparse
@@ -808,6 +809,45 @@ def normalize_address_connection(cv_data):
         cv_data["custom_connections"] = custom_connections
 
 
+CJK_FALLBACK_FONT_FAMILY = "Noto Sans KR"
+# Hangul, Han, Kana and the CJK compatibility blocks. Noto Sans KR's subset
+# covers all of them, which is what a Korean CV printing a hanja name needs.
+CJK_CHARACTER_PATTERN = re.compile(
+    "[ᄀ-ᇿ⺀-⿟　-ヿ㄰-㆏ㇰ-ㇿ"
+    "㐀-䶿一-鿿ꥠ-꥿가-퟿豈-﫿]"
+)
+# Themes set fonts either through the shared preamble's hyphenated parameters
+# (`typography-font-family-section-titles`) or, as ahmadstyle and tylerstyle do
+# in their own preambles, with a bare `font:` on a Typst text element.
+FONT_PARAMETER_PATTERN = re.compile(
+    r'((?:typography-font-family-[\w-]+|font):\s*)"([^"]+)"'
+)
+# Icon fonts are addressed by codepoints that only they carry, so a CJK
+# fallback behind them would never be used and only risks substituting a glyph
+# where the icon font intends none.
+ICON_FONT_FAMILY_PREFIX = "Font Awesome"
+
+
+def patch_cjk_font_fallback(typst_content):
+    """Append the CJK family to each font stack when the CV contains CJK text.
+
+    None of the Latin families the themes ship carry Hangul, Han or Kana. Typst
+    would still fall back to any other loaded font for those glyphs, but naming
+    the family makes the choice deterministic instead of depending on whichever
+    font happens to be loaded.
+    """
+    if not CJK_CHARACTER_PATTERN.search(typst_content):
+        return typst_content
+
+    def add_fallback(match):
+        prefix, family = match.group(1), match.group(2)
+        if family == CJK_FALLBACK_FONT_FAMILY or family.startswith(ICON_FONT_FAMILY_PREFIX):
+            return match.group(0)
+        return f'{prefix}("{family}", "{CJK_FALLBACK_FONT_FAMILY}")'
+
+    return FONT_PARAMETER_PATTERN.sub(add_fallback, typst_content)
+
+
 def patch_header_connection_icons(typst_content):
     if "#connection-with-icon(" not in typst_content:
         return typst_content
@@ -973,7 +1013,7 @@ else:
     _entry_templates.process_doi = _compat_process_doi
     typst_content = render_full_template(model, "typst")
     result = {
-        "content": patch_header_connection_icons(typst_content),
+        "content": patch_cjk_font_fallback(patch_header_connection_icons(typst_content)),
         "errors": None,
         "normalized_cv": normalized_yaml_input_cv,
         "warnings": list(compatibility_warnings),

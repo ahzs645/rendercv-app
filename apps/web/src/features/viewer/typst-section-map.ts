@@ -1,3 +1,4 @@
+import { toKeySlug } from '@rendercv/core';
 /**
  * Parse generated Typst source to extract section/entry structure.
  *
@@ -37,12 +38,7 @@ export interface SectionMapEntry {
 
 /** Convert a display title (e.g. "Experience") to a YAML-style key. */
 function titleToKey(title: string): string {
-  return title
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, '')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+  return toKeySlug(title.replace(/&/g, ''));
 }
 
 // Patterns that start a new entry in the rendercv-package format.
