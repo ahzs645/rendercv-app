@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
 import type { ViewerRenderer } from './preview-pane';
 import { ThemeLibraryDialog } from './theme-library-dialog';
+import { useTranslation } from '../lib/i18n/use-translation';
 
 const TAB_ORDER = Object.keys(SECTION_LABELS) as SectionKey[];
 const BUILT_IN_THEME_KEYS = Object.keys(defaultDesigns);
@@ -39,6 +40,7 @@ export function SectionTabs({
   viewer: ViewerRenderer;
   viewerSections?: CvFileSections;
 }) {
+  const { t } = useTranslation();
   const themeInputRef = useRef<HTMLInputElement>(null);
   const [isImportingTheme, setIsImportingTheme] = useState(false);
   const [isImportingVariants, setIsImportingVariants] = useState(false);
@@ -53,7 +55,7 @@ export function SectionTabs({
   const variant =
     active === 'cv'
       ? {
-            label: 'Theme',
+            label: t('section.theme'),
             options: themeOptions,
             renderLabel: themeLabel,
             value: selectedFile?.selectedTheme,
@@ -65,7 +67,7 @@ export function SectionTabs({
           }
       : active === 'locale'
         ? {
-            label: 'Locale',
+            label: t('section.localePicker'),
             // Every locale RenderCV ships is offered, not just the ones this
             // file already carries: picking one falls back to its built-in
             // definition until the file overrides it, the same way themes work.
@@ -112,7 +114,7 @@ export function SectionTabs({
               onClick={() => onSelect(section)}
               type="button"
             >
-              {SECTION_LABELS[section]}
+              {t(`section.${section}` as const)}
             </button>
           ))}
           </div>
@@ -209,6 +211,7 @@ function VariantManager({
   onImport: (file: File) => void;
   isImporting: boolean;
 }) {
+  const { t } = useTranslation();
   const preferences = useStore(preferencesStore);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -364,7 +367,7 @@ function VariantManager({
               onClick={handleNewVariant}
             >
               <Plus className="size-3.5 shrink-0" />
-              New variant
+              {t('section.newVariant')}
             </button>
           ) : null}
           {onImportVariants ? (
@@ -376,7 +379,7 @@ function VariantManager({
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="size-3.5 shrink-0" />
-              {isImporting ? 'Importing…' : 'Import variants…'}
+              {isImporting ? t('section.importingVariants') : t('section.importVariants')}
             </button>
           ) : null}
           <div className="my-1 h-px bg-border/60" />
@@ -390,7 +393,7 @@ function VariantManager({
             }
           >
             {preferences.hideArchivedEntries ? <Check className="size-3.5 shrink-0" /> : <span className="size-3.5 shrink-0" />}
-            Hide archived entries
+            {t('section.hideArchived')}
           </button>
         </div>
       ) : null}

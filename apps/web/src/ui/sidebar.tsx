@@ -32,6 +32,7 @@ import { ImportComboButton } from './import-combo-button';
 import { PositionedMenu } from './positioned-menu';
 import type { PreparedYamlImport } from './yaml-import-button';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
+import { useTranslation } from '../lib/i18n/use-translation';
 
 type SidebarMode = 'full' | 'compact' | 'mini';
 
@@ -59,6 +60,7 @@ export function Sidebar({
     selectedLocale?: string;
   }) => Promise<RenderError[]>;
 }) {
+  const { t } = useTranslation();
   const asideRef = useRef<HTMLElement>(null);
   const snapshot = useStore(fileStore);
   const reviewSnapshot = useStore(reviewStore);
@@ -146,11 +148,11 @@ export function Sidebar({
             isMini ? 'h-10 justify-center px-0' : 'h-10 justify-start gap-2 px-3'
           }`}
           onClick={() => fileStore.createFile()}
-          title="Create new CV"
+          title={t('sidebar.newCv')}
           type="button"
         >
           <FilePlus2 className="size-4 shrink-0" />
-          {isMini ? <span className="sr-only">Create new CV</span> : <span>Create new CV</span>}
+          {isMini ? <span className="sr-only">{t('sidebar.newCv')}</span> : <span>{t('sidebar.newCv')}</span>}
         </button>
         <ImportComboButton
           mode={mode}
@@ -300,11 +302,11 @@ export function Sidebar({
               isMini ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-2 text-left'
             }`}
             onClick={() => onboardingTour.start()}
-            title="Start product tour"
+            title={t('sidebar.tourHint')}
             type="button"
           >
             <HelpCircle className="size-4 shrink-0" />
-            {isMini ? <span className="sr-only">Product Tour</span> : <span>Product Tour</span>}
+            {isMini ? <span className="sr-only">{t('sidebar.tour')}</span> : <span>{t('sidebar.tour')}</span>}
           </button>
           <button
             className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
@@ -312,11 +314,11 @@ export function Sidebar({
             }`}
             data-onboarding="data-export"
             onClick={() => setSettingsOpen(true)}
-            title="App settings — AI providers and data"
+            title={t('sidebar.settingsHint')}
             type="button"
           >
             <Settings className="size-4 shrink-0" />
-            {isMini ? <span className="sr-only">App settings</span> : <span>App settings</span>}
+            {isMini ? <span className="sr-only">{t('sidebar.settings')}</span> : <span>{t('sidebar.settings')}</span>}
           </button>
           {API_ENABLED ? (
             <button
@@ -324,18 +326,18 @@ export function Sidebar({
                 isMini ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-2 text-left'
               }`}
               onClick={() => setFeedbackOpen(true)}
-              title="Send feedback"
+              title={t('sidebar.feedback')}
               type="button"
             >
               <MessageSquarePlus className="size-4 shrink-0" />
-              {isMini ? <span className="sr-only">Send feedback</span> : <span>Send feedback</span>}
+              {isMini ? <span className="sr-only">{t('sidebar.feedback')}</span> : <span>{t('sidebar.feedback')}</span>}
             </button>
           ) : null}
           <SidebarLinkButton compact={isCompact} icon={<Shield className="size-4" />} mini={isMini} to="/privacy-policy">
-            Privacy Policy
+            {t('sidebar.privacy')}
           </SidebarLinkButton>
           <SidebarLinkButton compact={isCompact} icon={<FileText className="size-4" />} mini={isMini} to="/terms-of-service">
-            Terms of Service
+            {t('sidebar.terms')}
           </SidebarLinkButton>
         </nav>
       </footer>

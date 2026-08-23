@@ -16,6 +16,7 @@ import {
   stripPositionMarkersFromCvYaml
 } from '@rendercv/primitives';
 import { normalizeLegacyDesignYaml } from '../features/viewer/viewer-sections';
+import { i18nStore } from './i18n/i18n-store';
 
 const BUILT_IN_THEME_KEYS = new Set(Object.keys(defaultDesigns));
 const RETRY_DELAYS = [2_000, 10_000] as const;
@@ -110,6 +111,11 @@ function migrateStaleSourceBaselines() {
   }
 }
 
+/** Keep `<html lang>` in step with the chosen interface language. */
+function applyUiLanguage() {
+  document.documentElement.lang = i18nStore.getSnapshot();
+}
+
 function applyColorScheme() {
   const snapshot = preferencesStore.getSnapshot();
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -194,6 +200,7 @@ export function WorkspaceBootstrap() {
     // only fires on changes, so without this a system-dark visitor loads a
     // light page until some preference happens to be patched.
     applyColorScheme();
+    applyUiLanguage();
     ensureBundledThemeLibraryEntries();
 
     try {

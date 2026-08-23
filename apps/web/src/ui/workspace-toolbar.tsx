@@ -63,6 +63,7 @@ import type { ViewerRenderer } from './preview-pane';
 import { PositionedMenu } from './positioned-menu';
 import { StyledTooltip } from './styled-tooltip';
 import { WorkspaceAiEditor } from './workspace-ai-editor';
+import { useTranslation } from '../lib/i18n/use-translation';
 
 /**
  * Height every standalone control in the desktop toolbar row has to hit so the
@@ -128,6 +129,7 @@ export function WorkspaceToolbar({
   sidebarCollapsed: boolean;
   viewer: ViewerRenderer;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const preferences = useStore(preferencesStore);
   const fileSnapshot = useStore(fileStore);
@@ -612,7 +614,7 @@ export function WorkspaceToolbar({
                       Preview
                     </p>
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3 py-2.5">
-                      <span className="text-sm font-medium text-foreground">Zoom</span>
+                      <span className="text-sm font-medium text-foreground">{t('toolbar.zoom')}</span>
                       <div className="flex items-center gap-1">
                         <ToolbarIconButton
                           ariaLabel="Zoom out"
@@ -624,7 +626,7 @@ export function WorkspaceToolbar({
                         </ToolbarIconButton>
                         <button
                           type="button"
-                          aria-label="Reset zoom"
+                          aria-label={t('toolbar.resetZoom')}
                           className="inline-flex h-8 min-w-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                           disabled={!canPreviewActions}
                           onClick={viewer.zoomReset}
@@ -734,7 +736,7 @@ export function WorkspaceToolbar({
                 </ToolbarIconButton>
                 <button
                   type="button"
-                  aria-label="Reset zoom"
+                  aria-label={t('toolbar.resetZoom')}
                   className="inline-flex h-7 min-w-10 items-center justify-center rounded-lg px-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
                   disabled={!canPreviewActions}
                   onClick={viewer.zoomReset}
@@ -916,7 +918,7 @@ export function WorkspaceToolbar({
           </ToolbarIconButton>
           <button
             type="button"
-            aria-label="Reset zoom"
+            aria-label={t('toolbar.resetZoom')}
             className="inline-flex h-8 min-w-12 items-center justify-center rounded-lg px-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
             disabled={!canPreviewActions}
             onClick={viewer.zoomReset}
@@ -1177,6 +1179,7 @@ function ShareComboButton({
   onOpenShareDialog: () => void;
   onSharePdf: () => void | Promise<void>;
 }) {
+  const { t } = useTranslation();
   const anchorRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -1188,18 +1191,18 @@ function ShareComboButton({
     >
       <button
         type="button"
-        aria-label="Share PDF"
+        aria-label={t('toolbar.sharePdf')}
         disabled={disabled}
         onClick={() => void onSharePdf()}
         className="inline-flex h-8 items-center gap-2 rounded-l-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <Share2 className="size-4" />
-        <span className="whitespace-nowrap">Share</span>
+        <span className="whitespace-nowrap">{t('toolbar.share')}</span>
       </button>
       <button
         ref={triggerRef}
         type="button"
-        aria-label="More share options"
+        aria-label={t('toolbar.moreShare')}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         disabled={disabled}
@@ -1288,6 +1291,7 @@ function DownloadComboButton({
   onMenuOpenChange: (open: boolean) => void;
   onOpenExportDialog: () => void;
 }) {
+  const { t } = useTranslation();
   const anchorRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -1299,18 +1303,18 @@ function DownloadComboButton({
     >
       <button
         type="button"
-        aria-label="Download PDF"
+        aria-label={t('toolbar.downloadPdf')}
         disabled={disabled}
         onClick={() => void onDownloadPdf()}
         className="inline-flex h-8 items-center gap-2 rounded-l-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40"
       >
         <Download className="size-4" />
-        <span className="whitespace-nowrap">Download</span>
+        <span className="whitespace-nowrap">{t('toolbar.download')}</span>
       </button>
       <button
         ref={triggerRef}
         type="button"
-        aria-label="More download options"
+        aria-label={t('toolbar.moreDownload')}
         aria-haspopup="menu"
         aria-expanded={menuOpen}
         disabled={disabled}
@@ -1447,6 +1451,7 @@ function DownloadShareDialog({
   sendProposalLabel: string;
   open: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -1495,7 +1500,7 @@ function DownloadShareDialog({
                   disabled={!canPreviewActions}
                   icon={<Copy className="size-4" />}
                   onClick={onCopyMarkdown}
-                  title="Copy as Markdown"
+                  title={t('toolbar.copyMarkdown')}
                 />
               </DialogActionSection>
 
@@ -1515,7 +1520,7 @@ function DownloadShareDialog({
                   disabled={!canLinkActions}
                   icon={<Copy className="size-4" />}
                   onClick={onCopyShareLink}
-                  title="Copy share link"
+                  title={t('toolbar.copyShareLink')}
                 />
                 <DialogActionButton
                   description="Copy an editable copy. The recipient can make changes and send a proposal back."
@@ -1529,7 +1534,7 @@ function DownloadShareDialog({
                   disabled={!canLinkActions}
                   icon={<FileDown className="size-4" />}
                   onClick={onCopyPdfLink}
-                  title="Copy PDF download link"
+                  title={t('toolbar.copyPdfLink')}
                 />
               </DialogActionSection>
 

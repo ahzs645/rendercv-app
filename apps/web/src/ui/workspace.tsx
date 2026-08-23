@@ -35,6 +35,7 @@ import { OnboardingTour } from '../features/onboarding/OnboardingTour';
 import { onboardingTour } from '../features/onboarding/tour-state';
 import { useYamlImport } from './yaml-import-button';
 import { useUrlCvLoader } from './use-url-cv-loader';
+import { useTranslation } from '../lib/i18n/use-translation';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
@@ -114,6 +115,7 @@ function isInteractiveElementFocused(): boolean {
 }
 
 export function Workspace({ active = true }: { active?: boolean }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const fileSnapshot = useStore(fileStore);
   const reviewSnapshot = useStore(reviewStore);
@@ -756,7 +758,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
           className="absolute bottom-5 right-5 z-10 inline-flex items-center gap-2 rounded-full border border-border bg-background/90 px-4 py-2.5 text-sm font-medium text-foreground shadow-lg backdrop-blur transition-colors hover:bg-accent hover:text-accent-foreground sm:bottom-8 sm:right-8"
         >
           <WandSparkles className="size-4" />
-          Fit to page
+          {t('preview.fitToPage')}
           {hiddenEntryCount > 0 ? (
             <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
               {hiddenEntryCount} hidden
