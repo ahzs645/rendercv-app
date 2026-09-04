@@ -203,9 +203,12 @@ describe('fileStore variant authoring', () => {
 
   it('creates, selects, renames and deletes variants', () => {
     const file = fileStore.createFile('Variants CV');
-    const key = fileStore.createVariant(file.id, 'Tech Focus');
+    const key = fileStore.createVariant(file.id, 'Tech Focus', {
+      exclude_sections: ['publications']
+    });
     expect(key).toBe('tech_focus');
     expect(findFile(file.id)?.selectedVariant).toBe('tech_focus');
+    expect(findFile(file.id)?.variants?.tech_focus?.exclude_sections).toEqual(['publications']);
 
     fileStore.renameVariant(file.id, 'tech_focus', 'Academic');
     const afterRename = findFile(file.id);

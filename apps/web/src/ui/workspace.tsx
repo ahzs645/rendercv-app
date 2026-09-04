@@ -36,6 +36,7 @@ import { onboardingTour } from '../features/onboarding/tour-state';
 import { useYamlImport } from './yaml-import-button';
 import { useUrlCvLoader } from './use-url-cv-loader';
 import { useTranslation } from '../lib/i18n/use-translation';
+import { useResumeWebMcp } from '../features/webmcp/use-resume-webmcp';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
@@ -132,6 +133,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
   const [isDraggingYaml, setIsDraggingYaml] = useState(false);
   const dragDepthRef = useRef(0);
   const selectedFile = fileSnapshot.files.find((file) => file.id === fileSnapshot.selectedFileId);
+  useResumeWebMcp(active && Boolean(selectedFile));
   const rawSections = selectedFile ? resolveFileSections(selectedFile) : undefined;
   const viewerSections = selectedFile ? resolveViewerSections(selectedFile) : undefined;
   const selectedReviewSession = selectedFile

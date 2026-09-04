@@ -595,8 +595,12 @@ export class FileStore {
     });
   }
 
-  /** Create a new, empty variant and select it. Returns the generated key. */
-  createVariant(id: string, name?: string): string | undefined {
+  /** Create and select a variant, optionally with its initial definition. Returns the generated key. */
+  createVariant(
+    id: string,
+    name?: string,
+    definition?: Partial<CvVariantDefinition>
+  ): string | undefined {
     const file = this.files.find((current) => current.id === id);
     if (!file) {
       return undefined;
@@ -607,7 +611,7 @@ export class FileStore {
     const description = name?.trim() ? name.trim() : undefined;
     const nextVariants: CvVariants = {
       ...variants,
-      [key]: { description }
+      [key]: { description, ...definition }
     };
     this.#updateMeta(id, { variants: nextVariants, selectedVariant: key });
     return key;
