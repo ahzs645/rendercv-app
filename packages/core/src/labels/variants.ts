@@ -1,6 +1,8 @@
 export const THEME_LABELS: Record<string, string> = {
   ahmadstyle: 'Ahmad Style',
+  carolynstyle: 'Carolyn Style',
   classic: 'Classic',
+  classicserif: 'Classic Serif',
   ember: 'Ember',
   engineeringclassic: 'Engineering Classic',
   engineeringresumes: 'Engineering Resumes',
@@ -55,4 +57,10 @@ export function variantLabel(key: string) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+/** Keep saved aliases usable without offering duplicate layouts for new choices. */
+export function visibleThemeKeys(keys: string[], selectedTheme?: string): string[] {
+  if (!keys.includes('classicserif')) return keys;
+  return keys.filter((key) => key === selectedTheme || !['phdjakes', 'carolynstyle'].includes(key));
 }

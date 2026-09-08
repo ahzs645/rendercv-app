@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react';
 import { GitCompareArrows, Check, FilePlus2, FileText, Pencil, Upload, WandSparkles, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, preferencesStore, resolveFileSections, reviewStore, variantLabel } from '@rendercv/core';
+import { visibleThemeKeys, classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, preferencesStore, resolveFileSections, reviewStore, variantLabel } from '@rendercv/core';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { toast } from 'sonner';
@@ -717,13 +717,13 @@ export function Workspace({ active = true }: { active?: boolean }) {
             variantLabel={activeVariantLabel}
             variantExcludedSections={activeVariant?.exclude_sections}
             hideArchivedEntries={preferences.hideArchivedEntries}
-            themeOptions={Array.from(
+            themeOptions={visibleThemeKeys(Array.from(
               new Set([
                 ...Object.keys(defaultDesigns),
                 ...Object.keys(preferences.themeLibrary),
                 ...Object.keys(selectedFile?.designs ?? {})
               ])
-            )}
+            ), selectedFile?.selectedTheme)}
             currentTheme={selectedFile?.selectedTheme}
             onThemeChange={
               selectedFile && !selectedFile.isReadOnly

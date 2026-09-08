@@ -9,6 +9,7 @@ import {
   localeLabel,
   preferencesStore,
   themeLabel,
+  visibleThemeKeys,
   variantLabel
 } from '@rendercv/core';
 import { toast } from 'sonner';
@@ -45,13 +46,13 @@ export function SectionTabs({
   const [isImportingTheme, setIsImportingTheme] = useState(false);
   const [isImportingVariants, setIsImportingVariants] = useState(false);
   const preferences = useStore(preferencesStore);
-  const themeOptions = Array.from(
+  const themeOptions = visibleThemeKeys(Array.from(
     new Set([
       ...BUILT_IN_THEME_KEYS,
       ...Object.keys(preferences.themeLibrary),
       ...Object.keys(selectedFile?.designs ?? {})
     ])
-  );
+  ), selectedFile?.selectedTheme);
   const variant =
     active === 'cv'
       ? {

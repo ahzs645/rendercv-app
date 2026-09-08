@@ -1,4 +1,5 @@
 import YAML from 'yaml';
+import { isCurrentThemeCache } from './theme-cache';
 import yamlToTypstPy from './yaml_to_typst.py?raw';
 import { BUNDLED_THEMES } from './bundled-themes.generated';
 import {
@@ -362,6 +363,15 @@ with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
             with open(destination, "wb") as target:
                 target.write(file_bytes)
 
+    # Extract all packages before loading schemas: compatibility aliases may
+    # depend on another theme in the same archive, regardless of ZIP ordering.
+    for _, theme_name in packages:
+        for module_name in list(sys.modules):
+            if module_name == theme_name or module_name.startswith(theme_name + "."):
+                del sys.modules[module_name]
+    importlib.invalidate_caches()
+    for _, theme_name in packages:
+        custom_theme_folder = pyodide_root / theme_name
         init_file = custom_theme_folder / "__init__.py"
         spec = importlib.util.spec_from_file_location(theme_name, init_file)
         if spec is None or spec.loader is None:
@@ -755,7 +765,9 @@ async function initialize() {
   }
 
   try {
-    storedCustomThemes = await readStoredCustomThemes();
+    storedCustomThemes = (await readStoredCustomThemes()).filter((theme) =>
+      isCurrentThemeCache(theme.archiveName, BUNDLED_THEMES.map((entry) => entry.archiveName), BUNDLED_THEME_CACHE_VERSION)
+    );
   } catch {
     // Ignore theme discovery failures and let render-time validation surface issues.
   }

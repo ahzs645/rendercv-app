@@ -470,7 +470,26 @@ const baseDesignGroups: FieldGroup[] = [
     }
 ];
 
+const classicSerifGroups: FieldGroup[] = [{
+  title: 'Classic Serif',
+  fields: [{
+    path: ['preset'], label: 'Preset', type: 'toggle',
+    options: [{ value: 'jake', label: 'Jake' }, { value: 'carolyn', label: 'Carolyn' }],
+    description: 'Sets spacing, typography, and default field order. Explicit design settings take precedence.'
+  }, {
+    path: ['experience_order'], label: 'Experience heading order', type: 'toggle',
+    options: [{ value: 'preset', label: 'Preset default' }, { value: 'position_first', label: 'Position first' }, { value: 'company_first', label: 'Company first' }],
+    description: 'Swap company and position without changing spacing or typography. Explicit entry templates take precedence.'
+  }, {
+    path: ['indent_nested_jobs'], label: 'Indent nested jobs', type: 'boolean',
+    description: 'Indent roles beneath their company heading. Off by default.'
+  }]
+}];
+
 const themeSpecificDesignGroups: Record<string, FieldGroup[]> = {
+  classicserif: classicSerifGroups,
+  phdjakes: classicSerifGroups,
+  carolynstyle: classicSerifGroups,
   ahmadstyle: [
     {
       title: 'Ahmad Style',
@@ -593,7 +612,9 @@ const themeSpecificDesignGroups: Record<string, FieldGroup[]> = {
 
 export function getDesignSchema(themeName?: string): SectionSchema {
   return {
-    groups: [...baseDesignGroups, ...(themeName ? themeSpecificDesignGroups[themeName] ?? [] : [])]
+    groups: themeName && ['classicserif', 'phdjakes', 'carolynstyle'].includes(themeName)
+      ? [...classicSerifGroups, ...baseDesignGroups]
+      : [...baseDesignGroups, ...(themeName ? themeSpecificDesignGroups[themeName] ?? [] : [])]
   };
 }
 

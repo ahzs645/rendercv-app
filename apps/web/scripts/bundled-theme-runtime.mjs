@@ -4,6 +4,8 @@ import path from 'node:path';
 
 export const THEME_PACKAGE_DIRS = [
   'ahmadstyle',
+  'carolynstyle',
+  'classicserif',
   'phdjakes',
   'phddeedy',
   'phdresearch',

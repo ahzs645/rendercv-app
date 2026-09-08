@@ -19,22 +19,22 @@ const generatedModulePath = path.join(
 
 // Every bundled theme ships from the same `themes/resume` submodule. The public
 // archive intentionally contains only runtime Python/templates/fonts from the
-// five theme packages plus their shared font directory. Resume data, variants,
+// theme packages plus their shared font directory. Resume data, variants,
 // fixtures, tests, build tooling and repository metadata must never be shipped.
-// A single shared archive avoids emitting five byte-identical runtime bundles.
+// A single shared archive avoids emitting byte-identical runtime bundles.
 const submodulePath = path.join(projectRoot, 'themes/resume');
 const sharedArchiveBaseName = 'bundled-resume-themes';
 
 const THEME_SOURCES = [
   {
+    design: 'design:\n  theme: classicserif\n  preset: jake\n',
+    packageDir: 'classicserif',
+    themeKey: 'classicserif'
+  },
+  {
     design: 'design:\n  theme: ahmadstyle\n',
     packageDir: 'ahmadstyle',
     themeKey: 'ahmadstyle'
-  },
-  {
-    design: 'design:\n  theme: phdjakes\n',
-    packageDir: 'phdjakes',
-    themeKey: 'phdjakes'
   },
   {
     design: 'design:\n  theme: phddeedy\n',

@@ -98,10 +98,17 @@ export const customConnectionTemplate: EntryTemplate = {
       placeholder: 'https://cal.com/johndoe'
     },
     {
+      path: ['display'],
+      label: 'Display text',
+      type: 'toggle',
+      options: [{ value: 'auto', label: 'Automatic' }, { value: 'url', label: 'URL' }, { value: 'label', label: 'Custom label' }],
+      defaultValue: 'auto',
+      description: 'Automatic uses your label when provided, otherwise the readable URL.'
+    },
+    {
       path: ['placeholder'],
-      label: 'Placeholder',
+      label: 'Custom label',
       type: 'string',
-      required: true,
       defaultValue: '',
       placeholder: 'Book a call'
     }

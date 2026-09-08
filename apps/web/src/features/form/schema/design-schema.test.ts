@@ -45,3 +45,14 @@ describe('getDesignSchema', () => {
     expect(listFieldPaths('ahmadstyle')).not.toContain('pagebreak_before_sections');
   });
 });
+
+it('offers Jake and Carolyn presets on the shared layout and saved aliases', () => {
+  for (const theme of ['classicserif', 'phdjakes', 'carolynstyle']) {
+    const field = getDesignSchema(theme).groups.flatMap((group) => group.fields)
+      .find((field) => field.path.join('.') === 'preset');
+    expect(field?.options).toEqual([
+      { value: 'jake', label: 'Jake' }, { value: 'carolyn', label: 'Carolyn' }
+    ]);
+  }
+  expect(listFieldPaths('moderncv')).not.toContain('preset');
+});

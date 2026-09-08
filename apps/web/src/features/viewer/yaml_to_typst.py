@@ -868,6 +868,18 @@ def patch_header_connection_icons(typst_content):
     )
 
 
+def resolve_connection_display(cv_data):
+    """Resolve per-item display on a render-only copy; preserve editable labels."""
+    for connection in cv_data.get("custom_connections") or []:
+        if not isinstance(connection, dict):
+            continue
+        display = connection.pop("display", "auto")
+        label = str(connection.get("placeholder") or "").strip()
+        url = str(connection.get("url") or "").strip()
+        if url and (display == "url" or not label):
+            connection["placeholder"] = url.removeprefix("https://").removeprefix("http://").removeprefix("www.").rstrip("/")
+
+
 def normalize_cv_yaml(yaml_text):
     compatibility_warnings.clear()
     parsed = safe_load_yaml(yaml_text)
@@ -956,6 +968,13 @@ POSITION_MARKER_THEMES = ("ahmadstyle", "tylerstyle")
 if theme_name not in POSITION_MARKER_THEMES:
     normalized_yaml_input_cv = strip_position_markers(normalized_yaml_input_cv)
 
+# Display preferences belong to the editor, not RenderCV's strict connection
+# schema. Resolve only the rendering copy so toggling back restores the label.
+render_cv_data = safe_load_yaml(normalized_yaml_input_cv)
+if isinstance(render_cv_data, dict) and isinstance(render_cv_data.get("cv"), dict):
+    resolve_connection_display(render_cv_data["cv"])
+render_yaml_input_cv = safe_dump_yaml(render_cv_data)
+
 kwargs: BuildRendercvModelArguments = {}
 kwargs["design_yaml_file"] = yaml_input_design
 kwargs["locale_yaml_file"] = yaml_input_locale
@@ -963,7 +982,7 @@ kwargs["settings_yaml_file"] = yaml_input_settings
 
 try:
     dictionary, model = build_rendercv_dictionary_and_model(
-        normalized_yaml_input_cv,
+        render_yaml_input_cv,
         **kwargs,
     )
 except RenderCVUserValidationError as e:
