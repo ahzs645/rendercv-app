@@ -221,6 +221,28 @@ describe('fileStore variant authoring', () => {
     fileStore.deleteFile(file.id);
   });
 
+  it('renameVariant reports the resulting key and rejects collisions', () => {
+    const file = fileStore.createFile('Rename CV');
+    const key = fileStore.createVariant(file.id, 'Tech Focus')!;
+    fileStore.createVariant(file.id, 'Academic');
+
+    // A successful rename hands back the slug so callers can keep editing it.
+    expect(fileStore.renameVariant(file.id, key, 'Industry')).toBe('industry');
+
+    // Re-slugging to the same key is a no-op rename, not a collision.
+    expect(fileStore.renameVariant(file.id, 'industry', 'Industry')).toBe('industry');
+
+    // Taken names and empty names are rejected, leaving the variant untouched.
+    expect(fileStore.renameVariant(file.id, 'industry', 'Academic')).toBeUndefined();
+    expect(fileStore.renameVariant(file.id, 'industry', '   ')).toBeUndefined();
+    expect(findFile(file.id)?.variants?.industry).toBeDefined();
+
+    // An unknown variant is rejected too.
+    expect(fileStore.renameVariant(file.id, 'missing', 'Whatever')).toBeUndefined();
+
+    fileStore.deleteFile(file.id);
+  });
+
   it('toggles a section exclusion on the active variant', () => {
     const file = fileStore.createFile('Section Variant CV');
     const key = fileStore.createVariant(file.id, 'minimal')!;

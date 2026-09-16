@@ -1,6 +1,8 @@
+import * as Dialog from '@radix-ui/react-dialog';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Layers, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Download, Layers, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import type { CvFile, CvFileSections, SectionKey } from '@rendercv/contracts';
+import { serializeCvVariantsYaml } from '@rendercv/primitives';
 import { SECTION_LABELS } from '@rendercv/contracts';
 import {
   defaultDesigns,
@@ -14,6 +16,8 @@ import {
 } from '@rendercv/core';
 import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
+import { downloadBlob } from '../features/viewer/download';
+import { DialogOverlay, DialogShell } from './dialog-shell';
 import type { ViewerRenderer } from './preview-pane';
 import { ThemeLibraryDialog } from './theme-library-dialog';
 import { useTranslation } from '../lib/i18n/use-translation';
@@ -215,6 +219,7 @@ function VariantManager({
   const { t } = useTranslation();
   const preferences = useStore(preferencesStore);
   const [open, setOpen] = useState(false);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -252,10 +257,21 @@ function VariantManager({
     close();
   }
 
-  function handleRename(key: string) {
-    const next = window.prompt('Rename variant', variantLabel(key));
-    if (next === null || !next.trim()) return;
-    fileStore.renameVariant(selectedFile.id, key, next);
+  function handleEdit(key: string) {
+    setEditingKey(key);
+    close();
+  }
+
+  function handleExport() {
+    if (variantKeys.length === 0) {
+      return;
+    }
+    const baseName = (selectedFile.name || 'cv').replace(/\.[^.]+$/, '').trim() || 'cv';
+    void downloadBlob(
+      new Blob([serializeCvVariantsYaml(variants)], { type: 'text/yaml' }),
+      `${baseName}.variants.yaml`
+    );
+    toast.success(t('variantEdit.exported'));
     close();
   }
 
@@ -335,9 +351,10 @@ function VariantManager({
                     <>
                       <button
                         type="button"
-                        aria-label={`Rename ${variantLabel(key)}`}
+                        aria-label={`Edit ${variantLabel(key)}`}
+                        data-testid={`variant-edit-${key}`}
                         className="flex size-6 items-center justify-center rounded text-muted-foreground/70 hover:bg-muted hover:text-foreground"
-                        onClick={() => handleRename(key)}
+                        onClick={() => handleEdit(key)}
                       >
                         <Pencil className="size-3" />
                       </button>
@@ -383,6 +400,18 @@ function VariantManager({
               {isImporting ? t('section.importingVariants') : t('section.importVariants')}
             </button>
           ) : null}
+          {variantKeys.length > 0 ? (
+            <button
+              type="button"
+              role="menuitem"
+              data-testid="variant-export"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+              onClick={handleExport}
+            >
+              <Download className="size-3.5 shrink-0" />
+              {t('section.exportVariants')}
+            </button>
+          ) : null}
           <div className="my-1 h-px bg-border/60" />
           <button
             type="button"
@@ -398,6 +427,246 @@ function VariantManager({
           </button>
         </div>
       ) : null}
+      <VariantEditDialog
+        selectedFile={selectedFile}
+        variantKey={editingKey}
+        onClose={() => setEditingKey(null)}
+      />
+    </div>
+  );
+}
+
+/**
+ * Authors the parts of a variant that section/entry toggles can't express: its
+ * name, a note about when to use it, and the tag/flavor sets that drive
+ * variant-aware visibility. Renaming goes through `renameVariant`, which
+ * rejects empty or colliding names, so the dialog stays open on a clash.
+ */
+export function VariantEditDialog({
+  selectedFile,
+  variantKey,
+  onClose
+}: {
+  selectedFile: CvFile;
+  variantKey: string | null;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const variant = variantKey ? selectedFile.variants?.[variantKey] : undefined;
+  const open = Boolean(variantKey && variant);
+
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [flavors, setFlavors] = useState<string[]>([]);
+
+  // Seed the form when a different variant is opened — not on every keystroke,
+  // which would fight the user as `updateVariant` rewrites the file.
+  useEffect(() => {
+    if (!variantKey || !variant) {
+      return;
+    }
+    setName(variantLabel(variantKey));
+    setDescription(variant.description ?? '');
+    setTags(variant.tags ?? []);
+    setFlavors(variant.flavors ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variantKey]);
+
+  function handleSave() {
+    if (!variantKey) {
+      return;
+    }
+
+    let targetKey = variantKey;
+    const trimmedName = name.trim();
+    if (trimmedName && trimmedName !== variantLabel(variantKey)) {
+      const renamed = fileStore.renameVariant(selectedFile.id, variantKey, trimmedName);
+      if (!renamed) {
+        toast.error(t('variantEdit.nameTaken'));
+        return;
+      }
+      targetKey = renamed;
+    }
+
+    fileStore.updateVariant(selectedFile.id, targetKey, {
+      description: description.trim() || undefined,
+      tags: tags.length > 0 ? tags : undefined,
+      flavors: flavors.length > 0 ? flavors : undefined
+    });
+    toast.success(t('variantEdit.saved'));
+    onClose();
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
+      <Dialog.Portal>
+        <DialogOverlay />
+        <DialogShell
+          title={t('variantEdit.title')}
+          description={t('variantEdit.description')}
+          footer={
+            <>
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  {t('common.cancel')}
+                </button>
+              </Dialog.Close>
+              <button
+                type="button"
+                data-testid="variant-edit-save"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                onClick={handleSave}
+              >
+                {t('common.save')}
+              </button>
+            </>
+          }
+        >
+          <form
+            className="space-y-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSave();
+            }}
+          >
+            <div>
+              <label
+                htmlFor="variant-name"
+                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                {t('variantEdit.name')}
+              </label>
+              <input
+                id="variant-name"
+                data-testid="variant-name-input"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={t('variantEdit.namePlaceholder')}
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 placeholder:text-muted-foreground/60"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="variant-description"
+                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                {t('variantEdit.descriptionLabel')}
+              </label>
+              <textarea
+                id="variant-description"
+                data-testid="variant-description-input"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={2}
+                placeholder={t('variantEdit.descriptionPlaceholder')}
+                className="mt-1 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 placeholder:text-muted-foreground/60"
+              />
+            </div>
+
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('variantEdit.tags')}
+              </span>
+              <TokenInput
+                tokens={tags}
+                onChange={setTags}
+                placeholder={t('variantEdit.tagsPlaceholder')}
+                testId="variant-tags-input"
+              />
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t('variantEdit.tagsHint')}</p>
+            </div>
+
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('variantEdit.flavors')}
+              </span>
+              <TokenInput
+                tokens={flavors}
+                onChange={setFlavors}
+                placeholder={t('variantEdit.flavorsPlaceholder')}
+                testId="variant-flavors-input"
+              />
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t('variantEdit.flavorsHint')}</p>
+            </div>
+          </form>
+        </DialogShell>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+/** Comma- or Enter-separated chips. Backspace on an empty draft pops the last. */
+function TokenInput({
+  tokens,
+  onChange,
+  placeholder,
+  testId
+}: {
+  tokens: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  testId?: string;
+}) {
+  const [draft, setDraft] = useState('');
+
+  function commit(raw: string) {
+    const parts = raw
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length === 0) {
+      setDraft('');
+      return;
+    }
+    const next = [...tokens];
+    for (const part of parts) {
+      if (!next.includes(part)) {
+        next.push(part);
+      }
+    }
+    onChange(next);
+    setDraft('');
+  }
+
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+      {tokens.map((token) => (
+        <span
+          key={token}
+          className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-foreground"
+        >
+          {token}
+          <button
+            type="button"
+            aria-label={`Remove ${token}`}
+            className="text-muted-foreground/70 hover:text-foreground"
+            onClick={() => onChange(tokens.filter((value) => value !== token))}
+          >
+            <X className="size-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        data-testid={testId}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ',') {
+            event.preventDefault();
+            commit(draft);
+          } else if (event.key === 'Backspace' && draft === '' && tokens.length > 0) {
+            onChange(tokens.slice(0, -1));
+          }
+        }}
+        onBlur={() => commit(draft)}
+        placeholder={tokens.length === 0 ? placeholder : ''}
+        className="min-w-[8rem] flex-1 bg-transparent py-0.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/60"
+      />
     </div>
   );
 }

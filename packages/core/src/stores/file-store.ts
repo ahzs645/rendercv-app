@@ -617,15 +617,20 @@ export class FileStore {
     return key;
   }
 
-  renameVariant(id: string, oldKey: string, nextName: string) {
+  /**
+   * Rename a variant, returning the resulting key so callers can go on editing
+   * it. Returns undefined when the name is empty or already taken — a rejection
+   * the caller is expected to surface rather than silently swallow.
+   */
+  renameVariant(id: string, oldKey: string, nextName: string): string | undefined {
     const file = this.files.find((current) => current.id === id);
     if (!file?.variants?.[oldKey]) {
-      return;
+      return undefined;
     }
 
     const nextKey = slugifyVariantKey(nextName);
     if (!nextKey || (nextKey !== oldKey && file.variants[nextKey])) {
-      return;
+      return undefined;
     }
 
     const nextVariants: CvVariants = {};
@@ -637,6 +642,7 @@ export class FileStore {
       variants: nextVariants,
       selectedVariant: file.selectedVariant === oldKey ? nextKey : file.selectedVariant
     });
+    return nextKey;
   }
 
   deleteVariant(id: string, key: string) {
