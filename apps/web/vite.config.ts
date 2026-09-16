@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -16,8 +17,11 @@ function getBuildVersion(): string {
 
 const BUILD_VERSION = getBuildVersion();
 const BUILD_TIME = new Date().toISOString();
+const APP_VERSION = (
+  JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')) as { version: string }
+).version;
 const VERSION_JSON = JSON.stringify(
-  { version: '0.1.0', buildNumber: BUILD_VERSION, buildTime: BUILD_TIME },
+  { version: APP_VERSION, buildNumber: BUILD_VERSION, buildTime: BUILD_TIME },
   null,
   2
 );
@@ -51,10 +55,6 @@ function versionJsonPlugin(): Plugin {
 export default defineConfig({
   base: '/rendercv-app/',
   publicDir: '../../static',
-  define: {
-    __BUILD_VERSION__: JSON.stringify(BUILD_VERSION),
-    __BUILD_TIME__: JSON.stringify(BUILD_TIME)
-  },
   plugins: [tailwindcss(), react(), versionJsonPlugin()],
   resolve: {
     alias: [
