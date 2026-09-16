@@ -1,14 +1,61 @@
 /// <reference types="vitest/config" />
 
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+
+function getBuildVersion(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+  } catch {
+    return Date.now().toString(36);
+  }
+}
+
+const BUILD_VERSION = getBuildVersion();
+const BUILD_TIME = new Date().toISOString();
+const APP_VERSION = (
+  JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')) as { version: string }
+).version;
+const VERSION_JSON = JSON.stringify(
+  { version: APP_VERSION, buildNumber: BUILD_VERSION, buildTime: BUILD_TIME },
+  null,
+  2
+);
+
+function versionJsonPlugin(): Plugin {
+  return {
+    name: 'rendercv-version-json',
+    apply: () => true,
+    configureServer(server) {
+      server.middlewares.use('/rendercv-app/version.json', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(VERSION_JSON);
+      });
+      server.middlewares.use('/version.json', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(VERSION_JSON);
+      });
+    },
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: VERSION_JSON
+      });
+    }
+  };
+}
 
 export default defineConfig({
   base: '/rendercv-app/',
   publicDir: '../../static',
-  plugins: [tailwindcss(), react()],
+  plugins: [tailwindcss(), react(), versionJsonPlugin()],
   resolve: {
     alias: [
       {
