@@ -149,6 +149,8 @@ export const en = {
   'tour.editor.body': 'This is where you edit your CV content. Switch between the visual form editor and YAML using the toolbar.',
   'tour.sectionTabs.title': 'Section Tabs',
   'tour.sectionTabs.body': 'Switch between CV, Design, Locale, and Settings. Each tab customizes a different part of your resume.',
+  'tour.design.title': 'Design Tab',
+  'tour.design.body': "You're now on the Design tab. Choose themes, colors, fonts, margins, and other presentation settings.",
   'tour.ai.title': 'AI Assistant',
   'tour.ai.body': 'Ask for stronger bullets, section rewrites, or tailoring help for a specific job description.',
   'tour.preview.title': 'Live Preview',
@@ -162,6 +164,8 @@ export const en = {
   'tour.previous': '← Previous',
   'tour.done': 'Done',
   'tour.skip': 'Skip tour',
+  'tour.close': 'Close tour',
+  'tour.blocked': 'Only the highlighted area is active during the tour.',
   'tour.progress': '{{current}} of {{total}}',
 
   // Variant editor
@@ -326,6 +330,8 @@ export const ko: Messages = {
   'tour.editor.body': '이력서 내용을 편집하는 곳입니다. 도구 모음에서 양식 편집기와 YAML 을 오갈 수 있습니다.',
   'tour.sectionTabs.title': '섹션 탭',
   'tour.sectionTabs.body': '이력서, 디자인, 로케일, 설정 사이를 오갑니다. 각 탭은 이력서의 서로 다른 부분을 다룹니다.',
+  'tour.design.title': '디자인 탭',
+  'tour.design.body': '디자인 탭으로 이동했습니다. 테마, 색상, 글꼴, 여백 등 표시 설정을 고르세요.',
   'tour.ai.title': 'AI 어시스턴트',
   'tour.ai.body': '더 나은 항목 문구, 섹션 다시 쓰기, 특정 채용 공고에 맞춘 수정을 요청해 보세요.',
   'tour.preview.title': '실시간 미리보기',
@@ -339,6 +345,8 @@ export const ko: Messages = {
   'tour.previous': '← 이전',
   'tour.done': '완료',
   'tour.skip': '건너뛰기',
+  'tour.close': '투어 닫기',
+  'tour.blocked': '투어 중에는 강조된 영역만 사용할 수 있습니다.',
   'tour.progress': '{{current}}/{{total}}',
 
   'variantEdit.title': '변형 편집',

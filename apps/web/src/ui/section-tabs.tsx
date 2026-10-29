@@ -94,7 +94,7 @@ export function SectionTabs({
   const showVariantControls = Boolean(variant && variant.options.length > 0);
 
   return (
-    <div className="shrink-0 border-b border-border px-3 pt-1 pb-1 sm:px-2 sm:pt-1 sm:pb-0" data-onboarding="section-tabs">
+    <div className="shrink-0 border-b border-border px-3 pt-1 pb-1 sm:px-2 sm:pt-1 sm:pb-0" data-tutorial-id="section-tabs">
       {/* Two behaviours from one row. On a phone the tabs and the variant/theme
           controls share a single horizontally scrollable band, which reclaims
           the ~50px the second row used to cost on a screen where the header was

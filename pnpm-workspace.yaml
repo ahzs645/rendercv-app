@@ -3,3 +3,8 @@ packages:
   - docs
   - packages/*
   - vendor/rendercv-toolkit/packages/*
+
+# Tourkit is installed from GitHub, where its package `prepare` script builds
+# dist/. pnpm only runs a git-hosted package's build when it is listed here.
+onlyBuiltDependencies:
+  - tourkit

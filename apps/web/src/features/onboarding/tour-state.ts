@@ -17,7 +17,7 @@ class OnboardingTourState {
   }
 
   start() {
-    preferencesStore.patch({ aiEditorOpen: true });
+    // The tour's AI step opens the editor itself when it is reached.
     this.#store.setSnapshot({ isRunning: true });
     capture(EVENTS.ONBOARDING_STARTED);
   }

@@ -141,7 +141,7 @@ export function Sidebar({
       <SidebarBrand compact={isCompact} mini={isMini} />
       <div
         className={`space-y-2 border-b border-sidebar-border px-2 pb-3 ${isMini ? 'pt-0' : 'pt-1'}`}
-        data-onboarding="create-import"
+        data-tutorial-id="create-import"
       >
         <button
           className={`inline-flex w-full items-center rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
@@ -312,7 +312,7 @@ export function Sidebar({
             className={`flex items-center rounded-md text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
               isMini ? 'justify-center px-0 py-2' : 'gap-2 px-2 py-2 text-left'
             }`}
-            data-onboarding="data-export"
+            data-tutorial-id="data-export"
             onClick={() => setSettingsOpen(true)}
             title={t('sidebar.settingsHint')}
             type="button"

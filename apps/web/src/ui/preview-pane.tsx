@@ -136,7 +136,7 @@ export function PreviewPaneView({
   return (
     <div
       className={`flex h-full flex-col ${showHeader ? 'gap-3 p-4 sm:gap-4 sm:p-6' : ''}`}
-      data-onboarding="preview-pane"
+      data-tutorial-id="preview-pane"
     >
       {showHeader ? (
         <PreviewPaneHeader

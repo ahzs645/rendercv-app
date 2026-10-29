@@ -28,7 +28,6 @@
     "@tailwindcss/vite": "^4.1.18",
     "buffer": "^6.0.3",
     "clsx": "^2.1.1",
-    "driver.js": "^1.4.0",
     "framer-motion": "^12.40.0",
     "lucide-react": "^0.562.0",
     "monaco-editor": "^0.52.2",
@@ -40,6 +39,7 @@
     "react-resizable-panels": "^3.0.6",
     "react-router-dom": "^7.9.6",
     "sonner": "^2.0.7",
+    "tourkit": "github:ahzs645/tourkit#7e51f99d37360bff5b23deaa8918fdff67b13687",
     "yaml": "^2.8.2"
   },
   "devDependencies": {

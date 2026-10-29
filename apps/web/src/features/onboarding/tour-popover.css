@@ -1,85 +1,180 @@
-.driver-popover {
+/* The onboarding popover: driver.js 1.4's popover (which the tour used
+   before Tourkit) with RenderCV's overrides applied on top, so the card looks
+   exactly as it did. Tourkit positions the card and lights the control. */
+
+/* Tourkit's own status notices inside the card follow the app's tokens. */
+.tourkit-surface,
+.tourkit-overlay {
+  --tourkit-bg: var(--card);
+  --tourkit-ink: var(--card-foreground);
+  --tourkit-ink-2: var(--muted-foreground);
+  --tourkit-ink-3: var(--muted-foreground);
+  --tourkit-line: var(--border);
+  --tourkit-line-soft: var(--border);
+  --tourkit-track: var(--muted);
+  --tourkit-accent: var(--primary);
+  --tourkit-accent-ink: var(--primary-foreground);
+  --tourkit-ring: var(--primary);
+  --tourkit-font: inherit;
+}
+
+.rcv-tour-popover {
+  position: relative;
+  box-sizing: border-box;
+  min-width: 250px;
+  max-width: min(300px, calc(100vw - 2rem));
+  margin: 0;
+  padding: 15px;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   background: var(--card);
   color: var(--card-foreground);
   box-shadow: 0 24px 80px rgb(0 0 0 / 0.24);
+  text-align: left;
 }
 
-.driver-popover-title {
-  font-size: 0.95rem;
-  font-weight: 700;
+.rcv-tour-title {
+  display: block;
+  margin: 0;
+  font: 700 0.95rem/1.5 sans-serif;
 }
 
-.driver-popover-description {
+.rcv-tour-description {
+  margin: 5px 0 0;
   color: var(--muted-foreground);
-  font-size: 0.875rem;
-  line-height: 1.55;
+  font: 400 0.875rem/1.55 sans-serif;
 }
 
-.driver-popover-progress-text {
-  color: var(--muted-foreground);
+.rcv-tour-notice {
   font-size: 0.75rem;
-}
-
-/* driver.js keeps the popover inside the viewport but its own max-width can
-   still be wider than a small phone once the page has side padding. */
-.driver-popover {
-  max-width: min(300px, calc(100vw - 2rem));
 }
 
 /* The footer packs the skip link, the progress counter and the nav buttons on
-   one line; without a gap the first two render as one run-on string
-   ("Skip tour1 of 7"). Translated labels are longer than the English ones, so
-   nothing here may wrap mid-word. */
-.driver-popover-footer {
-  gap: 0.75rem;
+   one line. Translated labels are longer than the English ones, so nothing
+   here may wrap mid-word. */
+.rcv-tour-footer {
+  display: flex;
   flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 15px;
+  text-align: right;
 }
 
-.driver-popover-footer .driver-popover-progress-text,
-.driver-popover-footer button {
+.rcv-tour-progress {
+  color: var(--muted-foreground);
+  font-family: 'Helvetica Neue', Inter, ui-sans-serif, 'Apple Color Emoji', Helvetica, Arial, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
   white-space: nowrap;
 }
 
-/* "Skip tour" is injected at the front of the footer so it sits on the left,
-   pushing the progress text and navigation buttons to the right.
-   NOTE: the class is deliberately outside the `driver-popover*` namespace —
-   driver.js swallows clicks on popover children whose class name contains it. */
-.tour-skip-btn {
-  display: inline-flex !important;
-  align-items: center;
-  min-height: 2rem;
-  margin-right: auto;
-  padding: 0 !important;
-  background: transparent !important;
-  border: none !important;
-  color: var(--muted-foreground) !important;
-  font-size: 0.75rem;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.rcv-tour-navigation {
+  display: flex;
+  flex-grow: 1;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.rcv-tour-footer button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-block;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--background);
+  color: var(--foreground);
+  font: 12px/1.3 sans-serif;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.tour-skip-btn:hover {
-  color: var(--foreground) !important;
+.rcv-tour-footer button:focus-visible,
+.rcv-tour-close:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
 }
 
-.driver-popover button {
+.rcv-tour-footer .rcv-tour-next {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Previous stays in place on the first step, visibly unavailable. */
+.rcv-tour-footer button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* "Skip tour" sits on the left, pushing the counter and buttons right. */
+.rcv-tour-footer .rcv-tour-skip {
+  display: inline-flex;
+  align-items: center;
+  margin-right: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+.rcv-tour-footer .rcv-tour-skip:hover {
+  color: var(--foreground);
+}
+
+.rcv-tour-close {
+  all: unset;
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  width: 32px;
+  height: 28px;
   border-radius: 0.5rem;
-  text-shadow: none;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
 }
 
-.driver-popover-next-btn,
-.driver-popover-done-btn {
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
-  color: var(--primary-foreground) !important;
+/* The arrow sits on the edge facing the control. Tourkit names that side in
+   data-card-position and the spot along it in --tourkit-arrow-offset. */
+.rcv-tour-arrow {
+  position: absolute;
+  display: none;
+  border: 5px solid transparent;
 }
 
-.driver-popover-prev-btn,
-.driver-popover-close-btn {
-  background: var(--background) !important;
-  border-color: var(--border) !important;
-  color: var(--foreground) !important;
+[data-card-position='right'] > .rcv-tour-popover > .rcv-tour-arrow {
+  display: block;
+  right: 100%;
+  top: calc(var(--tourkit-arrow-offset, 16px) - 5px);
+  border-right-color: var(--card);
+}
+
+[data-card-position='left'] > .rcv-tour-popover > .rcv-tour-arrow {
+  display: block;
+  left: 100%;
+  top: calc(var(--tourkit-arrow-offset, 16px) - 5px);
+  border-left-color: var(--card);
+}
+
+[data-card-position='bottom'] > .rcv-tour-popover > .rcv-tour-arrow {
+  display: block;
+  bottom: 100%;
+  left: calc(var(--tourkit-arrow-offset, 16px) - 5px);
+  border-bottom-color: var(--card);
+}
+
+[data-card-position='top'] > .rcv-tour-popover > .rcv-tour-arrow {
+  display: block;
+  top: 100%;
+  left: calc(var(--tourkit-arrow-offset, 16px) - 5px);
+  border-top-color: var(--card);
 }

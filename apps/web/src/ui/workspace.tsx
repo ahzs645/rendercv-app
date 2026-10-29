@@ -573,7 +573,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
   );
 
   const editorPane = (
-    <div className="flex min-h-0 flex-1 flex-col" data-onboarding="editor-pane">
+    <div className="flex min-h-0 flex-1 flex-col" data-tutorial-id="editor-pane">
       {isMergeDraft && selectedFile && selectedReviewSession ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-primary/20 bg-primary/5 px-4 py-3 text-xs text-primary">
           <Pencil className="size-3.5 shrink-0" />
@@ -829,6 +829,8 @@ export function Workspace({ active = true }: { active?: boolean }) {
       ) : null}
       <OnboardingTour
         isMobile={sidebarOverlays}
+        mobilePane={mobilePane}
+        mobileSidebarOpen={mobileOpen}
         onMobilePaneChange={setMobilePane}
         onOpenMobileSidebar={setMobileOpen}
       />

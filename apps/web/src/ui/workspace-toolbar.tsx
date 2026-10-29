@@ -529,7 +529,7 @@ export function WorkspaceToolbar({
             <Dialog.Trigger asChild>
               <ToolbarIconButton
                 ariaLabel="More actions"
-                dataOnboarding="share-controls"
+                tutorialId="share-controls"
                 onClick={() => setMobileActionsOpen(true)}
               >
                 <SlidersHorizontal className="size-4" />
@@ -945,7 +945,7 @@ export function WorkspaceToolbar({
           </ToolbarIconButton>
         </ToolbarControlGroup>
         <ShareComboButton
-          dataOnboarding="share-controls"
+          tutorialId="share-controls"
           disabled={!canLinkActions}
           menuOpen={shareMenuOpen}
           onCopyPdfLink={() => void copyPdfLink()}
@@ -956,7 +956,6 @@ export function WorkspaceToolbar({
           onSharePdf={() => void sharePdf()}
         />
         <DownloadComboButton
-          dataOnboarding="data-export"
           disabled={!canPreviewActions}
           menuOpen={downloadMenuOpen}
           onCopyMarkdown={() => void copyCvMarkdown()}
@@ -1159,7 +1158,7 @@ function ToolbarControlGroup({ children }: { children: ReactNode }) {
 }
 
 function ShareComboButton({
-  dataOnboarding,
+  tutorialId,
   disabled = false,
   menuOpen,
   onCopyPdfLink,
@@ -1169,7 +1168,7 @@ function ShareComboButton({
   onOpenShareDialog,
   onSharePdf
 }: {
-  dataOnboarding?: string;
+  tutorialId?: string;
   disabled?: boolean;
   menuOpen: boolean;
   onCopyPdfLink: () => void | Promise<void>;
@@ -1187,7 +1186,7 @@ function ShareComboButton({
     <div
       ref={anchorRef}
       className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm"
-      data-onboarding={dataOnboarding}
+      data-tutorial-id={tutorialId}
     >
       <button
         type="button"
@@ -1269,7 +1268,7 @@ function ShareComboButton({
 }
 
 function DownloadComboButton({
-  dataOnboarding,
+  tutorialId,
   disabled = false,
   menuOpen,
   onCopyMarkdown,
@@ -1280,7 +1279,7 @@ function DownloadComboButton({
   onMenuOpenChange,
   onOpenExportDialog
 }: {
-  dataOnboarding?: string;
+  tutorialId?: string;
   disabled?: boolean;
   menuOpen: boolean;
   onCopyMarkdown: () => void | Promise<void>;
@@ -1299,7 +1298,7 @@ function DownloadComboButton({
     <div
       ref={anchorRef}
       className="relative flex items-center rounded-xl border border-border bg-background p-1 shadow-sm"
-      data-onboarding={dataOnboarding}
+      data-tutorial-id={tutorialId}
     >
       <button
         type="button"
@@ -1643,7 +1642,7 @@ function ToolbarIconButton({
   active = false,
   ariaLabel,
   children,
-  dataOnboarding,
+  tutorialId,
   disabled = false,
   onClick,
   size = 'sm',
@@ -1652,7 +1651,7 @@ function ToolbarIconButton({
   active?: boolean;
   ariaLabel: string;
   children: ReactNode;
-  dataOnboarding?: string;
+  tutorialId?: string;
   disabled?: boolean;
   onClick: () => void | Promise<void>;
   size?: keyof typeof TOOLBAR_ICON_SIZES;
@@ -1663,7 +1662,7 @@ function ToolbarIconButton({
       <button
         type="button"
         aria-label={ariaLabel}
-        data-onboarding={dataOnboarding}
+        data-tutorial-id={tutorialId}
         disabled={disabled}
         onClick={() => void onClick()}
         className={`inline-flex ${TOOLBAR_ICON_SIZES[size]} items-center justify-center ${
