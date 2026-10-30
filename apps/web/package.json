@@ -39,7 +39,7 @@
     "react-resizable-panels": "^3.0.6",
     "react-router-dom": "^7.9.6",
     "sonner": "^2.0.7",
-    "tourkit": "github:ahzs645/tourkit#7e51f99d37360bff5b23deaa8918fdff67b13687",
+    "tourkit": "github:ahzs645/tourkit#37496441f28052737ccac7f110fbd8932ff42f93",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
