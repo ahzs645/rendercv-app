@@ -14,12 +14,11 @@
     "forceConsistentCasingInFileNames": true,
     "noEmitOnError": true,
     "sourceMap": true,
-    "baseUrl": ".",
     "paths": {
-      "@rendercv/contracts": ["packages/contracts/src/index.ts"],
-      "@rendercv/contracts/*": ["packages/contracts/src/*"],
-      "@rendercv/core": ["packages/core/src/index.ts"],
-      "@rendercv/core/*": ["packages/core/src/*"]
+      "@rendercv/contracts": ["./packages/contracts/src/index.ts"],
+      "@rendercv/contracts/*": ["./packages/contracts/src/*"],
+      "@rendercv/core": ["./packages/core/src/index.ts"],
+      "@rendercv/core/*": ["./packages/core/src/*"]
     }
   }
 }

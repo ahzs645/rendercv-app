@@ -11,7 +11,8 @@
     "postbuild": "node ./scripts/verify-bundled-themes-dist.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:smoke": "node ./scripts/smoke-built-app.mjs"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.167",
@@ -50,8 +51,9 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
     "jsdom": "^31.0.0",
+    "playwright": "^1.65.0",
     "tailwindcss": "^4.3.4",
-    "typescript": "^5.9.2",
+    "typescript": "^7.0.2",
     "vite": "^8.3.6",
     "vitest": "^5.1.0"
   }
