@@ -57,6 +57,9 @@ export default defineConfig({
   publicDir: '../../static',
   plugins: [tailwindcss(), react(), versionJsonPlugin()],
   resolve: {
+    // vendor/tourkit resolves these from its own devDependencies otherwise, and
+    // a second React in the bundle breaks every hook.
+    dedupe: ['react', 'react-dom'],
     alias: [
       {
         find: '@rendercv/contracts',
