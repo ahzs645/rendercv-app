@@ -103,6 +103,58 @@ async function walkTour(browser, { name, ...options }) {
   return failures.map((failure) => `${name}: ${failure}`);
 }
 
+/**
+ * The app must never rewrite a visitor's YAML on its own: repairs that go through
+ * a YAML parser drop comments, and render-only output loses tags and positions.
+ */
+async function keepsDocumentIntact(browser) {
+  const authored = [
+    'cv:',
+    '  # a note the author wants to keep',
+    '  name: Smoke Test',
+    '  headline:',
+    '  sections:',
+    '    experience:',
+    '      - company: Example',
+    '        tags: [research]',
+    '        positions:',
+    '          - title: Engineer',
+    '            start_date: 2020-01',
+    '            end_date: present',
+    ''
+  ].join('\n');
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await context.addInitScript(() => {
+    if (localStorage.getItem('rendercv_preferences')) return;
+    localStorage.setItem('rendercv_preferences', JSON.stringify({ onboardingCompletedAt: '2026-01-01T00:00:00Z' }));
+  });
+  const page = await context.newPage();
+  await page.goto(URL_ROOT, { waitUntil: 'domcontentloaded' });
+
+  // An untouched sample is not stored, so make an edit to get the file saved.
+  await page.locator('.monaco-editor').first().click({ timeout: 30_000 });
+  await page.keyboard.type(' ');
+  await page.waitForFunction(() => localStorage.getItem('rendercv_guest_files'), null, { timeout: 10_000 });
+  await page.evaluate((cv) => {
+    const files = JSON.parse(localStorage.getItem('rendercv_guest_files'));
+    files[0].cv = cv;
+    localStorage.setItem('rendercv_guest_files', JSON.stringify(files));
+  }, authored);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(8_000);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('rendercv_guest_files'))[0].cv);
+  const undo = page.getByRole('button', { name: /^undo/i }).first();
+  const undoIdle = await undo.isDisabled();
+  await context.close();
+
+  const failures = [];
+  if (saved !== authored) failures.push(`document: loading it rewrote the YAML:\n${saved}`);
+  if (!undoIdle) failures.push('document: loading it left something to undo');
+  console.log(`${failures.length ? 'FAIL' : 'ok  '} document survives a reload`);
+  return failures;
+}
+
 const server = startServer();
 let browser;
 let failures = [];
@@ -114,6 +166,7 @@ try {
       ...(await walkTour(browser, viewport).catch((error) => [`${viewport.name}: ${error.message}`]))
     );
   }
+  failures.push(...(await keepsDocumentIntact(browser).catch((error) => [`document: ${error.message}`])));
 } catch (error) {
   failures.push(error.message);
 } finally {

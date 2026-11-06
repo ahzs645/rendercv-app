@@ -20,6 +20,7 @@ import {
 } from '@rendercv/primitives';
 import {
   normalizeLegacyDesignYaml,
+  changesYamlData,
   prepareViewerSections,
   resolveViewerSections
 } from '../features/viewer/viewer-sections';
@@ -29,9 +30,8 @@ import type { MonacoEditorHandle } from './monaco-editor';
 import { PreviewPaneView } from './preview-pane';
 import { SectionTabs } from './section-tabs';
 import { Sidebar, SIDEBAR_MINI_WIDTH } from './sidebar';
-import { FormEditor } from '../features/form/form-editor';
 import { WorkspaceToolbar } from './workspace-toolbar';
-import { OnboardingTour } from '../features/onboarding/OnboardingTour';
+import { OnboardingTour, preloadOnboardingTour } from '../features/onboarding/OnboardingTour';
 import { onboardingTour } from '../features/onboarding/tour-state';
 import { useYamlImport } from './yaml-import-button';
 import { useUrlCvLoader } from './use-url-cv-loader';
@@ -48,6 +48,9 @@ const KNOWN_THEMES = new Set([
 ]);
 const MonacoEditor = lazy(() =>
   import('./monaco-editor').then((module) => ({ default: module.MonacoEditor }))
+);
+const FormEditor = lazy(() =>
+  import('../features/form/form-editor').then((module) => ({ default: module.FormEditor }))
 );
 
 const LEGACY_DESIGN_KEY_PATTERN =
@@ -381,8 +384,14 @@ export function Workspace({ active = true }: { active?: boolean }) {
       return;
     }
 
+    // Deferred like the start itself: this effect also runs once before saved
+    // preferences load, and a returning visitor must not download the tour.
+    const preload = window.setTimeout(preloadOnboardingTour, 100);
     const timer = window.setTimeout(() => onboardingTour.start(), 800);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(preload);
+      window.clearTimeout(timer);
+    };
   }, [active, preferences.onboardingCompletedAt, selectedFile]);
 
   useEffect(() => {
@@ -395,7 +404,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
     }
 
     const repairedCv = repairFlattenedPositionDatesInCvYaml(rawSections.cv);
-    if (repairedCv !== rawSections.cv) {
+    if (changesYamlData(rawSections.cv, repairedCv)) {
       fileStore.updateSection('cv', repairedCv, { normalization: true });
     }
   }, [rawSections?.cv, selectedFile]);
@@ -438,11 +447,6 @@ export function Workspace({ active = true }: { active?: boolean }) {
         const normalizedDesign = normalizeLegacyDesignYaml(rawSections.design);
         if (normalizedDesign && normalizedDesign !== rawSections.design) {
           fileStore.updateSection('design', normalizedDesign, { normalization: true });
-        }
-
-        const normalizedCv = normalizeCompatibilityCvYaml(rawSections.cv);
-        if (normalizedCv !== rawSections.cv) {
-          fileStore.updateSection('cv', normalizedCv, { normalization: true });
         }
 
         registerSharedThemeDesign(selectedFile.selectedTheme, selectedFile.designs[selectedFile.selectedTheme]);
@@ -678,59 +682,61 @@ export function Workspace({ active = true }: { active?: boolean }) {
             />
           </Suspense>
         ) : (
-          <FormEditor
-            key={activeSection}
-            section={activeSection}
-            value={currentValue}
-            onChange={handleSectionChange}
-            sharedOrigin={selectedFile?.sharedOrigin}
-            readOnly={selectedFile?.isReadOnly}
-            hiddenEntries={selectedFile?.hiddenEntries}
-            onToggleEntryHidden={
-              selectedFile && !selectedFile.isReadOnly
-                ? (sectionKey: string, fingerprint: string) =>
-                    activeVariantKey
-                      ? fileStore.toggleEntryHiddenInVariant(
-                          selectedFile.id,
-                          activeVariantKey,
-                          sectionKey,
-                          fingerprint
-                        )
-                      : fileStore.toggleEntryHidden(selectedFile.id, sectionKey, fingerprint)
-                : undefined
-            }
-            disabledSections={selectedFile?.disabledSections}
-            onToggleSectionDisabled={
-              selectedFile && !selectedFile.isReadOnly
-                ? (sectionKey: string) =>
-                    activeVariantKey
-                      ? fileStore.toggleVariantSectionExcluded(
-                          selectedFile.id,
-                          activeVariantKey,
-                          sectionKey
-                        )
-                      : fileStore.toggleSectionDisabled(selectedFile.id, sectionKey)
-                : undefined
-            }
-            activeVariantKey={activeVariantKey}
-            activeVariant={activeVariant}
-            variantLabel={activeVariantLabel}
-            variantExcludedSections={activeVariant?.exclude_sections}
-            hideArchivedEntries={preferences.hideArchivedEntries}
-            themeOptions={visibleThemeKeys(Array.from(
-              new Set([
-                ...Object.keys(defaultDesigns),
-                ...Object.keys(preferences.themeLibrary),
-                ...Object.keys(selectedFile?.designs ?? {})
-              ])
-            ), selectedFile?.selectedTheme)}
-            currentTheme={selectedFile?.selectedTheme}
-            onThemeChange={
-              selectedFile && !selectedFile.isReadOnly
-                ? (theme: string) => fileStore.setTheme(selectedFile.id, theme)
-                : undefined
-            }
-          />
+          <Suspense fallback={<EditorLoadingSkeleton />}>
+            <FormEditor
+              key={activeSection}
+              section={activeSection}
+              value={currentValue}
+              onChange={handleSectionChange}
+              sharedOrigin={selectedFile?.sharedOrigin}
+              readOnly={selectedFile?.isReadOnly}
+              hiddenEntries={selectedFile?.hiddenEntries}
+              onToggleEntryHidden={
+                selectedFile && !selectedFile.isReadOnly
+                  ? (sectionKey: string, fingerprint: string) =>
+                      activeVariantKey
+                        ? fileStore.toggleEntryHiddenInVariant(
+                            selectedFile.id,
+                            activeVariantKey,
+                            sectionKey,
+                            fingerprint
+                          )
+                        : fileStore.toggleEntryHidden(selectedFile.id, sectionKey, fingerprint)
+                  : undefined
+              }
+              disabledSections={selectedFile?.disabledSections}
+              onToggleSectionDisabled={
+                selectedFile && !selectedFile.isReadOnly
+                  ? (sectionKey: string) =>
+                      activeVariantKey
+                        ? fileStore.toggleVariantSectionExcluded(
+                            selectedFile.id,
+                            activeVariantKey,
+                            sectionKey
+                          )
+                        : fileStore.toggleSectionDisabled(selectedFile.id, sectionKey)
+                  : undefined
+              }
+              activeVariantKey={activeVariantKey}
+              activeVariant={activeVariant}
+              variantLabel={activeVariantLabel}
+              variantExcludedSections={activeVariant?.exclude_sections}
+              hideArchivedEntries={preferences.hideArchivedEntries}
+              themeOptions={visibleThemeKeys(Array.from(
+                new Set([
+                  ...Object.keys(defaultDesigns),
+                  ...Object.keys(preferences.themeLibrary),
+                  ...Object.keys(selectedFile?.designs ?? {})
+                ])
+              ), selectedFile?.selectedTheme)}
+              currentTheme={selectedFile?.selectedTheme}
+              onThemeChange={
+                selectedFile && !selectedFile.isReadOnly
+                  ? (theme: string) => fileStore.setTheme(selectedFile.id, theme)
+                  : undefined
+              }
+            />
+          </Suspense>
         )}
       </div>
     </div>

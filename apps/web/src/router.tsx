@@ -1,18 +1,19 @@
+import { lazy, Suspense, type ComponentType } from 'react';
 import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { AppDocument } from './routes/app-document';
 import { WorkspaceLayout } from './routes/workspace-layout';
 import { HomeRoute } from './routes/home-route';
-import { PrivacyPolicyPage } from './routes/privacy-policy-page';
-import { TermsOfServicePage } from './routes/terms-of-service-page';
-import { MigratePage } from './routes/migrate-page';
-import { PortalPage } from './routes/portal-page';
-import { PreviewPage } from './routes/preview-page';
-import { PrototypeRenderersPage } from './routes/prototype-renderers-page';
 import { RouteErrorPage } from './routes/route-error-page';
-import { EncodedSharePage } from './routes/encoded-share-page';
-import { SharedCvPage } from './routes/shared-cv-page';
-import { ReviewImportPage } from './routes/review-import-page';
-import { ReviewSessionPage } from './routes/review-session-page';
+
+/** Pages most visits never open stay out of the main bundle. */
+function page(load: () => Promise<{ default: ComponentType }>) {
+  const Page = lazy(load);
+  return (
+    <Suspense fallback={null}>
+      <Page />
+    </Suspense>
+  );
+}
 
 export const router = createBrowserRouter(
   [
@@ -25,19 +26,19 @@ export const router = createBrowserRouter(
           element: <WorkspaceLayout />,
           children: [
             { index: true, element: <HomeRoute /> },
-            { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
-            { path: 'terms-of-service', element: <TermsOfServicePage /> },
-            { path: 'migrate', element: <MigratePage /> },
-            { path: 'portal', element: <PortalPage /> }
+            { path: 'privacy-policy', element: page(() => import('./routes/privacy-policy-page').then((module) => ({ default: module.PrivacyPolicyPage }))) },
+            { path: 'terms-of-service', element: page(() => import('./routes/terms-of-service-page').then((module) => ({ default: module.TermsOfServicePage }))) },
+            { path: 'migrate', element: page(() => import('./routes/migrate-page').then((module) => ({ default: module.MigratePage }))) },
+            { path: 'portal', element: page(() => import('./routes/portal-page').then((module) => ({ default: module.PortalPage }))) }
           ]
         },
         { path: 'pricing', element: <Navigate to="/" replace /> },
-        { path: 'preview', element: <PreviewPage /> },
-        { path: 'share', element: <EncodedSharePage /> },
-        { path: 'review-import', element: <ReviewImportPage /> },
-        { path: 'review/:sessionId', element: <ReviewSessionPage /> },
-        { path: 'prototype-renderers', element: <PrototypeRenderersPage /> },
-        { path: ':sharedCvId', element: <SharedCvPage /> }
+        { path: 'preview', element: page(() => import('./routes/preview-page').then((module) => ({ default: module.PreviewPage }))) },
+        { path: 'share', element: page(() => import('./routes/encoded-share-page').then((module) => ({ default: module.EncodedSharePage }))) },
+        { path: 'review-import', element: page(() => import('./routes/review-import-page').then((module) => ({ default: module.ReviewImportPage }))) },
+        { path: 'review/:sessionId', element: page(() => import('./routes/review-session-page').then((module) => ({ default: module.ReviewSessionPage }))) },
+        { path: 'prototype-renderers', element: page(() => import('./routes/prototype-renderers-page').then((module) => ({ default: module.PrototypeRenderersPage }))) },
+        { path: ':sharedCvId', element: page(() => import('./routes/shared-cv-page').then((module) => ({ default: module.SharedCvPage }))) }
       ]
     }
   ],

@@ -551,15 +551,19 @@ export class FileStore {
       next.sourceBaseline = { ...selectedFile.sourceBaseline, [section]: content };
     }
 
-    this.#pushUndoEntry({
-      fileId: selectedFile.id,
-      previous,
-      next,
-      kind: 'content',
-      groupKey: `content:${selectedFile.id}:${section}`,
-      selectedFileId: this.selectedFileId,
-      timestamp: Date.now()
-    });
+    // Nor do they belong in Undo: undoing one would only trigger it again, so
+    // the button would stay lit and appear to do nothing.
+    if (!options?.normalization) {
+      this.#pushUndoEntry({
+        fileId: selectedFile.id,
+        previous,
+        next,
+        kind: 'content',
+        groupKey: `content:${selectedFile.id}:${section}`,
+        selectedFileId: this.selectedFileId,
+        timestamp: Date.now()
+      });
+    }
     this.#applyPatch(selectedFile.id, next, 'content', this.selectedFileId);
   }
 

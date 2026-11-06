@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { useRef, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import type { RefObject, ReactNode } from 'react';
 import {
   AppWindow,
@@ -55,6 +55,7 @@ import {
   buildProposalPackageFromSession,
   importReviewProposalIntoSession
 } from '../features/review/session-utils';
+import { ENABLE_AI_EDITOR } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
 import { copyTextToClipboard } from '../lib/clipboard';
 import { DialogOverlay, DialogShell } from './dialog-shell';
@@ -62,8 +63,11 @@ import type { MonacoEditorHandle } from './monaco-editor';
 import type { ViewerRenderer } from './preview-pane';
 import { PositionedMenu } from './positioned-menu';
 import { StyledTooltip } from './styled-tooltip';
-import { WorkspaceAiEditor } from './workspace-ai-editor';
 import { useTranslation } from '../lib/i18n/use-translation';
+
+const WorkspaceAiEditor = lazy(() =>
+  import('./workspace-ai-editor').then((module) => ({ default: module.WorkspaceAiEditor }))
+);
 
 /**
  * Height every standalone control in the desktop toolbar row has to hit so the
@@ -904,7 +908,7 @@ export function WorkspaceToolbar({
             <Copy className="size-4" />
           </ToolbarIconButton>
         ) : null}
-        {!isReadOnly ? <WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} /> : null}
+        {!isReadOnly && ENABLE_AI_EDITOR ? <Suspense fallback={null}><WorkspaceAiEditor fileId={selectedFile?.id} sections={sections} /></Suspense> : null}
       </div>
       <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1.5">
         <ToolbarControlGroup>

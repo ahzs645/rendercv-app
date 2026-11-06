@@ -4,7 +4,14 @@ import { useStore } from '../../lib/use-store';
 import type { OnboardingTourProps } from './OnboardingTourRun';
 import { onboardingTour } from './tour-state';
 
-const OnboardingTourRun = lazy(() => import('./OnboardingTourRun'));
+const loadOnboardingTourRun = () => import('./OnboardingTourRun');
+const OnboardingTourRun = lazy(loadOnboardingTourRun);
+
+/** Starts the download early for a visitor the tour is about to greet. */
+export function preloadOnboardingTour() {
+  // A failure here is handled when the tour itself loads.
+  loadOnboardingTourRun().catch(() => {});
+}
 
 /**
  * The tour is an extra, so its failures stay its own: a stale chunk after a

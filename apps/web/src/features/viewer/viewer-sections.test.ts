@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CvFile } from '@rendercv/contracts';
 import { entryFingerprint, topLevelEntryListKey } from '@rendercv/core';
-import { prepareViewerSections, resolveViewerSections } from './viewer-sections';
+import { changesYamlData, prepareViewerSections, resolveViewerSections } from './viewer-sections';
 
 describe('prepareViewerSections', () => {
   it('hides archived-tagged entries by default', () => {
@@ -397,5 +397,18 @@ describe('resolveViewerSections', () => {
     const sections = resolveViewerSections(fileWith({}));
     expect(sections.cv).toContain('LinkedIn');
     expect(sections.cv).toContain('GitHub');
+  });
+});
+
+describe('changesYamlData', () => {
+  it('ignores rewrites that only change how the YAML is written', () => {
+    const authored = 'cv:\n  # a note to self\n  name: Ada\n  headline:\n';
+    expect(changesYamlData(authored, 'cv:\n  name: Ada\n  headline: null\n')).toBe(false);
+    expect(changesYamlData(authored, authored)).toBe(false);
+  });
+
+  it('notices a rewrite that changes the data', () => {
+    expect(changesYamlData('cv:\n  name: Ada\n', 'cv:\n  name: Grace\n')).toBe(true);
+    expect(changesYamlData('cv:\n  name: Ada\n', 'cv: [')).toBe(true);
   });
 });

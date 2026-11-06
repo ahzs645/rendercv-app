@@ -81,6 +81,22 @@ export function normalizeLegacyDesignYaml(designContent: string | undefined) {
   }
 }
 
+/**
+ * Whether a rewrite of the user's YAML changes what it says, not just how it is
+ * written. Rewriting through a YAML parser drops comments and reformats blanks,
+ * so an automatic repair must not save a text that only differs that way.
+ */
+export function changesYamlData(before: string, after: string) {
+  if (before === after) {
+    return false;
+  }
+  try {
+    return JSON.stringify(YAML.parse(before)) !== JSON.stringify(YAML.parse(after));
+  } catch {
+    return true;
+  }
+}
+
 export function resolveViewerSections(file: CvFile): CvFileSections {
   const sections = resolveFileSections(file);
   const variant =

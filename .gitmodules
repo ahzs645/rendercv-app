@@ -5,3 +5,7 @@
 [submodule "vendor/rendercv-toolkit"]
 	path = vendor/rendercv-toolkit
 	url = https://github.com/ahzs645/rendercv-toolkit.git
+[submodule "vendor/tourkit"]
+	path = vendor/tourkit
+	url = https://github.com/ahzs645/tourkit.git
+	branch = main

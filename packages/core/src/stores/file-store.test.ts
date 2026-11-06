@@ -62,6 +62,21 @@ describe('fileStore', () => {
     expect(updated.sourceBaseline?.cv).toBe('cv:\n  name: Julian');
   });
 
+  it('keeps automated normalizations out of the undo history', () => {
+    const file = fileStore.createFile('Normalized', { cv: 'cv:\n  name: RCVSPACINGSAME:Julian' });
+    fileStore.selectFile(file.id);
+    fileStore.updateSection('cv', 'cv:\n  name: Julian', { normalization: true });
+    const current = () => fileStore.getSnapshot().files.find((entry) => entry.id === file.id)!;
+    expect(current().cv).toBe('cv:\n  name: Julian');
+
+    fileStore.updateSection('cv', 'cv:\n  name: Julian Stokes');
+    fileStore.undo();
+    expect(current().cv).toBe('cv:\n  name: Julian');
+
+    fileStore.undo();
+    expect(current().cv).toBe('cv:\n  name: Julian');
+  });
+
   it('updateSourceBaseline repairs a stale baseline in place', () => {
     const file = fileStore.createFile('From URL', {
       cv: 'cv:\n  name: Julian',
