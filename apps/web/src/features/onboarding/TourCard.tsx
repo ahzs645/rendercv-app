@@ -19,7 +19,12 @@ export function TourCard({ card }: { card: TutorialCardRenderProps }) {
       >
         ×
       </button>
-      {card.suspended ? null : (
+      {card.error ? (
+        <>
+          <header className="rcv-tour-title">{card.labels.errorTitle}</header>
+          <div className="rcv-tour-description">{card.error.help}</div>
+        </>
+      ) : card.suspended ? null : (
         <>
           <header className="rcv-tour-title">{card.title}</header>
           <div className="rcv-tour-description">{card.body}</div>
@@ -32,21 +37,27 @@ export function TourCard({ card }: { card: TutorialCardRenderProps }) {
         </button>
         {card.progress ? <span className="rcv-tour-progress">{card.progress}</span> : null}
         <span className="rcv-tour-navigation">
-          <button
-            type="button"
-            className="rcv-tour-previous"
-            disabled={!card.canGoPrevious}
-            onClick={card.previous}
-          >
-            {card.labels.previous}
-          </button>
+          {card.error ? (
+            <button type="button" className="rcv-tour-previous" onClick={card.error.recover}>
+              {card.error.recoverLabel}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="rcv-tour-previous"
+              disabled={!card.canGoPrevious}
+              onClick={card.previous}
+            >
+              {card.labels.previous}
+            </button>
+          )}
           <button
             type="button"
             className="rcv-tour-next"
             disabled={!card.canGoNext}
             onClick={card.next}
           >
-            {card.isFinish ? card.labels.finish : card.labels.next}
+            {card.error ? card.labels.skipStep : card.isFinish ? card.labels.finish : card.labels.next}
           </button>
         </span>
       </footer>

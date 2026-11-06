@@ -152,7 +152,7 @@ export function buildTourManifest({
     defaultMode: 'practice',
     spotlightStyle: 'dim',
     interaction: 'guided',
-    card: { placement: 'attached', size: 'compact', pointer: false },
+    card: { placement: 'attached', pointer: false },
     launch: { fixture: 'workspace' },
     chapters: [{ id: 'workspace', title: 'Workspace', steps }]
   });

@@ -30,6 +30,14 @@ class OnboardingTourState {
     this.#finish(EVENTS.ONBOARDING_SKIPPED);
   }
 
+  /**
+   * The tour could not run at all. Stands it down without recording onboarding
+   * as finished, so it can still auto-start next visit.
+   */
+  abort() {
+    this.#store.setSnapshot({ isRunning: false });
+  }
+
   #finish(eventName: typeof EVENTS.ONBOARDING_COMPLETED | typeof EVENTS.ONBOARDING_SKIPPED) {
     this.#store.setSnapshot({ isRunning: false });
     preferencesStore.patch({ onboardingCompletedAt: new Date().toISOString() });

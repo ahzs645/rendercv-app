@@ -8,7 +8,7 @@ import { MigratePage } from './routes/migrate-page';
 import { PortalPage } from './routes/portal-page';
 import { PreviewPage } from './routes/preview-page';
 import { PrototypeRenderersPage } from './routes/prototype-renderers-page';
-import { SentryTestPage } from './routes/sentry-test-page';
+import { RouteErrorPage } from './routes/route-error-page';
 import { EncodedSharePage } from './routes/encoded-share-page';
 import { SharedCvPage } from './routes/shared-cv-page';
 import { ReviewImportPage } from './routes/review-import-page';
@@ -19,6 +19,7 @@ export const router = createBrowserRouter(
     {
       path: '/',
       element: <AppDocument />,
+      errorElement: <RouteErrorPage />,
       children: [
         {
           element: <WorkspaceLayout />,
@@ -36,7 +37,6 @@ export const router = createBrowserRouter(
         { path: 'review-import', element: <ReviewImportPage /> },
         { path: 'review/:sessionId', element: <ReviewSessionPage /> },
         { path: 'prototype-renderers', element: <PrototypeRenderersPage /> },
-        { path: 'sentry-test', element: <SentryTestPage /> },
         { path: ':sharedCvId', element: <SharedCvPage /> }
       ]
     }

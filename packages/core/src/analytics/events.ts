@@ -55,6 +55,7 @@ export const EVENTS = {
   // --- Onboarding ---
   ONBOARDING_STARTED: 'onboarding_started',
   ONBOARDING_STEP_VIEWED: 'onboarding_step_viewed',
+  ONBOARDING_STEP_FAILED: 'onboarding_step_failed',
   ONBOARDING_COMPLETED: 'onboarding_completed',
   ONBOARDING_SKIPPED: 'onboarding_skipped',
 

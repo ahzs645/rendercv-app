@@ -167,6 +167,20 @@ export const en = {
   'tour.close': 'Close tour',
   'tour.blocked': 'Only the highlighted area is active during the tour.',
   'tour.progress': '{{current}} of {{total}}',
+  'tour.dialogPaused': 'The tour is paused while this dialog is open. Close it to continue.',
+  'tour.anchorOutOfView': 'The highlighted control is out of view. Scroll to it, or select Bring it into view.',
+  'tour.bringIntoView': 'Bring it into view',
+  'tour.errorTitle': 'Tour paused',
+  'tour.errorAnchorHelp': 'This part of the app is not on screen right now. Try again, or skip to the next step.',
+  'tour.errorStepHelp': 'This step could not be shown. Try again, or skip to the next step.',
+  'tour.retry': 'Try again',
+  'tour.takeMeBack': 'Take me back',
+  'tour.skipStep': 'Skip step',
+
+  // Shown when a page fails to render
+  'error.title': 'Something went wrong',
+  'error.body': 'RenderCV hit an unexpected problem. Your CVs are stored in this browser and have not been touched.',
+  'error.reload': 'Reload',
 
   // Variant editor
   'variantEdit.title': 'Edit variant',
@@ -348,6 +362,20 @@ export const ko: Messages = {
   'tour.close': '투어 닫기',
   'tour.blocked': '투어 중에는 강조된 영역만 사용할 수 있습니다.',
   'tour.progress': '{{current}}/{{total}}',
+  'tour.dialogPaused': '이 대화 상자가 열려 있는 동안 둘러보기가 일시 중지됩니다. 계속하려면 닫아 주세요.',
+  'tour.anchorOutOfView': '강조된 컨트롤이 화면 밖에 있습니다. 스크롤하거나 화면으로 가져오기를 선택하세요.',
+  'tour.bringIntoView': '화면으로 가져오기',
+  'tour.errorTitle': '둘러보기 일시 중지',
+  'tour.errorAnchorHelp': '지금은 앱의 이 부분이 화면에 없습니다. 다시 시도하거나 다음 단계로 건너뛰세요.',
+  'tour.errorStepHelp': '이 단계를 표시할 수 없습니다. 다시 시도하거나 다음 단계로 건너뛰세요.',
+  'tour.retry': '다시 시도',
+  'tour.takeMeBack': '돌아가기',
+  'tour.skipStep': '단계 건너뛰기',
+
+  // Shown when a page fails to render
+  'error.title': '문제가 발생했습니다',
+  'error.body': 'RenderCV 에 예기치 않은 문제가 발생했습니다. 이력서는 이 브라우저에 저장되어 있으며 변경되지 않았습니다.',
+  'error.reload': '새로고침',
 
   'variantEdit.title': '변형 편집',
   'variantEdit.description': '이 변형의 이름을 정하고 포함할 태그 콘텐츠와 필드 플레이버를 선택하세요.',

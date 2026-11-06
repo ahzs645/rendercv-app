@@ -15,10 +15,10 @@
     "@rendercv/contracts": "workspace:*",
     "@rendercv/core": "workspace:*",
     "ai": "^6.0.105",
-    "better-auth": "^1.4.19",
+    "better-auth": "^1.7.18",
     "dotenv": "^17.2.2",
     "drizzle-orm": "^0.44.5",
-    "hono": "^4.9.8",
+    "hono": "^4.13.16",
     "pdf-parse": "^1.1.1",
     "postgres": "^3.4.7",
     "zod": "^4.1.11"
@@ -26,6 +26,6 @@
   "devDependencies": {
     "tsx": "^4.20.6",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.7"
   }
 }
