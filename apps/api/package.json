@@ -11,20 +11,20 @@
     "test": "vitest run --passWithNoTests --config vitest.config.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.0",
+    "@hono/node-server": "^1.19.19",
     "@rendercv/contracts": "workspace:*",
     "@rendercv/core": "workspace:*",
-    "ai": "^7.0.163",
-    "dotenv": "^17.2.2",
+    "ai": "^7.0.170",
+    "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.4",
-    "hono": "^4.13.16",
-    "pdf-parse": "^1.1.1",
-    "postgres": "^3.4.7",
+    "hono": "^4.13.18",
+    "pdf-parse": "^1.1.4",
+    "postgres": "^3.4.9",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^22.20.1",
-    "tsx": "^4.20.6",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
   }

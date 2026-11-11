@@ -7,3 +7,11 @@ packages:
   # not be installed as a git dependency: pnpm then builds it inside its store,
   # and CI's store sits under node_modules, which changes what it compiles to.
   - vendor/tourkit
+
+overrides:
+  # Tourkit's npm `overrides` pin this for pptxgenjs, but pnpm ignores them in a
+  # workspace package. image-size <=2.0.2 can loop forever on a crafted image.
+  image-size@<2.0.3: 2.0.3
+  # @tailwindcss/typography 0.5.20 pins 6.0.10, which parses some selectors in
+  # quadratic time. 6.1.x is API-compatible.
+  postcss-selector-parser@<6.1.5: 6.1.6
