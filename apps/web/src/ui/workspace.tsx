@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { GitCompareArrows, Check, FilePlus2, FileText, Pencil, Upload, WandSparkles, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { visibleThemeKeys, classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, preferencesStore, resolveFileSections, reviewStore, variantLabel } from '@rendercv/core';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import type { ImperativePanelHandle } from 'react-resizable-panels';
+import { Group, Panel, Separator } from 'react-resizable-panels';
+import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels';
 import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
 import { useIsMobile } from '../lib/use-mobile';
@@ -40,6 +40,17 @@ import { useResumeWebMcp } from '../features/webmcp/use-resume-webmcp';
 
 const SIDEBAR_DEFAULT_SIZE = 18;
 const SIDEBAR_MIN_SIZE = 10;
+
+// react-resizable-panels reads bare numbers as pixels; these sizes are percentages.
+const percent = (value: number) => `${value}%`;
+
+// Restores the sidebar's last width, but never narrower than its default.
+function expandSidebar(panel: PanelImperativeHandle) {
+  panel.expand();
+  if (panel.getSize().asPercentage < SIDEBAR_DEFAULT_SIZE) {
+    panel.resize(percent(SIDEBAR_DEFAULT_SIZE));
+  }
+}
 const SIDEBAR_OVERLAY_BREAKPOINT = Math.ceil(SIDEBAR_MINI_WIDTH / (SIDEBAR_DEFAULT_SIZE / 100));
 const BUILT_IN_THEMES = new Set(Object.keys(defaultDesigns));
 const KNOWN_THEMES = new Set([
@@ -124,7 +135,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
   const fileSnapshot = useStore(fileStore);
   const reviewSnapshot = useStore(reviewStore);
   const preferences = useStore(preferencesStore);
-  const sidebarRef = useRef<ImperativePanelHandle>(null);
+  const sidebarRef = useRef<PanelImperativeHandle>(null);
   const monacoRef = useRef<MonacoEditorHandle>(null);
   const compatibilityRepairRef = useRef<string | undefined>(undefined);
   const restoreInlineSidebarRef = useRef<boolean | null>(null);
@@ -342,7 +353,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
       setMobileOpen(false);
 
       if (restoreInlineSidebarRef.current === false && sidebarRef.current?.isCollapsed()) {
-        sidebarRef.current.expand(SIDEBAR_DEFAULT_SIZE);
+        expandSidebar(sidebarRef.current);
       }
 
       restoreInlineSidebarRef.current = null;
@@ -362,7 +373,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
       return;
     }
     if (sidebarRef.current?.isCollapsed()) {
-      sidebarRef.current.expand(SIDEBAR_DEFAULT_SIZE);
+      expandSidebar(sidebarRef.current);
     } else {
       sidebarRef.current?.collapse();
     }
@@ -845,25 +856,28 @@ export function Workspace({ active = true }: { active?: boolean }) {
           {sidebarElement}
         </MobileSidebarDrawer>
       ) : null}
-      <PanelGroup className="min-h-0 h-full" direction="horizontal">
+      <Group className="min-h-0 h-full" orientation="horizontal">
         <Panel
-          ref={sidebarRef}
-          collapsedSize={0}
+          panelRef={sidebarRef}
+          collapsedSize="0%"
           collapsible
-          defaultSize={SIDEBAR_DEFAULT_SIZE}
-          minSize={sidebarOverlays ? 0 : SIDEBAR_MIN_SIZE}
-          onCollapse={() => setSidebarCollapsed(true)}
-          onExpand={() => {
-            if (!sidebarOverlays) setSidebarCollapsed(false);
+          defaultSize={percent(SIDEBAR_DEFAULT_SIZE)}
+          minSize={percent(sidebarOverlays ? 0 : SIDEBAR_MIN_SIZE)}
+          // v4 has no onCollapse/onExpand; report the transitions from onResize.
+          onResize={(size: PanelSize, _id, previous: PanelSize | undefined) => {
+            const collapsed = size.asPercentage === 0;
+            if (previous && collapsed === (previous.asPercentage === 0)) return;
+            if (collapsed) setSidebarCollapsed(true);
+            else if (!sidebarOverlays) setSidebarCollapsed(false);
           }}
         >
           {!sidebarOverlays ? sidebarElement : null}
         </Panel>
-        <PanelResizeHandle
+        <Separator
           className={`workspace-resize-handle ${sidebarCollapsed || sidebarOverlays ? 'hidden' : ''}`}
           disabled={sidebarOverlays}
         />
-        <Panel defaultSize={82} minSize={35}>
+        <Panel defaultSize={percent(82)} minSize={percent(35)}>
           <div className="flex h-full flex-col">
             <header className="shrink-0 border-b border-border">
               <WorkspaceToolbar
@@ -887,8 +901,8 @@ export function Workspace({ active = true }: { active?: boolean }) {
                 {mobilePane === 'editor' ? editorPane : previewPane}
               </div>
             ) : (
-              <PanelGroup className="min-h-0 flex-1" direction="horizontal">
-                <Panel defaultSize={51} minSize={28}>
+              <Group className="min-h-0 flex-1" orientation="horizontal">
+                <Panel defaultSize={percent(51)} minSize={percent(28)}>
                   <div className="flex h-full flex-col">
                     <div className="flex min-h-0 flex-1 flex-col">
                       {sectionTabsElement}
@@ -896,15 +910,15 @@ export function Workspace({ active = true }: { active?: boolean }) {
                     </div>
                   </div>
                 </Panel>
-                <PanelResizeHandle className="workspace-resize-handle" />
-                <Panel defaultSize={49} minSize={25}>
+                <Separator className="workspace-resize-handle" />
+                <Panel defaultSize={percent(49)} minSize={percent(25)}>
                   {previewPane}
                 </Panel>
-              </PanelGroup>
+              </Group>
             )}
           </div>
         </Panel>
-      </PanelGroup>
+      </Group>
     </div>
   );
 }
