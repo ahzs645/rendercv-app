@@ -50,7 +50,7 @@ The implementation lives in [`apps/web/src/features/webmcp/resume-tools.ts`](app
 
 ## Run locally
 
-Prerequisites: Node.js 22 and pnpm 10.
+Prerequisites: Node.js 26 and pnpm 10.
 
 ```bash
 pnpm install
