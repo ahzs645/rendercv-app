@@ -1,5 +1,4 @@
 import '@fontsource-variable/dm-sans/index.css';
-import 'monaco-editor/min/vs/editor/editor.main.css';
 import './app.css';
 import './workspace.css';
 import { HelmetProvider } from 'react-helmet-async';

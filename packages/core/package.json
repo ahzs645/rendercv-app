@@ -27,7 +27,7 @@
   "dependencies": {
     "@rendercv/contracts": "workspace:*",
     "@rendercv/primitives": "workspace:*",
-    "yaml": "^2.8.2"
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

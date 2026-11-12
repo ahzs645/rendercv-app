@@ -158,4 +158,69 @@ describe('RenderCV API', () => {
     expect(response.status).toBe(400);
     expect(body.error.code).toBe('invalid_pdf');
   });
+
+  it('imports the text of an uploaded PDF', async () => {
+    const formData = new FormData();
+    formData.append(
+      'pdf',
+      new File(
+        [
+          minimalPdf([
+            'Jane Doe',
+            'jane.doe@example.com',
+            'Led the migration of a billing platform to event sourcing',
+            'Mentored six engineers through their first production launches'
+          ])
+        ],
+        'jane-doe.pdf',
+        { type: 'application/pdf' }
+      )
+    );
+
+    const response = await app.request('/api/import-pdf', { method: 'POST', body: formData });
+    const body = (await response.json()) as { cv: string };
+
+    expect(response.status).toBe(200);
+    expect(body.cv).toContain('name: Jane Doe');
+    expect(body.cv).toContain('email: jane.doe@example.com');
+    // No phone number in the PDF must not stop the headline from being found.
+    expect(body.cv).toContain('headline: Led the migration of a billing platform to event sourcing');
+    expect(body.cv).toContain('- Mentored six engineers through their first production launches');
+  });
+
+  it('rejects a file that is not a readable PDF', async () => {
+    const formData = new FormData();
+    formData.append('pdf', new File(['not a pdf'], 'resume.pdf', { type: 'application/pdf' }));
+
+    const response = await app.request('/api/import-pdf', { method: 'POST', body: formData });
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(422);
+    expect(body.error.code).toBe('pdf_parse_error');
+  });
 });
+
+// A one-page PDF that draws each line in Helvetica, with a correct xref table.
+function minimalPdf(lines: string[]) {
+  const escape = (value: string) => value.replace(/[\\()]/g, (char) => `\\${char}`);
+  const content = `BT /F1 12 Tf 72 720 Td 16 TL ${lines.map((line) => `(${escape(line)}) Tj T*`).join(' ')} ET`;
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
+  ];
+
+  let pdf = '%PDF-1.4\n';
+  const offsets = objects.map((object, index) => {
+    const offset = pdf.length;
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    return offset;
+  });
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('');
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return pdf;
+}

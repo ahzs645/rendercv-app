@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 export const THEME_PACKAGE_DIRS = [
@@ -101,6 +102,19 @@ export async function collectRuntimeThemeSourceFiles(submodulePath) {
   files.sort();
   assertRuntimeThemeArchiveEntries(files, 'theme source selection');
   return files;
+}
+
+// The archive's name must follow its contents only. Hashing the zip itself
+// would also hash each file's modification time, so every fresh checkout of
+// unchanged themes produced a new name and a rewritten generated manifest.
+export async function hashRuntimeThemeFiles(submodulePath, runtimeFiles) {
+  const hash = createHash('sha256');
+  for (const relativePath of [...runtimeFiles].sort()) {
+    const contents = await readFile(path.join(submodulePath, relativePath));
+    hash.update(`${relativePath}\0${contents.length}\0`);
+    hash.update(contents);
+  }
+  return hash.digest('hex').slice(0, 12);
 }
 
 export function readZipArchiveEntries(archivePath) {

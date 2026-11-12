@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { access, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -6,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   assertRuntimeThemeArchiveEntries,
   collectRuntimeThemeSourceFiles,
+  hashRuntimeThemeFiles,
   readZipArchiveEntries
 } from './bundled-theme-runtime.mjs';
 
@@ -80,6 +80,15 @@ function createRuntimeZip(submodulePath, runtimeFiles) {
   return Buffer.from(archiveBuffer);
 }
 
+async function fileExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function writeFileIfChanged(filePath, content) {
   const next = typeof content === 'string' ? content : Buffer.from(content);
 
@@ -107,8 +116,7 @@ async function syncSharedArchive() {
   }
 
   const runtimeFiles = await collectRuntimeThemeSourceFiles(submodulePath);
-  const archiveBytes = createRuntimeZip(submodulePath, runtimeFiles);
-  const hash = createHash('sha256').update(archiveBytes).digest('hex').slice(0, 12);
+  const hash = await hashRuntimeThemeFiles(submodulePath, runtimeFiles);
   const archiveName = `${sharedArchiveBaseName}-${hash}.zip`;
   const archivePath = path.join(outputDir, archiveName);
 
@@ -120,7 +128,11 @@ async function syncSharedArchive() {
     }
   }
 
-  await writeFileIfChanged(archivePath, archiveBytes);
+  // zip records modification times, so the bytes differ between checkouts even
+  // when the name does not. Keep an archive that already exists under this name.
+  if (!(await fileExists(archivePath))) {
+    await writeFile(archivePath, createRuntimeZip(submodulePath, runtimeFiles));
+  }
   assertRuntimeThemeArchiveEntries(readZipArchiveEntries(archivePath), archiveName);
 
   return {

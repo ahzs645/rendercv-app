@@ -1,4 +1,4 @@
-import pdf from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import { Hono } from 'hono';
 import { jsonError } from '../errors';
 
@@ -17,8 +17,7 @@ export const importPdfRouter = new Hono().post('/', async (context) => {
   }
 
   try {
-    const parsed = await pdf(Buffer.from(await uploaded.arrayBuffer()));
-    const text = normalizePdfText(parsed.text);
+    const text = normalizePdfText(await extractPdfText(await uploaded.arrayBuffer()));
 
     if (text.length < 80) {
       return jsonError(context, 'incomplete_pdf', 'The uploaded PDF did not contain enough readable text.', 422);
@@ -36,6 +35,15 @@ export const importPdfRouter = new Hono().post('/', async (context) => {
     );
   }
 });
+
+async function extractPdfText(data: ArrayBuffer) {
+  const parser = new PDFParse({ data: new Uint8Array(data) });
+  try {
+    return (await parser.getText()).text;
+  } finally {
+    await parser.destroy();
+  }
+}
 
 function normalizePdfText(value: string) {
   return value
@@ -97,7 +105,8 @@ function guessName(lines: string[], fileName: string) {
 
 function guessHeadline(lines: string[], name: string, email: string, phone: string) {
   const candidate = lines.find((line) => {
-    if (line === name || line.includes(email) || line.includes(phone)) {
+    // An empty email or phone would match every line through includes('').
+    if (line === name || (email && line.includes(email)) || (phone && line.includes(phone))) {
       return false;
     }
 
