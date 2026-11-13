@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { CvFile } from '@rendercv/contracts';
 import { entryFingerprint, topLevelEntryListKey } from '@rendercv/core';
-import { changesYamlData, prepareViewerSections, resolveViewerSections } from './viewer-sections';
+import YAML from 'yaml';
+import {
+  changesYamlData,
+  mapRenderedEntryIndexToSource,
+  prepareViewerSections,
+  resolveViewerSections
+} from './viewer-sections';
 
 describe('prepareViewerSections', () => {
   it('hides archived-tagged entries by default', () => {
@@ -410,5 +416,49 @@ describe('changesYamlData', () => {
   it('notices a rewrite that changes the data', () => {
     expect(changesYamlData('cv:\n  name: Ada\n', 'cv:\n  name: Grace\n')).toBe(true);
     expect(changesYamlData('cv:\n  name: Ada\n', 'cv: [')).toBe(true);
+  });
+});
+
+describe('show: false and click mapping', () => {
+  const cv = YAML.stringify({
+    cv: {
+      name: 'Ada',
+      sections: {
+        experience: [
+          { company: 'A', position: 'One' },
+          { company: 'Hidden', position: 'Two', show: false },
+          { company: 'C', position: 'Three' }
+        ]
+      }
+    }
+  });
+
+  it('keeps show: false entries out of the sections handed to the renderer', () => {
+    const prepared = prepareViewerSections({
+      cv,
+      design: 'design:\n  theme: classic\n',
+      locale: 'locale:\n  language: english\n',
+      settings: 'settings: {}\n'
+    });
+    expect(prepared.cv).not.toContain('Hidden');
+    expect(prepared.cv).toContain('company: C');
+  });
+
+  it('maps a click on a rendered entry back to its index in the full CV', () => {
+    const rendered = YAML.stringify({
+      cv: {
+        name: 'Ada',
+        sections: {
+          experience: [
+            { company: 'A', position: 'One' },
+            { company: 'C', position: 'Three' }
+          ]
+        }
+      }
+    });
+    expect(mapRenderedEntryIndexToSource(cv, rendered, 'experience', 0)).toBe(0);
+    expect(mapRenderedEntryIndexToSource(cv, rendered, 'experience', 1)).toBe(2);
+    expect(mapRenderedEntryIndexToSource(cv, rendered, 'experience', -1)).toBe(-1);
+    expect(mapRenderedEntryIndexToSource(cv, cv, 'experience', 1)).toBe(1);
   });
 });

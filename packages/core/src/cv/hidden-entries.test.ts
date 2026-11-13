@@ -4,7 +4,9 @@ import {
   countHiddenEntries,
   entryFingerprint,
   filterDisabledSectionsFromCvYaml,
+  filterFlagHiddenEntriesFromCvYaml,
   filterHiddenEntriesFromCvYaml,
+  isEntryHiddenByFlag,
   stripEmptySectionsFromCvYaml,
   topLevelEntryListKey
 } from './hidden-entries';
@@ -197,5 +199,60 @@ describe('countHiddenEntries', () => {
   it('counts across sections', () => {
     expect(countHiddenEntries(undefined)).toBe(0);
     expect(countHiddenEntries({ a: ['x', 'y'], b: ['z'] })).toBe(3);
+  });
+});
+
+describe('filterFlagHiddenEntriesFromCvYaml', () => {
+  const cv = YAML.stringify({
+    cv: {
+      name: 'Ada',
+      sections: {
+        experience: [
+          { company: 'Visible', position: 'Engineer' },
+          { company: 'Old job', position: 'Clerk', show: false },
+          { company: 'Typo', position: 'Volunteer', showing: false },
+          { company: 'Explicit', position: 'Lead', show: true },
+          { company: 'String flag', position: 'Intern', show: 'no' },
+          {
+            company: 'Resident Life',
+            positions: [
+              { title: 'Senior', start_date: '2023-09' },
+              { title: 'Junior', start_date: '2021-08', show: false }
+            ]
+          }
+        ],
+        education: [{ institution: 'School', area: 'General', show: false }]
+      }
+    }
+  });
+
+  it('drops flagged entries and positions and strips the flag from the rest', () => {
+    const parsed = YAML.parse(filterFlagHiddenEntriesFromCvYaml(cv));
+    const experience = parsed.cv.sections.experience;
+
+    expect(experience.map((entry: { company: string }) => entry.company)).toEqual([
+      'Visible',
+      'Explicit',
+      'Resident Life'
+    ]);
+    expect(experience[1]).not.toHaveProperty('show');
+    expect(experience[2].positions.map((position: { title: string }) => position.title)).toEqual([
+      'Senior'
+    ]);
+    // A section whose entries are all hidden is removed, not rendered empty.
+    expect(parsed.cv.sections).not.toHaveProperty('education');
+  });
+
+  it('returns the input untouched when no entry uses the flag', () => {
+    const plain = YAML.stringify({ cv: { sections: { skills: [{ label: 'A', details: 'B' }] } } });
+    expect(filterFlagHiddenEntriesFromCvYaml(plain)).toBe(plain);
+  });
+
+  it('recognises the flag on entries', () => {
+    expect(isEntryHiddenByFlag({ show: false })).toBe(true);
+    expect(isEntryHiddenByFlag({ show: 'False' })).toBe(true);
+    expect(isEntryHiddenByFlag({ show: true })).toBe(false);
+    expect(isEntryHiddenByFlag({ company: 'x' })).toBe(false);
+    expect(isEntryHiddenByFlag('text entry')).toBe(false);
   });
 });

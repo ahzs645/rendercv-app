@@ -14,14 +14,15 @@ import { applyRenderFixes, type RenderFix } from '../features/viewer/render-fixe
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import {
   parseCvVariantsYaml,
-  normalizeCompatibilityCvYaml,
   repairFlattenedPositionDatesInCvYaml,
   stripPositionMarkersFromCvYaml,
   themeUsesPositionSpacingMarkers
 } from '@rendercv/primitives';
+import { normalizeCompatibilityCvYamlKeepingVisibility } from '../features/viewer/compat-normalize';
 import {
   normalizeLegacyDesignYaml,
   changesYamlData,
+  mapRenderedEntryIndexToSource,
   prepareViewerSections,
   resolveViewerSections
 } from '../features/viewer/viewer-sections';
@@ -91,7 +92,7 @@ function looksLikeLegacyDesignSchema(design: string) {
 }
 
 function normalizeCompatibilitySections(sections: ImportedSections): ImportedSections {
-  const normalizedCv = sections.cv ? normalizeCompatibilityCvYaml(sections.cv) : sections.cv;
+  const normalizedCv = sections.cv ? normalizeCompatibilityCvYamlKeepingVisibility(sections.cv) : sections.cv;
   const normalizedDesign = sections.design
     ? normalizeLegacyDesignYaml(sections.design)
     : sections.design;
@@ -247,7 +248,15 @@ export function Workspace({ active = true }: { active?: boolean }) {
   );
 
   const handlePreviewSectionClick = useCallback(
-    (sectionKey: string, entryIndex: number) => {
+    (sectionKey: string, renderedEntryIndex: number) => {
+      // The preview reports positions in the rendered CV, which omits hidden
+      // entries; the editor addresses the full CV.
+      const entryIndex = mapRenderedEntryIndexToSource(
+        rawSections?.cv,
+        viewerSections?.cv,
+        sectionKey,
+        renderedEntryIndex
+      );
       // Switch to the CV tab if needed
       if (preferences.activeSection !== 'cv') {
         preferencesStore.patch({ activeSection: 'cv' });
@@ -299,7 +308,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
         }
       });
     },
-    [preferences.activeSection, preferences.yamlEditor, mobileWorkspace, rawSections?.cv]
+    [preferences.activeSection, preferences.yamlEditor, mobileWorkspace, rawSections?.cv, viewerSections?.cv]
   );
 
   // Keyboard shortcuts

@@ -421,7 +421,29 @@ def normalize_string_list(value):
     return [str(item).strip() for item in value if str(item).strip()]
 
 
+# Mirrors isEntryHiddenByFlag in packages/core: `show: false` keeps an entry in
+# the YAML but out of the render. The web app filters these before the CV gets
+# here; this covers render paths that skip that step (review and share pages).
+ENTRY_VISIBILITY_KEYS = ("show", "showing")
+FALSE_LIKE_VALUES = {"false", "no", "off", "0"}
+
+
+def is_hidden_by_flag(entry):
+    for key in ENTRY_VISIBILITY_KEYS:
+        if key not in entry:
+            continue
+        value = entry[key]
+        if value is False or value == 0 and not isinstance(value, str):
+            return True
+        if isinstance(value, str) and value.strip().lower() in FALSE_LIKE_VALUES:
+            return True
+    return False
+
+
 def matches_entry_variant(entry):
+    if is_hidden_by_flag(entry):
+        return False
+
     required_tags = normalize_string_list(entry.get("tags"))
     if ARCHIVED_TAG in required_tags:
         return False
@@ -438,6 +460,8 @@ def strip_compat_fields(entry):
     normalized.pop("tags", None)
     normalized.pop("spacing_after", None)
     normalized.pop("show_date_in_position", None)
+    for key in ENTRY_VISIBILITY_KEYS:
+        normalized.pop(key, None)
     return normalized
 
 

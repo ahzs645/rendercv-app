@@ -1,6 +1,7 @@
 import type { CvFile, CvFileSections, CvVariantDefinition } from '@rendercv/contracts';
 import {
   filterDisabledSectionsFromCvYaml,
+  filterFlagHiddenEntriesFromCvYaml,
   filterHiddenEntriesFromCvYaml,
   resolveFileSections
 } from '@rendercv/core';
@@ -127,8 +128,57 @@ export function prepareViewerSections(
   variant?: CvVariantDefinition | null
 ): CvFileSections {
   const design = normalizeLegacyDesignYaml(sections.design) ?? sections.design;
+  // Entries the author marked `show: false` stay in the YAML but never render
+  // or export.
+  const cv = filterFlagHiddenEntriesFromCvYaml(sections.cv);
   return compileRenderCvSections({
-    sections: { ...sections, design },
+    sections: { ...sections, cv, design },
     variant: variant ?? undefined
   }).sections;
+}
+
+function sectionEntries(cvYaml: string | undefined, sectionKey: string): unknown[] | undefined {
+  if (!cvYaml) return undefined;
+  try {
+    const parsed = YAML.parse(cvYaml) as { cv?: { sections?: Record<string, unknown> } } | null;
+    const entries = parsed?.cv?.sections?.[sectionKey];
+    return Array.isArray(entries) ? entries : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function comparableEntry(entry: unknown) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    return JSON.stringify(entry);
+  }
+  const { show: _show, showing: _showing, ...rest } = entry as Record<string, unknown>;
+  return JSON.stringify(rest);
+}
+
+/**
+ * Translate the index of an entry in the rendered CV to its index in the
+ * editor's full CV. Hidden entries (`show: false`, hidden fingerprints,
+ * variant exclusions) are removed before rendering, so a click on the preview
+ * reports a position in the shorter list. Entries are matched in order; when
+ * they can't be matched the index is returned unchanged.
+ */
+export function mapRenderedEntryIndexToSource(
+  sourceCv: string | undefined,
+  renderedCv: string | undefined,
+  sectionKey: string,
+  renderedIndex: number
+) {
+  if (renderedIndex < 0) return renderedIndex;
+  const source = sectionEntries(sourceCv, sectionKey);
+  const rendered = sectionEntries(renderedCv, sectionKey);
+  if (!source || !rendered || source.length === rendered.length) return renderedIndex;
+
+  let next = 0;
+  for (let index = 0; index < source.length && next < rendered.length; index += 1) {
+    if (comparableEntry(source[index]) !== comparableEntry(rendered[next])) continue;
+    if (next === renderedIndex) return index;
+    next += 1;
+  }
+  return renderedIndex;
 }

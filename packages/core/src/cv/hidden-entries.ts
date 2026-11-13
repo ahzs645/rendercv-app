@@ -188,3 +188,102 @@ export function countHiddenEntries(hidden: Record<string, string[]> | undefined)
   if (!hidden) return 0;
   return Object.values(hidden).reduce((sum, list) => sum + list.length, 0);
 }
+
+/**
+ * Keys an author can put on an entry (or a nested position) to keep it in the
+ * YAML but out of the rendered CV. `show: false` is the documented form;
+ * `showing: false` is accepted because hand-written CVs use it too.
+ */
+export const ENTRY_VISIBILITY_KEYS = ['show', 'showing'] as const;
+
+const FALSE_LIKE = new Set(['false', 'no', 'off', '0']);
+
+function isFalseLike(value: unknown) {
+  if (value === false || value === 0) return true;
+  return typeof value === 'string' && FALSE_LIKE.has(value.trim().toLowerCase());
+}
+
+/** True when an entry opts out of rendering with `show: false`. */
+export function isEntryHiddenByFlag(entry: unknown): boolean {
+  if (!isPlainObject(entry)) return false;
+  return ENTRY_VISIBILITY_KEYS.some((key) => key in entry && isFalseLike(entry[key]));
+}
+
+function withoutVisibilityKeys(entry: Record<string, unknown>) {
+  const next = { ...entry };
+  for (const key of ENTRY_VISIBILITY_KEYS) delete next[key];
+  return next;
+}
+
+/**
+ * Remove entries marked `show: false` (and nested `positions` marked so) from a
+ * CV YAML string, and drop the visibility keys from the entries that remain so
+ * the renderer never sees them. A section left empty is removed. Returns the
+ * input unchanged when nothing uses the flag or the YAML can't be parsed.
+ */
+export function filterFlagHiddenEntriesFromCvYaml(cvYaml: string): string {
+  if (!cvYaml || !/^\s*(?:-\s+)?(?:show|showing)\s*:/m.test(cvYaml)) {
+    return cvYaml;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(cvYaml);
+  } catch {
+    return cvYaml;
+  }
+
+  if (!isPlainObject(parsed) || !isPlainObject(parsed.cv) || !isPlainObject(parsed.cv.sections)) {
+    return cvYaml;
+  }
+
+  const sections = parsed.cv.sections as Record<string, unknown>;
+  let changed = false;
+
+  const usesFlag = (entry: Record<string, unknown>) => ENTRY_VISIBILITY_KEYS.some((key) => key in entry);
+
+  for (const [sectionKey, entries] of Object.entries(sections)) {
+    if (!Array.isArray(entries)) continue;
+
+    const kept: unknown[] = [];
+    for (const entry of entries) {
+      if (!isPlainObject(entry)) {
+        kept.push(entry);
+        continue;
+      }
+      if (isEntryHiddenByFlag(entry)) {
+        changed = true;
+        continue;
+      }
+
+      let next = entry;
+      if (usesFlag(next)) {
+        next = withoutVisibilityKeys(next);
+        changed = true;
+      }
+      if (Array.isArray(next.positions)) {
+        const positions = next.positions.filter((position) => !isEntryHiddenByFlag(position));
+        const cleaned = positions.map((position) =>
+          isPlainObject(position) && usesFlag(position) ? withoutVisibilityKeys(position) : position
+        );
+        if (positions.length !== next.positions.length || cleaned.some((p, i) => p !== positions[i])) {
+          changed = true;
+          if (positions.length === 0) continue; // every position hidden: hide the employer too
+          next = { ...next, positions: cleaned };
+        }
+      }
+      kept.push(next);
+    }
+
+    if (kept.length !== entries.length || kept.some((entry, index) => entry !== entries[index])) {
+      changed = true;
+      if (kept.length === 0) {
+        delete sections[sectionKey];
+      } else {
+        sections[sectionKey] = kept;
+      }
+    }
+  }
+
+  return changed ? YAML.stringify(parsed) : cvYaml;
+}

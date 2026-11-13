@@ -745,12 +745,42 @@ export function applyAcceptedReviewChanges(
   return nextSections;
 }
 
+export interface ReviewConflict extends ReviewChange {
+  /** The value at the change's path in the current resume (undefined when absent). */
+  currentValue: unknown;
+  /**
+   * Whether the author may overwrite their edit with the proposed value. Only
+   * field edits qualify, and only while every list on the path has the same
+   * length as when the review started, so the path still points at the same
+   * entry.
+   */
+  forceable: boolean;
+}
+
+function pathStillAddressesSameEntries(
+  baselineRoot: unknown,
+  currentRoot: unknown,
+  path: Array<string | number>
+) {
+  for (let index = 0; index < path.length; index += 1) {
+    if (typeof path[index] !== 'number') continue;
+    const baselineList = getIn(baselineRoot, path.slice(0, index));
+    const currentList = getIn(currentRoot, path.slice(0, index));
+    if (!Array.isArray(baselineList) || !Array.isArray(currentList)) return false;
+    if (baselineList.length !== currentList.length) return false;
+  }
+  return true;
+}
+
 export interface RebasedReviewResult {
   sections: CvFileSections;
   /** Accepted changes that were applied to the current resume. */
   applied: ReviewChange[];
-  /** Accepted changes skipped because the resume changed at the same place since the review started. */
-  conflicts: ReviewChange[];
+  /**
+   * Accepted changes skipped because the resume changed at the same place since
+   * the review started, with what the resume holds there now.
+   */
+  conflicts: ReviewConflict[];
   /** True when the current resume no longer matches the review's baseline. */
   diverged: boolean;
 }
@@ -766,11 +796,19 @@ export function rebaseAcceptedReviewChanges(
   baselineSections: CvFileSections,
   currentSections: CvFileSections,
   sectionChanges: ReviewSectionChanges[],
-  decisions: Record<string, 'accepted' | 'rejected'>
+  decisions: Record<string, 'accepted' | 'rejected'>,
+  options: {
+    /**
+     * Conflicting field edits the author chose to overwrite with the proposed
+     * value. Only `set` changes can be forced: forcing an insert or removal
+     * into a list that has since changed could hit the wrong entry.
+     */
+    force?: ReadonlySet<string>;
+  } = {}
 ): RebasedReviewResult {
   const nextSections = { ...currentSections };
   const applied: ReviewChange[] = [];
-  const conflicts: ReviewChange[] = [];
+  const conflicts: ReviewConflict[] = [];
   let diverged = false;
 
   for (const key of SECTION_KEYS) {
@@ -803,8 +841,15 @@ export function rebaseAcceptedReviewChanges(
             ? deepEqual(getIn(currentRoot, change.path.slice(0, -1)), getIn(baselineRoot, change.path.slice(0, -1)))
             : deepEqual(getIn(currentRoot, change.path), change.baselineValue)));
 
-      if (!appliesCleanly) {
-        conflicts.push(change);
+      const forceable =
+        !appliesCleanly &&
+        change.kind === 'set' &&
+        change.path.length > 0 &&
+        pathStillAddressesSameEntries(baselineRoot, currentRoot, change.path);
+      const forced = forceable && Boolean(options.force?.has(change.id));
+
+      if (!appliesCleanly && !forced) {
+        conflicts.push({ ...change, currentValue: getIn(currentRoot, change.path), forceable });
         continue;
       }
 

@@ -27,7 +27,8 @@ import type { CvFileSections } from '@rendercv/contracts';
 import {
   applyAcceptedReviewChanges,
   computeReviewSectionChanges,
-  rebaseAcceptedReviewChanges
+  rebaseAcceptedReviewChanges,
+  type ReviewConflict
 } from '../features/review/review-diff';
 import { ReviewerNameDialog } from '../features/review/reviewer-name-dialog';
 import {
@@ -59,6 +60,9 @@ export function ReviewSessionPage() {
   // Which resume the accepted changes go into when the proposal did not link
   // to one automatically ('' = pick the default, 'new' = create a new CV).
   const [targetChoice, setTargetChoice] = useState('');
+  // Conflicting field edits the author chose to overwrite with the reviewer's
+  // value. Kept per page visit: it is a decision about the resume as it is now.
+  const [forcedChangeIds, setForcedChangeIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const reviewChanges = useMemo(
     () =>
@@ -105,9 +109,37 @@ export function ReviewSessionPage() {
       session.rootBaselineSections,
       resolveFileSections(targetFile),
       reviewChanges,
-      activeProposal.decisionStates
+      activeProposal.decisionStates,
+      { force: forcedChangeIds }
     );
-  }, [activeProposal, reviewChanges, session, targetFile]);
+  }, [activeProposal, forcedChangeIds, reviewChanges, session, targetFile]);
+
+  // Which changes would conflict if accepted, whatever their current decision,
+  // so each card can say so before the author decides.
+  const conflictsById = useMemo(() => {
+    if (!session || !targetFile) {
+      return new Map<string, ReviewConflict>();
+    }
+    const everyChange = Object.fromEntries(
+      reviewChanges.flatMap((section) => section.changes).map((change) => [change.id, 'accepted' as const])
+    );
+    const { conflicts } = rebaseAcceptedReviewChanges(
+      session.rootBaselineSections,
+      resolveFileSections(targetFile),
+      reviewChanges,
+      everyChange
+    );
+    return new Map(conflicts.map((conflict) => [conflict.id, conflict]));
+  }, [reviewChanges, session, targetFile]);
+
+  function setForced(changeId: string, forced: boolean) {
+    setForcedChangeIds((current) => {
+      const next = new Set(current);
+      if (forced) next.add(changeId);
+      else next.delete(changeId);
+      return next;
+    });
+  }
 
   if (!session) {
     return (
@@ -640,6 +672,8 @@ export function ReviewSessionPage() {
                       {section.changes.length ? (
                         section.changes.map((change) => {
                           const decision = activeProposal.decisionStates[change.id];
+                          const conflict = conflictsById.get(change.id);
+                          const forced = forcedChangeIds.has(change.id);
                           const diffTokens =
                             change.kind === 'set'
                               ? diffWords(
@@ -650,7 +684,10 @@ export function ReviewSessionPage() {
                           return (
                             <article
                               key={change.id}
-                              className="rounded-2xl border border-border bg-card px-4 py-3"
+                              className={`rounded-2xl border bg-card px-4 py-3 ${
+                                conflict ? 'border-amber-400 dark:border-amber-500/60' : 'border-border'
+                              }`}
+                              data-conflict={conflict ? 'true' : undefined}
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
@@ -661,7 +698,14 @@ export function ReviewSessionPage() {
                                     <p className="truncate text-xs text-muted-foreground">{change.detail}</p>
                                   ) : null}
                                 </div>
-                                <DecisionBadge decision={decision} />
+                                <div className="flex shrink-0 flex-col items-end gap-1">
+                                  <DecisionBadge decision={decision} />
+                                  {conflict ? (
+                                    <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
+                                      Conflicts with your edit
+                                    </span>
+                                  ) : null}
+                                </div>
                               </div>
                               <div className="mt-3 grid gap-3 md:grid-cols-2">
                                 <ValueCard
@@ -677,6 +721,44 @@ export function ReviewSessionPage() {
                                   value={change.proposedValue}
                                 />
                               </div>
+                              {conflict ? (
+                                <div className="mt-3 space-y-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+                                  <p className="text-[11px] font-medium uppercase tracking-[0.16em]">
+                                    Your current CV
+                                  </p>
+                                  <pre className="overflow-auto whitespace-pre-wrap break-words">
+                                    {conflict.forceable
+                                      ? formatReviewValue(conflict.currentValue)
+                                      : 'This part of the CV has changed since the review started (entries were added, removed or edited around it).'}
+                                  </pre>
+                                  <p>
+                                    {!conflict.forceable
+                                      ? 'You changed this part of the CV after sending it, so this change will be skipped even if accepted.'
+                                      : forced
+                                        ? 'Your edit will be replaced by the proposed value when you apply.'
+                                        : 'You edited this after sending the CV. Your edit is kept and this change is skipped, unless you choose to use the proposed value.'}
+                                  </p>
+                                  {conflict.forceable ? (
+                                    <button
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-background px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-accent"
+                                      onClick={() => {
+                                        setForced(change.id, !forced);
+                                        if (!forced) {
+                                          reviewStore.setProposalDecision(
+                                            currentSession.sessionId,
+                                            activeProposal.proposalId,
+                                            change.id,
+                                            'accepted'
+                                          );
+                                        }
+                                      }}
+                                      type="button"
+                                    >
+                                      {forced ? 'Keep my edit' : 'Use the proposed value instead'}
+                                    </button>
+                                  ) : null}
+                                </div>
+                              ) : null}
                               <div className="mt-3 flex items-center justify-end gap-2">
                                 <button
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"

@@ -321,3 +321,70 @@ describe('rebaseAcceptedReviewChanges', () => {
     expect(result.applied).toHaveLength(0);
   });
 });
+
+describe('rebase conflicts', () => {
+  const baseline = makeSections({ cv: experience(['Acme', 'Globex']) });
+  const proposed = makeSections({
+    cv: YAML.stringify({
+      cv: {
+        name: 'John Doe',
+        phone: '+1 250 555 0100',
+        sections: {
+          experience: [
+            { company: 'Acme', position: 'Senior Engineer' },
+            { company: 'Globex', position: 'Engineer' }
+          ]
+        }
+      }
+    })
+  });
+  const changes = computeReviewSectionChanges(baseline, proposed);
+  const positionChange = changes.flatMap((section) => section.changes)[0]!;
+
+  function currentWithFirstPosition(position: string, extra: string[] = []) {
+    return makeSections({
+      cv: YAML.stringify({
+        cv: {
+          name: 'John Doe',
+          phone: '+1 250 555 0100',
+          sections: {
+            experience: [
+              ...extra.map((company) => ({ company, position: 'New' })),
+              { company: 'Acme', position },
+              { company: 'Globex', position: 'Engineer' }
+            ]
+          }
+        }
+      })
+    });
+  }
+
+  it('reports what the author has now and lets a field edit be overwritten on request', () => {
+    const current = currentWithFirstPosition('Staff Engineer');
+    const plain = rebaseAcceptedReviewChanges(baseline, current, changes, acceptAll(changes));
+
+    expect(plain.conflicts[0]).toMatchObject({ currentValue: 'Staff Engineer', forceable: true });
+
+    const forced = rebaseAcceptedReviewChanges(baseline, current, changes, acceptAll(changes), {
+      force: new Set([positionChange.id])
+    });
+    expect(forced.conflicts).toHaveLength(0);
+    expect(YAML.parse(forced.sections.cv).cv.sections.experience[0].position).toBe('Senior Engineer');
+  });
+
+  it('never overwrites by position once entries were added to the list', () => {
+    // The author inserted an entry at the top: index 0 is now a different job.
+    const current = currentWithFirstPosition('Engineer', ['Initech']);
+    const result = rebaseAcceptedReviewChanges(baseline, current, changes, acceptAll(changes), {
+      force: new Set([positionChange.id])
+    });
+
+    expect(result.conflicts[0]?.forceable).toBe(false);
+    const experience = YAML.parse(result.sections.cv).cv.sections.experience;
+    expect(experience.map((entry: { position: string }) => entry.position)).toEqual([
+      'New',
+      'Engineer',
+      'Engineer'
+    ]);
+  });
+});

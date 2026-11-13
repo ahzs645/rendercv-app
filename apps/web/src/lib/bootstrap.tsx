@@ -12,9 +12,9 @@ import { initPostHog } from './analytics/posthog-client';
 import { FILE_STORAGE_KEY, PREFERENCE_STORAGE_KEY, REVIEW_STORAGE_KEY } from './storage-keys';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import {
-  normalizeCompatibilityCvYaml,
   stripPositionMarkersFromCvYaml
 } from '@rendercv/primitives';
+import { normalizeCompatibilityCvYamlKeepingVisibility } from '../features/viewer/compat-normalize';
 import { normalizeLegacyDesignYaml } from '../features/viewer/viewer-sections';
 import { i18nStore } from './i18n/i18n-store';
 
@@ -92,7 +92,7 @@ function migrateStaleSourceBaselines() {
     }
 
     const strippedCv = stripPositionMarkersFromCvYaml(baseline.cv);
-    const cvCandidates = [strippedCv, normalizeCompatibilityCvYaml(strippedCv)];
+    const cvCandidates = [strippedCv, normalizeCompatibilityCvYamlKeepingVisibility(strippedCv)];
     const designCandidates = [baseline.design, normalizeLegacyDesignYaml(baseline.design) ?? baseline.design];
 
     const cv = cvCandidates.find((candidate) => candidate === sections.cv);

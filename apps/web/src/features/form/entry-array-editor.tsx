@@ -26,6 +26,7 @@ import {
   Plus,
   X
 } from 'lucide-react';
+import { ENTRY_VISIBILITY_KEYS, isEntryHiddenByFlag } from '@rendercv/core';
 import { useEntryHidden } from './hidden-entries-context';
 import { useEntryVariantState } from './variant-visibility-context';
 import {
@@ -246,7 +247,16 @@ function SortableEntryArrayItem({
   // Manual hide OR variant exclusion both grey the entry out in the editor. The
   // eye toggle routes to whichever is active (variant vs file-global manual) via
   // the hidden-entries context, set up in the workspace.
-  const isHidden = (hiddenState?.hidden ?? false) || hiddenByVariant;
+  // `show: false` written in the YAML hides the entry too. The eye clears the
+  // flag rather than adding a second, fingerprint-based hide on top of it.
+  const hiddenByFlag = isEntryHiddenByFlag(entry);
+  const isHidden = (hiddenState?.hidden ?? false) || hiddenByVariant || hiddenByFlag;
+  const showFlaggedEntry = () => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return;
+    const next = { ...(entry as Record<string, unknown>) };
+    for (const key of ENTRY_VISIBILITY_KEYS) delete next[key];
+    onChange(index, next);
+  };
 
   // When the user opts to hide archived entries, drop them from the form list
   // entirely (they remain in the document and are always excluded from the PDF).
@@ -303,7 +313,7 @@ function SortableEntryArrayItem({
           label="entry"
         />
         <div
-          className={`absolute right-0 flex items-center gap-0.5 sm:right-1 sm:gap-1 ${
+          className={`absolute right-0 z-10 flex items-center gap-0.5 sm:right-1 sm:gap-1 ${
             index > 0 ? 'top-3 sm:top-4' : 'top-0 sm:top-1'
           }`}
         >
@@ -314,6 +324,13 @@ function SortableEntryArrayItem({
             >
               Archived
             </span>
+          ) : hiddenByFlag ? (
+            <span
+              className="hidden shrink-0 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 sm:inline dark:text-amber-300"
+              title="Hidden by show: false in the YAML"
+            >
+              show: false
+            </span>
           ) : hiddenByVariant ? (
             <span
               className="hidden shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary sm:inline"
@@ -322,7 +339,17 @@ function SortableEntryArrayItem({
               Off in {variantState?.variantLabel}
             </span>
           ) : null}
-          {hiddenState ? (
+          {hiddenByFlag ? (
+            <button
+              type="button"
+              className="form-item-control form-touch-target flex size-9 items-center justify-center rounded-md text-amber-600 hover:bg-muted sm:size-6 sm:rounded-none sm:text-amber-600 sm:hover:bg-transparent"
+              onClick={showFlaggedEntry}
+              aria-label="Show in resume"
+              title="Hidden by show: false in the YAML — click to show"
+            >
+              <EyeOff className="size-4 sm:size-3.5" />
+            </button>
+          ) : hiddenState ? (
             <button
               type="button"
               className={`form-item-control form-touch-target flex size-9 items-center justify-center rounded-md hover:bg-muted sm:size-6 sm:rounded-none sm:hover:bg-transparent ${
