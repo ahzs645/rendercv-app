@@ -975,20 +975,156 @@ if isinstance(render_cv_data, dict) and isinstance(render_cv_data.get("cv"), dic
     resolve_connection_display(render_cv_data["cv"])
 render_yaml_input_cv = safe_dump_yaml(render_cv_data)
 
+# Typst's predefined colors. Older ahmadstyle releases took `website_link_color:
+# blue | black`; the theme now interpolates the value into `rgb("...")`, which
+# only accepts hex, so a name would pass validation and then fail typesetting.
+TYPST_NAMED_COLORS = {
+    "black": "#000000",
+    "gray": "#aaaaaa",
+    "grey": "#aaaaaa",
+    "silver": "#dddddd",
+    "white": "#ffffff",
+    "navy": "#001f3f",
+    "blue": "#0074d9",
+    "aqua": "#7fdbff",
+    "teal": "#39cccc",
+    "eastern": "#239dad",
+    "purple": "#b10dc9",
+    "fuchsia": "#f012be",
+    "maroon": "#85144b",
+    "red": "#ff4136",
+    "orange": "#ff851b",
+    "yellow": "#ffdc00",
+    "olive": "#3d9970",
+    "green": "#2ecc40",
+    "lime": "#01ff70",
+}
+HEX_COLOR_PATTERN = re.compile(r"^#?(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+# Theme fields a theme template passes straight to Typst's `rgb("...")`.
+HEX_ONLY_DESIGN_FIELDS = {"ahmadstyle": ("website_link_color",)}
+
+
+def find_design_key_location(design_text, key):
+    """1-based (line, column) of a top-level `design.<key>` in the design YAML."""
+    pattern = re.compile(rf"^(\s+){re.escape(key)}\s*:", re.MULTILINE)
+    match = pattern.search(design_text or "")
+    if not match:
+        return None
+    line = design_text.count("\n", 0, match.start()) + 1
+    column = len(match.group(1)) + 1
+    return [[line, column], [line, column + len(key)]]
+
+
+def design_validation_error(key, message, value):
+    return {
+        "message": message,
+        "schema_location": ["design", key],
+        "input": str(value),
+        "yaml_source": "design_yaml_file",
+        "yaml_location": find_design_key_location(yaml_input_design, key),
+    }
+
+
+def normalize_design_colors(design_text):
+    """Map Typst color names to hex for fields a theme feeds into `rgb()`.
+
+    Returns the design text to render with and any errors to report instead of
+    letting Typst fail later with a message that names no field.
+    """
+    fields = HEX_ONLY_DESIGN_FIELDS.get(theme_name)
+    if not fields or not isinstance(design_parsed, dict):
+        return design_text, []
+    design = design_parsed.get("design")
+    if not isinstance(design, dict):
+        return design_text, []
+
+    errors = []
+    changed = False
+    patched = dict(design)
+    for key in fields:
+        value = patched.get(key)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if HEX_COLOR_PATTERN.match(text):
+            if not text.startswith("#"):
+                patched[key] = f"#{text}"
+                changed = True
+            continue
+        named = TYPST_NAMED_COLORS.get(text.lower())
+        if named:
+            patched[key] = named
+            changed = True
+            add_warning(
+                f"design.{key}: {active_theme_label} needs a hex color, so '{text}' was rendered as {named}. "
+                f"Write `{key}: \"{named}\"` to keep this permanently."
+            )
+            continue
+        errors.append(
+            design_validation_error(
+                key,
+                f"'{text}' is not a color {active_theme_label} can use. Use a hex color such as \"#0074d9\" "
+                f"or one of: {', '.join(sorted(set(TYPST_NAMED_COLORS) - {'grey'}))}.",
+                text,
+            )
+        )
+
+    if errors or not changed:
+        return design_text, errors
+    return safe_dump_yaml({**design_parsed, "design": patched}), []
+
+
+def locate_vague_design_errors(errors):
+    """Name the field in unknown-field errors RenderCV reports against `design`.
+
+    Custom themes are validated as a union, so RenderCV reports an unknown key
+    as `schema_location: ["design"]` at line 1 with only the offending value.
+    Match the value back to its key so the user is told what to remove.
+    """
+    design = design_parsed.get("design") if isinstance(design_parsed, dict) else None
+    if not isinstance(design, dict):
+        return errors
+
+    for error in errors:
+        if error.get("yaml_source") != "design_yaml_file":
+            continue
+        if list(error.get("schema_location") or []) != ["design"]:
+            continue
+        value = error.get("input")
+        matches = [
+            key
+            for key, item in design.items()
+            if not isinstance(item, (dict, list)) and str(item) == str(value)
+        ]
+        if len(matches) != 1:
+            continue
+        key = matches[0]
+        error["schema_location"] = ["design", key]
+        location = find_design_key_location(yaml_input_design, key)
+        if location:
+            error["yaml_location"] = location
+    return errors
+
+
+render_yaml_input_design, design_color_errors = normalize_design_colors(yaml_input_design)
+
 kwargs: BuildRendercvModelArguments = {}
-kwargs["design_yaml_file"] = yaml_input_design
+kwargs["design_yaml_file"] = render_yaml_input_design
 kwargs["locale_yaml_file"] = yaml_input_locale
 kwargs["settings_yaml_file"] = yaml_input_settings
 
 try:
+    if design_color_errors:
+        raise RenderCVUserValidationError(validation_errors=[])
     dictionary, model = build_rendercv_dictionary_and_model(
         render_yaml_input_cv,
         **kwargs,
     )
 except RenderCVUserValidationError as e:
-    formatted_errors = []
+    formatted_errors = list(design_color_errors)
     for error in e.validation_errors:
         formatted_errors.append(asdict(error))
+    formatted_errors = locate_vague_design_errors(formatted_errors)
     result = {
         "content": None,
         "errors": formatted_errors,

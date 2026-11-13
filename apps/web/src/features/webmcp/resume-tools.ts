@@ -1,6 +1,8 @@
 import { entryFingerprint, fileStore, resolveFileSections } from '@rendercv/core';
 import type { CvFile, SectionKey } from '@rendercv/contracts';
 import YAML from 'yaml';
+import { formatRenderErrorMessage } from '../viewer/render-error-format';
+import { buildRenderFixPrompt, getRenderDiagnostics } from '../viewer/render-fix-prompt';
 
 type JsonSchema = Record<string, unknown>;
 
@@ -233,8 +235,31 @@ function snapshotFor(file: CvFile) {
           value
         }))
       })),
-      variants: file.variants ?? {}
-    }
+      variants: file.variants ?? {},
+      design: sections.design
+    },
+    renderStatus: renderStatusFor(sections)
+  };
+}
+
+function renderStatusFor(sections: ReturnType<typeof resolveFileSections>) {
+  const { errors, warnings, stale } = getRenderDiagnostics();
+  if (errors.length === 0) {
+    return { ok: true, warnings };
+  }
+
+  return {
+    ok: false,
+    stale,
+    errors: errors.map((error) => ({
+      section: error.yaml_source,
+      field: error.schema_location?.join('.') || null,
+      line: error.yaml_location?.[0]?.[0] ?? null,
+      input: error.input || null,
+      message: formatRenderErrorMessage(error)
+    })),
+    warnings,
+    fixInstructions: buildRenderFixPrompt({ errors, warnings, sections })
   };
 }
 
@@ -243,7 +268,7 @@ export function createResumeWebMcpTools(): WebMcpTool[] {
     {
       name: 'inspect_active_resume',
       description:
-        'Read the active RenderCV resume, including profile fields, section entries, stable entry fingerprints, variants, theme, and revision. Call this before proposing edits or tailoring a resume.',
+        'Read the active RenderCV resume, including profile fields, section entries, stable entry fingerprints, variants, theme, design YAML, revision, and the preview render status. When renderStatus.ok is false the resume does not render: explain the errors to the user and offer to fix them with replace_resume_yaml_section or patch_active_resume. Call this before proposing edits or tailoring a resume.',
       inputSchema: { type: 'object', properties: {}, additionalProperties: false },
       annotations: { readOnlyHint: true, untrustedContentHint: true },
       execute() {
@@ -254,7 +279,19 @@ export function createResumeWebMcpTools(): WebMcpTool[] {
         try {
           return toolResult(snapshotFor(file));
         } catch (error) {
-          return toolError(error instanceof Error ? error.message : 'Could not inspect the resume.');
+          // Hand back the raw YAML so an agent can still repair a CV that does
+          // not parse, via replace_resume_yaml_section.
+          const sections = resolveFileSections(file);
+          return toolError(
+            error instanceof Error ? error.message : 'Could not inspect the resume.',
+            {
+              lastEdited: file.lastEdited,
+              selectedTheme: file.selectedTheme,
+              rawSections: sections,
+              renderStatus: renderStatusFor(sections),
+              hint: 'Fix the YAML with replace_resume_yaml_section, then inspect again.'
+            }
+          );
         }
       }
     },

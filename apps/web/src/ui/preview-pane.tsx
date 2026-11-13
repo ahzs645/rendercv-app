@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import { AppWindow, Download, Eye, EyeOff, FileCode2, Minus, Plus, RotateCw, TriangleAlert, X } from 'lucide-react';
+import { AppWindow, ClipboardCopy, Download, Eye, EyeOff, FileCode2, Minus, Plus, RotateCw, TriangleAlert, X } from 'lucide-react';
+import { toast } from 'sonner';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { preferencesStore } from '@rendercv/core';
 import { downloadBlob } from '../features/viewer/download';
@@ -17,6 +18,7 @@ import {
 } from '../features/viewer/svg-click-map';
 import type { SectionMapEntry, SectionMapResult } from '../features/viewer/typst-section-map';
 import { formatRenderErrorMessage } from '../features/viewer/render-error-format';
+import { buildRenderFixPrompt, setRenderDiagnostics } from '../features/viewer/render-fix-prompt';
 import { attachZoomGestures } from '../features/viewer/zoom-gestures';
 import { useTranslation } from '../lib/i18n/use-translation';
 
@@ -41,14 +43,47 @@ function looksLikeNetworkFailure(detail: string) {
   return NETWORK_ERROR_HINTS.some((hint) => haystack.includes(hint));
 }
 
+async function copyFixPrompt(prompt: string) {
+  try {
+    await navigator.clipboard.writeText(prompt);
+    toast.success('Fix prompt copied', {
+      description: 'Paste it into your AI assistant, or ask the browser agent to fix the render errors.'
+    });
+  } catch {
+    toast.error('Could not copy to the clipboard.');
+  }
+}
+
+function CopyFixPromptButton({ prompt, compact = false }: { prompt: string; compact?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={() => void copyFixPrompt(prompt)}
+      className={
+        compact
+          ? 'inline-flex items-center gap-1 rounded-md border border-current/30 px-2 py-0.5 font-medium transition-colors hover:bg-current/10'
+          : 'inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted'
+      }
+      title="Copy a prompt describing these errors and the YAML involved, for an AI assistant to fix"
+    >
+      <ClipboardCopy className={compact ? 'size-3' : 'size-3.5'} />
+      Copy fix prompt
+    </button>
+  );
+}
+
 function RenderFailure({
   detail,
   onRetry,
-  variant
+  variant,
+  fixPrompt,
+  hasLocatedFields = true
 }: {
   detail: string;
   onRetry: () => void;
   variant: 'init' | 'render';
+  fixPrompt?: string;
+  hasLocatedFields?: boolean;
 }) {
   const isNetwork = looksLikeNetworkFailure(detail);
   const title = isNetwork
@@ -60,7 +95,9 @@ function RenderFailure({
     ? 'RenderCV fetches its Typst packages the first time it renders. Check your connection — or any network filtering — and try again.'
     : variant === 'init'
       ? 'Reloading usually clears this. If it keeps happening, the browser may be blocking WebAssembly or local storage.'
-      : 'Check the highlighted fields in the editor, then render again.';
+      : hasLocatedFields
+        ? 'Check the fields listed below, fix them in the editor or copy a fix prompt for an AI assistant, then render again.'
+        : 'The YAML was accepted but the theme could not typeset it — usually a design value it cannot use. Copy a fix prompt for an AI assistant, or check the details below.';
 
   return (
     <div className="mx-auto flex max-w-lg flex-col items-start gap-3 rounded-2xl border border-border bg-card p-5 text-sm shadow-sm">
@@ -69,15 +106,18 @@ function RenderFailure({
         <p className="font-semibold">{title}</p>
       </div>
       <p className="text-muted-foreground">{body}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-      >
-        <RotateCw className="size-3.5" />
-        Try again
-      </button>
-      <details className="w-full">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <RotateCw className="size-3.5" />
+          Try again
+        </button>
+        {fixPrompt ? <CopyFixPromptButton prompt={fixPrompt} /> : null}
+      </div>
+      <details className="w-full" open={variant === 'render' && !isNetwork}>
         <summary className="cursor-pointer text-xs text-muted-foreground transition-colors hover:text-foreground">
           Technical details
         </summary>
@@ -499,6 +539,23 @@ function PreviewCanvas({
     preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
   const invertPreview = isDark && preferences.previewDarkMode;
 
+  const isStaleRender = viewer.renderErrors.length > 0 && viewer.svgPages.length > 0;
+  useEffect(() => {
+    setRenderDiagnostics({
+      errors: viewer.renderErrors,
+      warnings: viewer.renderWarnings,
+      stale: isStaleRender
+    });
+  }, [viewer.renderErrors, viewer.renderWarnings, isStaleRender]);
+  const fixPrompt =
+    viewer.renderErrors.length > 0
+      ? buildRenderFixPrompt({
+          errors: viewer.renderErrors,
+          warnings: viewer.renderWarnings,
+          sections
+        })
+      : undefined;
+
   const [dismissedWarningsKey, setDismissedWarningsKey] = useState<string | null>(null);
   const warningsKey = viewer.renderWarnings.join('\u0000');
   const showWarningsBanner =
@@ -523,6 +580,8 @@ function PreviewCanvas({
             detail={viewer.renderErrors.map(formatRenderErrorMessage).join('\n\n')}
             onRetry={viewer.retryRender}
             variant="render"
+            fixPrompt={fixPrompt}
+            hasLocatedFields={viewer.renderErrors.some((error) => (error.schema_location?.length ?? 0) > 0)}
           />
         ) : viewer.svgPages.length > 0 ? (
           <div
@@ -536,9 +595,12 @@ function PreviewCanvas({
                 replacing the user's work with an error card. */}
             {viewer.renderErrors.length > 0 ? (
               <div className="space-y-1 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
-                <p className="font-medium">
-                  Showing the last successful render — the newest changes couldn't be rendered.
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">
+                    Showing the last successful render — the newest changes couldn't be rendered.
+                  </p>
+                  {fixPrompt ? <CopyFixPromptButton prompt={fixPrompt} compact /> : null}
+                </div>
                 <ul className="list-inside list-disc space-y-0.5">
                   {viewer.renderErrors.map((error, index) => (
                     <li key={`${error.message}-${index}`}>{formatRenderErrorMessage(error)}</li>

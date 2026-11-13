@@ -648,10 +648,19 @@ export function useViewerRenderer(sections?: CvFileSections) {
           }
 
           const svgStartedAt = performance.now();
-          const svg = (await postMessageToTypst('SVG', {
-            content: typst,
-            assets: lastTypstAssets.current
-          })) as string[];
+          let svg: string[];
+          try {
+            svg = (await postMessageToTypst('SVG', {
+              content: typst,
+              assets: lastTypstAssets.current
+            })) as string[];
+          } catch (error) {
+            // RenderCV accepted the YAML but the theme's Typst output failed,
+            // which usually means a design value reached Typst unchecked.
+            // Say so instead of presenting it as a CV field error.
+            const reason = error instanceof Error ? error.message : String(error);
+            throw new Error(`Typesetting failed after validation: ${reason}`);
+          }
           const svgMs = performance.now() - svgStartedAt;
 
           if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {

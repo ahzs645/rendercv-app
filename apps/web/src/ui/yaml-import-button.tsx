@@ -113,14 +113,12 @@ export function useYamlImport({ prepareYamlImport, validateYamlImport }: YamlImp
 
       const isCompatibilityYaml = looksLikeCompatibilityYaml(content, importedSections);
 
+      // Validation problems no longer block the import: a file that is
+      // rejected can't be fixed in the editor or by asking an assistant. Import
+      // it and let the preview list the errors with a copyable fix prompt.
+      let importErrors: RenderError[] = [];
       if (validateYamlImport) {
-        const errors = await validateYamlImport(importedSections);
-        if (errors.length > 0) {
-          if (!isCompatibilityYaml) {
-            toast.error(summarizeRenderErrors(errors));
-            return;
-          }
-        }
+        importErrors = await validateYamlImport(importedSections);
       }
 
       const preparedImport = prepareYamlImport
@@ -147,7 +145,12 @@ export function useYamlImport({ prepareYamlImport, validateYamlImport }: YamlImp
         selectedLocale: nextSections.selectedLocale,
         sourceUrl: source?.url
       });
-      if (isCompatibilityYaml) {
+      if (importErrors.length > 0 && !isCompatibilityYaml) {
+        toast.warning('YAML imported, but it does not render yet.', {
+          description: `${summarizeRenderErrors(importErrors)} Fix it in the editor, or use “Copy fix prompt” in the preview to ask an AI assistant.`,
+          duration: 10_000
+        });
+      } else if (isCompatibilityYaml) {
         const themeNote =
           nextSections.selectedTheme && !KNOWN_THEMES.has(nextSections.selectedTheme)
             ? ` Import the ${nextSections.selectedTheme} theme zip if the preview reports a missing custom theme.`
