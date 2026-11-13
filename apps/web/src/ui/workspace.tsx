@@ -13,12 +13,12 @@ import type { RenderError } from '../features/viewer/use-viewer-renderer';
 import { applyRenderFixes, type RenderFix } from '../features/viewer/render-fixes';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import {
+  normalizeCompatibilityCvYaml,
   parseCvVariantsYaml,
   repairFlattenedPositionDatesInCvYaml,
   stripPositionMarkersFromCvYaml,
   themeUsesPositionSpacingMarkers
 } from '@rendercv/primitives';
-import { normalizeCompatibilityCvYamlKeepingVisibility } from '../features/viewer/compat-normalize';
 import {
   normalizeLegacyDesignYaml,
   changesYamlData,
@@ -92,7 +92,7 @@ function looksLikeLegacyDesignSchema(design: string) {
 }
 
 function normalizeCompatibilitySections(sections: ImportedSections): ImportedSections {
-  const normalizedCv = sections.cv ? normalizeCompatibilityCvYamlKeepingVisibility(sections.cv) : sections.cv;
+  const normalizedCv = sections.cv ? normalizeCompatibilityCvYaml(sections.cv) : sections.cv;
   const normalizedDesign = sections.design
     ? normalizeLegacyDesignYaml(sections.design)
     : sections.design;

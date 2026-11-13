@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
-import { normalizeCompatibilityCvYamlKeepingVisibility } from './compat-normalize';
+import { normalizeCompatibilityCvYaml } from '@rendercv/primitives';
 
-describe('normalizeCompatibilityCvYamlKeepingVisibility', () => {
+// Imports persist the normalized CV, so the show: false flag must survive it.
+describe('normalizeCompatibilityCvYaml (import)', () => {
   it('keeps show: false on experience entries instead of folding it into the summary', () => {
     const cv = YAML.stringify({
       cv: {
@@ -17,7 +18,7 @@ describe('normalizeCompatibilityCvYamlKeepingVisibility', () => {
       }
     });
 
-    const experience = YAML.parse(normalizeCompatibilityCvYamlKeepingVisibility(cv)).cv.sections.experience;
+    const experience = YAML.parse(normalizeCompatibilityCvYaml(cv)).cv.sections.experience;
 
     expect(experience[1].show).toBe(false);
     expect(experience[2].showing).toBe(false);
