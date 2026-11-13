@@ -1,10 +1,13 @@
 import type { CvFileSections, SectionKey } from '@rendercv/contracts';
 import type { RenderError } from './use-viewer-renderer';
 import { formatRenderErrorMessage } from './render-error-format';
+import type { RenderFix } from './render-fixes';
 
 export type RenderDiagnostics = {
   errors: RenderError[];
   warnings: string[];
+  /** Deterministic fixes the renderer suggests (see render-fixes.ts). */
+  fixes?: RenderFix[];
   /** True while the preview shows an older render because the newest one failed. */
   stale: boolean;
 };

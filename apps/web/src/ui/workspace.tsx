@@ -10,6 +10,7 @@ import { useStore } from '../lib/use-store';
 import { useIsMobile } from '../lib/use-mobile';
 import { useViewerRenderer } from '../features/viewer/use-viewer-renderer';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
+import { applyRenderFixes, type RenderFix } from '../features/viewer/render-fixes';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import {
   parseCvVariantsYaml,
@@ -217,6 +218,33 @@ export function Workspace({ active = true }: { active?: boolean }) {
       toast.success('Restored all hidden entries.');
     }
   }, [selectedFile]);
+
+  const handleApplyRenderFixes = useCallback(
+    (fixes: RenderFix[]) => {
+      const file = fileStore.selectedFile;
+      if (!file || file.isReadOnly) {
+        return;
+      }
+
+      const { sections, applied, skipped } = applyRenderFixes(resolveFileSections(file), fixes);
+      for (const [section, text] of Object.entries(sections) as Array<[keyof typeof sections, string]>) {
+        fileStore.updateSection(section, text);
+      }
+
+      if (applied.length === 0) {
+        toast.error('Those fixes no longer apply — the fields were already changed.');
+        return;
+      }
+
+      toast.success(applied.length === 1 ? 'Fix applied.' : `${applied.length} fixes applied.`, {
+        description: [
+          ...applied.map((fix) => fix.description),
+          ...(skipped.length > 0 ? [`${skipped.length} could not be applied and were skipped.`] : [])
+        ].join(' · ')
+      });
+    },
+    []
+  );
 
   const handlePreviewSectionClick = useCallback(
     (sectionKey: string, entryIndex: number) => {
@@ -769,6 +797,8 @@ export function Workspace({ active = true }: { active?: boolean }) {
         showHeader={false}
         viewer={viewer}
         onSectionClick={handlePreviewSectionClick}
+        documentKey={selectedFile.id}
+        onApplyFixes={selectedFile.isReadOnly ? undefined : handleApplyRenderFixes}
       />
       {canFit ? (
         <button

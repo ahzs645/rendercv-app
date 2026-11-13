@@ -650,6 +650,23 @@ function diffValues(
   );
 }
 
+/**
+ * Order paths segment by segment, comparing array indexes as numbers. Joining
+ * them into strings sorted index 10 before 9, so accepting the removal of two
+ * entries in a list of ten or more deleted the wrong one.
+ */
+function comparePaths(left: Array<string | number>, right: Array<string | number>) {
+  const length = Math.min(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const a = left[index];
+    const b = right[index];
+    if (a === b) continue;
+    if (typeof a === 'number' && typeof b === 'number') return a - b;
+    return String(a).localeCompare(String(b));
+  }
+  return left.length - right.length;
+}
+
 function sortAcceptedChanges(changes: ReviewChange[]) {
   return [...changes].sort((left, right) => {
     const leftDepth = left.path.length;
@@ -657,9 +674,11 @@ function sortAcceptedChanges(changes: ReviewChange[]) {
 
     if (left.kind === right.kind) {
       if (left.kind === 'remove') {
-        return rightDepth - leftDepth || serializePath(right.path).localeCompare(serializePath(left.path));
+        // Deepest first, then highest index first, so earlier removals never
+        // shift the position of a later one.
+        return rightDepth - leftDepth || comparePaths(right.path, left.path);
       }
-      return leftDepth - rightDepth || serializePath(left.path).localeCompare(serializePath(right.path));
+      return leftDepth - rightDepth || comparePaths(left.path, right.path);
     }
 
     const order: Record<ReviewChangeKind, number> = {
@@ -724,4 +743,88 @@ export function applyAcceptedReviewChanges(
   }
 
   return nextSections;
+}
+
+export interface RebasedReviewResult {
+  sections: CvFileSections;
+  /** Accepted changes that were applied to the current resume. */
+  applied: ReviewChange[];
+  /** Accepted changes skipped because the resume changed at the same place since the review started. */
+  conflicts: ReviewChange[];
+  /** True when the current resume no longer matches the review's baseline. */
+  diverged: boolean;
+}
+
+/**
+ * Apply accepted changes on top of the author's current resume rather than on
+ * the snapshot the review started from, so edits the author made since then
+ * are kept. A change is applied only where the current value still equals the
+ * baseline value it was computed against; anything else is a conflict and is
+ * reported instead of being silently overwritten.
+ */
+export function rebaseAcceptedReviewChanges(
+  baselineSections: CvFileSections,
+  currentSections: CvFileSections,
+  sectionChanges: ReviewSectionChanges[],
+  decisions: Record<string, 'accepted' | 'rejected'>
+): RebasedReviewResult {
+  const nextSections = { ...currentSections };
+  const applied: ReviewChange[] = [];
+  const conflicts: ReviewChange[] = [];
+  let diverged = false;
+
+  for (const key of SECTION_KEYS) {
+    const baselineRoot = parseSectionRoot(key, baselineSections[key]);
+    const currentRoot = parseSectionRoot(key, currentSections[key]);
+    if (!deepEqual(baselineRoot, currentRoot)) {
+      diverged = true;
+    }
+  }
+
+  for (const section of sectionChanges) {
+    const accepted = sortAcceptedChanges(
+      section.changes.filter((change) => decisions[change.id] === 'accepted')
+    );
+    if (accepted.length === 0) {
+      continue;
+    }
+
+    const baselineRoot = parseSectionRoot(section.key, baselineSections[section.key]);
+    const currentRoot = parseSectionRoot(section.key, currentSections[section.key]);
+    const unchangedSinceBaseline = deepEqual(baselineRoot, currentRoot);
+    let nextRoot = cloneValue(currentRoot);
+    let sectionChanged = false;
+
+    for (const change of accepted) {
+      const appliesCleanly =
+        unchangedSinceBaseline ||
+        (change.path.length > 0 &&
+          (change.kind === 'add'
+            ? deepEqual(getIn(currentRoot, change.path.slice(0, -1)), getIn(baselineRoot, change.path.slice(0, -1)))
+            : deepEqual(getIn(currentRoot, change.path), change.baselineValue)));
+
+      if (!appliesCleanly) {
+        conflicts.push(change);
+        continue;
+      }
+
+      if (change.path.length === 0) {
+        nextRoot = cloneValue(change.proposedValue);
+      } else if (change.kind === 'remove') {
+        nextRoot = removeIn(nextRoot, change.path);
+      } else if (change.kind === 'add') {
+        nextRoot = insertIn(nextRoot, change.path, change.proposedValue);
+      } else {
+        nextRoot = setIn(nextRoot, change.path, change.proposedValue);
+      }
+      applied.push(change);
+      sectionChanged = true;
+    }
+
+    if (sectionChanged) {
+      nextSections[section.key] = stringifySectionRoot(section.key, nextRoot);
+    }
+  }
+
+  return { sections: nextSections, applied, conflicts, diverged };
 }

@@ -42,3 +42,28 @@ export function buildProposalPackageFromSession(
     createdAt: proposal.createdAt
   };
 }
+
+/**
+ * Start a review of a CV someone sent you (for example as a YAML file): the CV
+ * as it is now becomes the original, and later edits become the proposal.
+ * Returns undefined when the file is missing or is already in a review.
+ */
+export function startReviewForFile(fileId: string) {
+  const file = fileStore.getSnapshot().files.find((entry) => entry.id === fileId);
+  if (!file || file.isReadOnly) {
+    return undefined;
+  }
+
+  const existing = reviewStore.sessions.find(
+    (session) => session.linkedFileId === fileId || session.mergeDraft?.draftFileId === fileId
+  );
+  if (existing) {
+    return existing;
+  }
+
+  return reviewStore.ensureSession({
+    linkedFileId: file.id,
+    baseFileName: file.name,
+    rootBaselineSections: resolveFileSections(file)
+  });
+}

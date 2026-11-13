@@ -71,6 +71,7 @@ json.dumps({
   "errors": result.get("errors") if isinstance(result, dict) else None,
   "normalized_cv": result.get("normalized_cv") if isinstance(result, dict) else globals().get("normalized_yaml_input_cv", None),
   "warnings": result.get("warnings") if isinstance(result, dict) else None,
+  "fixes": result.get("fixes") if isinstance(result, dict) else None,
 })
 `;
 function assetUrl(path: string) {

@@ -19,11 +19,16 @@ import {
   preferencesStore,
   readLocaleName,
   readThemeName,
+  resolveFileSections,
   reviewStore
 } from '@rendercv/core';
 import { toast } from 'sonner';
 import type { CvFileSections } from '@rendercv/contracts';
-import { applyAcceptedReviewChanges, computeReviewSectionChanges } from '../features/review/review-diff';
+import {
+  applyAcceptedReviewChanges,
+  computeReviewSectionChanges,
+  rebaseAcceptedReviewChanges
+} from '../features/review/review-diff';
 import { ReviewerNameDialog } from '../features/review/reviewer-name-dialog';
 import {
   buildReviewProposalUrl,
@@ -51,6 +56,9 @@ export function ReviewSessionPage() {
   const [nameAction, setNameAction] = useState<'forward' | null>(null);
   const [proposalPane, setProposalPane] = useState<'proposed' | 'merged'>('proposed');
   const [mobilePane, setMobilePane] = useState<MobilePane>('changes');
+  // Which resume the accepted changes go into when the proposal did not link
+  // to one automatically ('' = pick the default, 'new' = create a new CV).
+  const [targetChoice, setTargetChoice] = useState('');
 
   const reviewChanges = useMemo(
     () =>
@@ -71,6 +79,35 @@ export function ReviewSessionPage() {
       activeProposal.decisionStates
     );
   }, [activeProposal, reviewChanges, session]);
+
+  const linkedFile = session?.linkedFileId
+    ? fileSnapshot.files.find((file) => file.id === session.linkedFileId)
+    : undefined;
+  const mergeDraftId = session?.mergeDraft?.draftFileId;
+  const targetCandidates = fileSnapshot.files.filter(
+    (file) => !file.isReadOnly && file.id !== mergeDraftId
+  );
+  const defaultTarget =
+    linkedFile ?? targetCandidates.find((file) => file.name === session?.baseFileName);
+  const targetFile = linkedFile
+    ? linkedFile
+    : targetChoice === 'new'
+      ? undefined
+      : (targetCandidates.find((file) => file.id === targetChoice) ?? defaultTarget);
+
+  // Accepted changes applied on top of the target resume as it is now, so
+  // edits the author made after sending the review are kept.
+  const rebased = useMemo(() => {
+    if (!session || !activeProposal || !targetFile) {
+      return undefined;
+    }
+    return rebaseAcceptedReviewChanges(
+      session.rootBaselineSections,
+      resolveFileSections(targetFile),
+      reviewChanges,
+      activeProposal.decisionStates
+    );
+  }, [activeProposal, reviewChanges, session, targetFile]);
 
   if (!session) {
     return (
@@ -116,7 +153,7 @@ export function ReviewSessionPage() {
         : 'No accepted changes will be applied.';
 
   function buildTargetSections() {
-    return mergedSections ?? currentSession.rootBaselineSections;
+    return rebased?.sections ?? mergedSections ?? currentSession.rootBaselineSections;
   }
 
   function createFileFromSections(fileName: string, sections: CvFileSections) {
@@ -140,15 +177,25 @@ export function ReviewSessionPage() {
       return;
     }
 
+    const conflictCount = rebased?.conflicts.length ?? 0;
+    if (
+      conflictCount > 0 &&
+      !window.confirm(
+        `${conflictCount} accepted change${conflictCount === 1 ? '' : 's'} touch${conflictCount === 1 ? 'es' : ''} fields you edited after the review started and will be skipped. Apply the rest?`
+      )
+    ) {
+      return;
+    }
+
     const finalSections = buildTargetSections();
     const outcome = acceptedCount > 0 ? 'applied' : 'rejected';
-    const linkedFile = currentSession.linkedFileId
-      ? fileSnapshot.files.find((file) => file.id === currentSession.linkedFileId)
-      : undefined;
 
-    let targetFileId = linkedFile?.id;
-    if (linkedFile) {
-      fileStore.replaceFileSections(linkedFile.id, finalSections);
+    let targetFileId = targetFile?.id;
+    if (targetFile) {
+      if (outcome === 'applied') {
+        fileStore.replaceFileSections(targetFile.id, finalSections);
+      }
+      reviewStore.linkSessionToFile(currentSession.sessionId, targetFile.id);
     } else {
       const nextFile = createFileFromSections(currentSession.baseFileName, finalSections);
       targetFileId = nextFile.id;
@@ -161,7 +208,13 @@ export function ReviewSessionPage() {
       fileStore.selectFile(targetFileId);
     }
 
-    toast.success(outcome === 'applied' ? 'Review applied to resume.' : 'Review marked as rejected.');
+    toast.success(
+      outcome === 'applied'
+        ? conflictCount > 0
+          ? `Review applied to resume. ${conflictCount} conflicting change${conflictCount === 1 ? ' was' : 's were'} skipped.`
+          : 'Review applied to resume.'
+        : 'Review marked as rejected.'
+    );
     navigate('/');
   }
 
@@ -181,7 +234,10 @@ export function ReviewSessionPage() {
       return;
     }
 
-    const draftFile = createFileFromSections(`${currentSession.baseFileName} (Merge Draft)`, mergedSections);
+    const draftFile = createFileFromSections(
+      `${currentSession.baseFileName} (Merge Draft)`,
+      rebased?.sections ?? mergedSections
+    );
     reviewStore.attachMergeDraft(
       currentSession.sessionId,
       draftFile.id,
@@ -365,6 +421,45 @@ export function ReviewSessionPage() {
             ) : null}
           </div>
         </div>
+        {activeProposal ? (
+          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-3 text-sm sm:px-6">
+            {linkedFile ? (
+              <p className="text-muted-foreground">
+                Applies to <span className="font-medium text-foreground">{linkedFile.name}</span>.
+              </p>
+            ) : (
+              <label className="flex flex-wrap items-center gap-2 text-muted-foreground">
+                <span>
+                  This proposal didn&apos;t match a resume here exactly. Apply accepted changes to
+                </span>
+                <select
+                  aria-label="Resume to apply the review to"
+                  className="rounded-lg border border-border bg-background px-2 py-1 text-sm text-foreground"
+                  onChange={(event) => setTargetChoice(event.target.value)}
+                  value={targetFile?.id ?? 'new'}
+                >
+                  {targetCandidates.map((file) => (
+                    <option key={file.id} value={file.id}>
+                      {file.name}
+                    </option>
+                  ))}
+                  <option value="new">A new CV ({currentSession.baseFileName})</option>
+                </select>
+              </label>
+            )}
+            {rebased?.diverged ? (
+              <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+                {targetFile?.name} differs from the version that was sent for review. Accepted changes
+                are applied on top of its current content.
+                {rebased.conflicts.length > 0
+                  ? ` ${rebased.conflicts.length} accepted change${rebased.conflicts.length === 1 ? '' : 's'} conflict with your edits and will be skipped: ${rebased.conflicts
+                      .map((change) => change.entryLabel ? `${change.label} (${change.entryLabel})` : change.label)
+                      .join(', ')}.`
+                  : ''}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {/* Mobile pane switcher: the stacked panels get very tall on phones. */}
@@ -720,7 +815,7 @@ export function ReviewSessionPage() {
                 }
                 sections={
                   proposalPane === 'merged'
-                    ? mergedSections ?? currentSession.rootBaselineSections
+                    ? rebased?.sections ?? mergedSections ?? currentSession.rootBaselineSections
                     : activeProposal?.proposedSections ?? currentSession.rootBaselineSections
                 }
                 showHeader={false}

@@ -10,6 +10,7 @@ import {
   parseRequestedFontFamilies
 } from './fonts';
 import { parseTypstSectionMap } from './typst-section-map';
+import type { RenderFix } from './render-fixes';
 import type { SectionMapResult } from './typst-section-map';
 
 export interface RenderError {
@@ -41,6 +42,7 @@ export interface ViewerValidationResult {
   effectiveDesign?: string | null;
   usedFallbackTheme?: boolean;
   warnings?: string[] | null;
+  fixes?: RenderFix[] | null;
 }
 
 interface WorkerErrorPayload {
@@ -316,6 +318,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
   const [sectionMap, setSectionMap] = useState<SectionMapResult>({ sections: [], preambleLines: 0 });
   const [renderErrors, setRenderErrors] = useState<RenderError[]>([]);
   const [renderWarnings, setRenderWarnings] = useState<string[]>([]);
+  const [renderFixes, setRenderFixes] = useState<RenderFix[]>([]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | undefined>();
   const [renderVersion, setRenderVersion] = useState(0);
@@ -595,6 +598,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
               }))
             );
             setRenderWarnings(result.warnings ?? []);
+            setRenderFixes(result.fixes ?? []);
             continue;
           }
 
@@ -605,6 +609,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
             setSvgPages([]);
             setRenderErrors([]);
             setRenderWarnings(result.warnings ?? []);
+            setRenderFixes(result.fixes ?? []);
             continue;
           }
 
@@ -632,6 +637,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
             // Reuse existing SVG blob URLs — no work needed
             setRenderErrors([]);
             setRenderWarnings(result.warnings ?? []);
+            setRenderFixes(result.fixes ?? []);
             continue;
           }
 
@@ -697,6 +703,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
           setSvgPages(urls);
           setRenderErrors([]);
           setRenderWarnings(result.warnings ?? []);
+          setRenderFixes(result.fixes ?? []);
           window.setTimeout(() => {
             revokePageUrls(previousUrls);
           }, 0);
@@ -811,6 +818,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       sectionMap,
       renderErrors,
       renderWarnings,
+      renderFixes,
       isInitializing,
       initError,
       zoomFactor,
@@ -832,6 +840,7 @@ export function useViewerRenderer(sections?: CvFileSections) {
       sectionMap,
       renderErrors,
       renderWarnings,
+      renderFixes,
       isInitializing,
       initError,
       zoomFactor,

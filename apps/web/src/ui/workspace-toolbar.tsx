@@ -53,7 +53,8 @@ import {
 import { ReviewerNameDialog } from '../features/review/reviewer-name-dialog';
 import {
   buildProposalPackageFromSession,
-  importReviewProposalIntoSession
+  importReviewProposalIntoSession,
+  startReviewForFile
 } from '../features/review/session-utils';
 import { ENABLE_AI_EDITOR } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
@@ -171,6 +172,7 @@ export function WorkspaceToolbar({
         (proposal) => proposal.proposalId === selectedReviewSession.activeProposalId
       )
     : undefined;
+  const canStartReview = Boolean(selectedFile && fileSections && !selectedReviewSession && !isReadOnly);
   const canSendProposal = Boolean(
     selectedFile &&
       sections &&
@@ -420,6 +422,17 @@ export function WorkspaceToolbar({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to import file.');
     }
+  }
+
+  function startReview() {
+    if (!selectedFile || !fileSections || selectedReviewSession) {
+      return;
+    }
+
+    startReviewForFile(selectedFile.id);
+    toast.success(`Reviewing "${selectedFile.name}".`, {
+      description: 'Edit the CV, then use Send proposal to share your changes back with its author.'
+    });
   }
 
   async function importReviewPackage() {
@@ -764,6 +777,8 @@ export function WorkspaceToolbar({
           canLinkActions={canLinkActions}
           canPreviewActions={canPreviewActions}
           canReviewActions={canSendProposal}
+          canStartReview={canStartReview}
+          onStartReview={startReview}
           fileName={selectedFile?.name}
           onCopyMarkdown={() => void copyCvMarkdown()}
           onCopyPdfLink={() => void copyPdfLink()}
@@ -1005,6 +1020,8 @@ export function WorkspaceToolbar({
         canLinkActions={canLinkActions}
         canPreviewActions={canPreviewActions}
         canReviewActions={canSendProposal}
+        canStartReview={canStartReview}
+        onStartReview={startReview}
         fileName={selectedFile?.name}
         onCopyMarkdown={() => void copyCvMarkdown()}
         onCopyPdfLink={() => void copyPdfLink()}
@@ -1430,11 +1447,15 @@ function DownloadShareDialog({
   onSendProposal,
   onSharePdf,
   sendProposalLabel,
-  open
+  open,
+  canStartReview = false,
+  onStartReview
 }: {
   canLinkActions: boolean;
   canPreviewActions: boolean;
   canReviewActions: boolean;
+  canStartReview?: boolean;
+  onStartReview?: () => void;
   fileName?: string;
   onCopyMarkdown: () => void | Promise<void>;
   onCopyPdfLink: () => void | Promise<void>;
@@ -1563,6 +1584,14 @@ function DownloadShareDialog({
                 description="Use these after a review copy has been edited or when someone sends a proposal back."
                 title={t('review.proposals')}
               >
+                {canStartReview && onStartReview ? (
+                  <DialogActionButton
+                    description="Someone sent you this CV to review? Start here: the current version becomes the original, and your edits after this are sent back as a proposal."
+                    icon={<GitCompareArrows className="size-4" />}
+                    onClick={onStartReview}
+                    title="Start reviewing this CV"
+                  />
+                ) : null}
                 <DialogActionButton
                   description="Package the current edits as a proposal and copy a link when it fits."
                   disabled={!canReviewActions}

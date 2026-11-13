@@ -243,9 +243,18 @@ function snapshotFor(file: CvFile) {
 }
 
 function renderStatusFor(sections: ReturnType<typeof resolveFileSections>) {
-  const { errors, warnings, stale } = getRenderDiagnostics();
+  const { errors, warnings, stale, fixes = [] } = getRenderDiagnostics();
+  // Fixes the renderer can make deterministically. Apply a "set" by writing
+  // value at path, and a "remove" by deleting path, in the named section.
+  const suggestedFixes = fixes.map(({ section, op, path, value, description }) => ({
+    section,
+    op,
+    path: path.join('.'),
+    ...(op === 'set' ? { value } : {}),
+    description
+  }));
   if (errors.length === 0) {
-    return { ok: true, warnings };
+    return { ok: true, warnings, suggestedFixes };
   }
 
   return {
@@ -259,6 +268,7 @@ function renderStatusFor(sections: ReturnType<typeof resolveFileSections>) {
       message: formatRenderErrorMessage(error)
     })),
     warnings,
+    suggestedFixes,
     fixInstructions: buildRenderFixPrompt({ errors, warnings, sections })
   };
 }

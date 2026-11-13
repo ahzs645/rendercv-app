@@ -7,6 +7,7 @@ import type { CvFileSections } from '@rendercv/contracts';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
 import { summarizeRenderErrors } from '../features/viewer/render-error-format';
+import { startReviewForFile } from '../features/review/session-utils';
 
 const MAX_YAML_SIZE = 1024 * 1024;
 
@@ -133,7 +134,7 @@ export function useYamlImport({ prepareYamlImport, validateYamlImport }: YamlImp
       };
 
       const name = file.name.replace(/\.ya?ml$/i, '') || 'Imported CV';
-      fileStore.createFile(name, {
+      const createdFile = fileStore.createFile(name, {
         cv: nextSections.cv,
         settings: nextSections.settings,
         designs: Object.keys(nextDesigns).length > 0 ? nextDesigns : undefined,
@@ -145,10 +146,24 @@ export function useYamlImport({ prepareYamlImport, validateYamlImport }: YamlImp
         selectedLocale: nextSections.selectedLocale,
         sourceUrl: source?.url
       });
+      // Someone may have sent this file to be reviewed. Offer to start a review
+      // so edits can be sent back as a proposal. The baseline is taken when the
+      // action is clicked, after the workspace's automatic normalization.
+      const reviewAction = {
+        label: 'Review it',
+        onClick: () => {
+          if (startReviewForFile(createdFile.id)) {
+            toast.success(`Reviewing "${createdFile.name}".`, {
+              description: 'Edit the CV, then use Share › Export, backup and review… › Send proposal.'
+            });
+          }
+        }
+      };
       if (importErrors.length > 0 && !isCompatibilityYaml) {
         toast.warning('YAML imported, but it does not render yet.', {
           description: `${summarizeRenderErrors(importErrors)} Fix it in the editor, or use “Copy fix prompt” in the preview to ask an AI assistant.`,
-          duration: 10_000
+          duration: 10_000,
+          action: reviewAction
         });
       } else if (isCompatibilityYaml) {
         const themeNote =
@@ -156,10 +171,14 @@ export function useYamlImport({ prepareYamlImport, validateYamlImport }: YamlImp
             ? ` Import the ${nextSections.selectedTheme} theme zip if the preview reports a missing custom theme.`
             : '';
         toast.success(
-          preparedImport.message ?? `YAML imported with compatibility mode.${themeNote}`
+          preparedImport.message ?? `YAML imported with compatibility mode.${themeNote}`,
+          { action: reviewAction, duration: 8_000 }
         );
       } else {
-        toast.success(preparedImport.message ?? 'YAML imported into a new CV.');
+        toast.success(preparedImport.message ?? 'YAML imported into a new CV.', {
+          action: reviewAction,
+          duration: 8_000
+        });
       }
 
     } catch (error) {

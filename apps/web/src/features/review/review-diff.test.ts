@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
 import type { CvFileSections } from '@rendercv/contracts';
-import { applyAcceptedReviewChanges, computeReviewSectionChanges } from './review-diff';
+import {
+  applyAcceptedReviewChanges,
+  computeReviewSectionChanges,
+  rebaseAcceptedReviewChanges
+} from './review-diff';
 
 function yamlSection(key: keyof CvFileSections, value: unknown) {
   return YAML.stringify({ [key]: value });
@@ -212,5 +216,108 @@ describe('applyAcceptedReviewChanges', () => {
       { company: 'New Co', position: 'Staff Engineer' },
       { company: 'Existing Co', position: 'Engineer' }
     ]);
+  });
+});
+
+function acceptAll(changes: ReturnType<typeof computeReviewSectionChanges>) {
+  return Object.fromEntries(
+    changes.flatMap((section) => section.changes).map((change) => [change.id, 'accepted' as const])
+  );
+}
+
+function experience(companies: string[], position = 'Engineer') {
+  return yamlSection('cv', {
+    name: 'John Doe',
+    phone: '+1 250 555 0100',
+    sections: { experience: companies.map((company) => ({ company, position })) }
+  });
+}
+
+describe('accepted change ordering', () => {
+  it('removes the right entries when indexes reach double digits', () => {
+    const companies = Array.from({ length: 12 }, (_, index) => `C${index}`);
+    const baseline = makeSections({ cv: experience(companies) });
+    const proposed = makeSections({
+      cv: experience(companies.filter((_, index) => index !== 9 && index !== 10))
+    });
+    const changes = computeReviewSectionChanges(baseline, proposed);
+
+    const merged = YAML.parse(applyAcceptedReviewChanges(baseline, changes, acceptAll(changes)).cv);
+    expect(merged.cv.sections.experience.map((entry: { company: string }) => entry.company)).toEqual(
+      ['C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C11']
+    );
+  });
+});
+
+describe('rebaseAcceptedReviewChanges', () => {
+  const baseline = makeSections({ cv: experience(['Acme', 'Globex']) });
+  const proposedCv = YAML.stringify({
+    cv: {
+      name: 'John Doe',
+      phone: '+1 250 555 0100',
+      sections: {
+        experience: [
+          { company: 'Acme', position: 'Senior Engineer' },
+          { company: 'Globex', position: 'Engineer' }
+        ]
+      }
+    }
+  });
+  const proposed = makeSections({ cv: proposedCv });
+  const changes = computeReviewSectionChanges(baseline, proposed);
+
+  it('applies on top of edits the author made after sending the review', () => {
+    const current = makeSections({
+      cv: experience(['Acme', 'Globex']).replace('+1 250 555 0100', '+1 604 555 0199'),
+      design: yamlSection('design', { theme: 'ahmadstyle' })
+    });
+
+    const result = rebaseAcceptedReviewChanges(baseline, current, changes, acceptAll(changes));
+    const merged = YAML.parse(result.sections.cv);
+
+    expect(result.diverged).toBe(true);
+    expect(result.conflicts).toHaveLength(0);
+    expect(merged.cv.sections.experience[0].position).toBe('Senior Engineer');
+    expect(merged.cv.phone).toBe('+1 604 555 0199');
+    // A section the review did not touch keeps the author's text exactly.
+    expect(result.sections.design).toBe(current.design);
+  });
+
+  it('skips a change where the author edited the same field, instead of overwriting it', () => {
+    const current = makeSections({
+      cv: YAML.stringify({
+        cv: {
+          name: 'John Doe',
+          phone: '+1 250 555 0100',
+          sections: {
+            experience: [
+              { company: 'Acme', position: 'Staff Engineer' },
+              { company: 'Globex', position: 'Engineer' }
+            ]
+          }
+        }
+      })
+    });
+
+    const result = rebaseAcceptedReviewChanges(baseline, current, changes, acceptAll(changes));
+
+    expect(result.applied).toHaveLength(0);
+    expect(result.conflicts).toHaveLength(1);
+    expect(YAML.parse(result.sections.cv).cv.sections.experience[0].position).toBe('Staff Engineer');
+  });
+
+  it('matches applyAcceptedReviewChanges when the resume is unchanged', () => {
+    const result = rebaseAcceptedReviewChanges(baseline, baseline, changes, acceptAll(changes));
+
+    expect(result.diverged).toBe(false);
+    expect(result.sections).toEqual(applyAcceptedReviewChanges(baseline, changes, acceptAll(changes)));
+  });
+
+  it('leaves the resume untouched when nothing is accepted', () => {
+    const current = makeSections({ cv: experience(['Acme', 'Globex', 'Initech']) });
+    const result = rebaseAcceptedReviewChanges(baseline, current, changes, {});
+
+    expect(result.sections).toEqual(current);
+    expect(result.applied).toHaveLength(0);
   });
 });

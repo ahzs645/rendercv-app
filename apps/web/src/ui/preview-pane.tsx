@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import { AppWindow, ClipboardCopy, Download, Eye, EyeOff, FileCode2, Minus, Plus, RotateCw, TriangleAlert, X } from 'lucide-react';
+import { AppWindow, ClipboardCopy, Download, Wrench, Eye, EyeOff, FileCode2, Minus, Plus, RotateCw, TriangleAlert, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CvFile, CvFileSections } from '@rendercv/contracts';
 import { preferencesStore } from '@rendercv/core';
@@ -19,6 +19,7 @@ import {
 import type { SectionMapEntry, SectionMapResult } from '../features/viewer/typst-section-map';
 import { formatRenderErrorMessage } from '../features/viewer/render-error-format';
 import { buildRenderFixPrompt, setRenderDiagnostics } from '../features/viewer/render-fix-prompt';
+import type { RenderFix } from '../features/viewer/render-fixes';
 import { attachZoomGestures } from '../features/viewer/zoom-gestures';
 import { useTranslation } from '../lib/i18n/use-translation';
 
@@ -72,19 +73,61 @@ function CopyFixPromptButton({ prompt, compact = false }: { prompt: string; comp
   );
 }
 
+function ApplyFixesButton({
+  fixes,
+  onApply,
+  compact = false
+}: {
+  fixes: RenderFix[];
+  onApply: (fixes: RenderFix[]) => void;
+  compact?: boolean;
+}) {
+  const label = fixes.length === 1 ? 'Apply fix' : `Apply ${fixes.length} fixes`;
+  return (
+    <button
+      type="button"
+      onClick={() => onApply(fixes)}
+      className={
+        compact
+          ? 'inline-flex items-center gap-1 rounded-md bg-amber-900 px-2 py-0.5 font-medium text-amber-50 transition-colors hover:bg-amber-800 dark:bg-amber-200 dark:text-amber-950 dark:hover:bg-amber-100'
+          : 'inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90'
+      }
+      title={fixes.map((fix) => fix.description).join('\n')}
+    >
+      <Wrench className={compact ? 'size-3' : 'size-3.5'} />
+      {label}
+    </button>
+  );
+}
+
+function FixList({ fixes }: { fixes: RenderFix[] }) {
+  return (
+    <ul className="list-inside list-disc space-y-0.5">
+      {fixes.map((fix, index) => (
+        <li key={`${fix.path.join('.')}-${index}`}>{fix.description}</li>
+      ))}
+    </ul>
+  );
+}
+
 function RenderFailure({
   detail,
   onRetry,
   variant,
   fixPrompt,
-  hasLocatedFields = true
+  hasLocatedFields = true,
+  fixes = [],
+  onApplyFixes
 }: {
   detail: string;
   onRetry: () => void;
   variant: 'init' | 'render';
   fixPrompt?: string;
   hasLocatedFields?: boolean;
+  fixes?: RenderFix[];
+  onApplyFixes?: (fixes: RenderFix[]) => void;
 }) {
+  const canApply = Boolean(onApplyFixes) && fixes.length > 0;
   const isNetwork = looksLikeNetworkFailure(detail);
   const title = isNetwork
     ? "Couldn't download the typesetting packages"
@@ -95,8 +138,10 @@ function RenderFailure({
     ? 'RenderCV fetches its Typst packages the first time it renders. Check your connection — or any network filtering — and try again.'
     : variant === 'init'
       ? 'Reloading usually clears this. If it keeps happening, the browser may be blocking WebAssembly or local storage.'
-      : hasLocatedFields
-        ? 'Check the fields listed below, fix them in the editor or copy a fix prompt for an AI assistant, then render again.'
+      : canApply
+        ? 'RenderCV found problems it can fix for you. Apply the fixes, or fix the fields below in the editor.'
+        : hasLocatedFields
+        ? 'Check the fields listed below and fix them in the editor, or copy a fix prompt for an AI assistant.'
         : 'The YAML was accepted but the theme could not typeset it — usually a design value it cannot use. Copy a fix prompt for an AI assistant, or check the details below.';
 
   return (
@@ -106,11 +151,21 @@ function RenderFailure({
         <p className="font-semibold">{title}</p>
       </div>
       <p className="text-muted-foreground">{body}</p>
+      {canApply ? (
+        <div className="w-full text-xs text-muted-foreground">
+          <FixList fixes={fixes} />
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
+        {canApply && onApplyFixes ? <ApplyFixesButton fixes={fixes} onApply={onApplyFixes} /> : null}
         <button
           type="button"
           onClick={onRetry}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className={
+            canApply
+              ? 'inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted'
+              : 'inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90'
+          }
         >
           <RotateCw className="size-3.5" />
           Try again
@@ -163,7 +218,9 @@ export function PreviewPaneView({
   viewer,
   onOpenPopup,
   onSectionClick,
-  showHeader = true
+  showHeader = true,
+  documentKey,
+  onApplyFixes
 }: {
   controls?: PreviewPaneControls;
   fileName: string;
@@ -172,6 +229,10 @@ export function PreviewPaneView({
   onOpenPopup?: () => void;
   onSectionClick?: (sectionKey: string, entryIndex: number) => void;
   showHeader?: boolean;
+  /** Identifies the document being previewed, so another document's last render is never shown as stale. */
+  documentKey?: string;
+  /** When provided, fixes the renderer suggests can be applied to the document in one click. */
+  onApplyFixes?: (fixes: RenderFix[]) => void;
 }) {
   return (
     <div
@@ -193,6 +254,8 @@ export function PreviewPaneView({
         viewer={viewer}
         workspaceInset={!showHeader}
         onSectionClick={onSectionClick}
+        documentKey={documentKey}
+        onApplyFixes={onApplyFixes}
       />
     </div>
   );
@@ -433,13 +496,17 @@ function PreviewCanvas({
   sections,
   viewer,
   workspaceInset,
-  onSectionClick
+  onSectionClick,
+  documentKey,
+  onApplyFixes
 }: {
   fileName: string;
   sections?: CvFileSections;
   viewer: ViewerRenderer;
   workspaceInset: boolean;
   onSectionClick?: (sectionKey: string, entryIndex: number) => void;
+  documentKey?: string;
+  onApplyFixes?: (fixes: RenderFix[]) => void;
 }) {
   const { t } = useTranslation();
   const shellClassName = workspaceInset
@@ -539,14 +606,31 @@ function PreviewCanvas({
     preferences.colorMode === 'dark' || (preferences.colorMode === 'system' && prefersDark);
   const invertPreview = isDark && preferences.previewDarkMode;
 
-  const isStaleRender = viewer.renderErrors.length > 0 && viewer.svgPages.length > 0;
+  // The workspace reuses one renderer across files, so after switching to a
+  // file that fails, the pages on screen belong to the previous file. Track
+  // which document produced them and only offer them as a stale render of the
+  // same document.
+  const [renderedDocumentKey, setRenderedDocumentKey] = useState(documentKey);
+  useEffect(() => {
+    if (viewer.svgPages.length > 0 && viewer.renderErrors.length === 0) {
+      setRenderedDocumentKey(documentKey);
+    }
+    // documentKey is read, not tracked: switching files must not relabel the
+    // previous file's pages before the new file has rendered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewer.svgPages, viewer.renderErrors]);
+  const pagesBelongToDocument = !documentKey || renderedDocumentKey === documentKey;
+  const hasPages = viewer.svgPages.length > 0 && (pagesBelongToDocument || viewer.renderErrors.length === 0);
+  const isStaleRender = viewer.renderErrors.length > 0 && hasPages;
+  const fixes = onApplyFixes ? viewer.renderFixes : [];
   useEffect(() => {
     setRenderDiagnostics({
       errors: viewer.renderErrors,
       warnings: viewer.renderWarnings,
+      fixes: viewer.renderFixes,
       stale: isStaleRender
     });
-  }, [viewer.renderErrors, viewer.renderWarnings, isStaleRender]);
+  }, [viewer.renderErrors, viewer.renderWarnings, viewer.renderFixes, isStaleRender]);
   const fixPrompt =
     viewer.renderErrors.length > 0
       ? buildRenderFixPrompt({
@@ -575,15 +659,17 @@ function PreviewCanvas({
       >
         {viewer.initError ? (
           <RenderFailure detail={viewer.initError} onRetry={viewer.retryRender} variant="init" />
-        ) : viewer.renderErrors.length > 0 && viewer.svgPages.length === 0 ? (
+        ) : viewer.renderErrors.length > 0 && !hasPages ? (
           <RenderFailure
             detail={viewer.renderErrors.map(formatRenderErrorMessage).join('\n\n')}
             onRetry={viewer.retryRender}
             variant="render"
             fixPrompt={fixPrompt}
+            fixes={fixes}
+            onApplyFixes={onApplyFixes}
             hasLocatedFields={viewer.renderErrors.some((error) => (error.schema_location?.length ?? 0) > 0)}
           />
-        ) : viewer.svgPages.length > 0 ? (
+        ) : hasPages ? (
           <div
             className="mx-auto flex max-w-4xl flex-col gap-4 sm:gap-6"
             data-zoom-content
@@ -599,7 +685,12 @@ function PreviewCanvas({
                   <p className="font-medium">
                     Showing the last successful render — the newest changes couldn't be rendered.
                   </p>
-                  {fixPrompt ? <CopyFixPromptButton prompt={fixPrompt} compact /> : null}
+                  <div className="flex flex-wrap gap-1.5">
+                    {fixes.length > 0 && onApplyFixes ? (
+                      <ApplyFixesButton fixes={fixes} onApply={onApplyFixes} compact />
+                    ) : null}
+                    {fixPrompt ? <CopyFixPromptButton prompt={fixPrompt} compact /> : null}
+                  </div>
                 </div>
                 <ul className="list-inside list-disc space-y-0.5">
                   {viewer.renderErrors.map((error, index) => (
@@ -618,6 +709,11 @@ function PreviewCanvas({
                     <li key={`${warning}-${index}`}>{warning}</li>
                   ))}
                 </ul>
+                {viewer.renderErrors.length === 0 && fixes.length > 0 && onApplyFixes ? (
+                  <div className="pt-1">
+                    <ApplyFixesButton fixes={fixes} onApply={onApplyFixes} compact />
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => setDismissedWarningsKey(warningsKey)}
