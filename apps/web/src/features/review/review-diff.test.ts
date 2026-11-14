@@ -388,3 +388,47 @@ describe('rebase conflicts', () => {
     ]);
   });
 });
+
+describe('list changes', () => {
+  const bullets = (items: string[]) =>
+    makeSections({
+      cv: yamlSection('cv', {
+        name: 'John Doe',
+        sections: { experience: [{ company: 'Acme', position: 'Engineer', highlights: items }] }
+      })
+    });
+  const base = ['Built A', 'Built B', 'Built C', 'Built D'];
+
+  it('reports one insertion, not a change to every later bullet', () => {
+    const changes = computeReviewSectionChanges(bullets(base), bullets(['Presented X', ...base]))
+      .flatMap((section) => section.changes);
+
+    expect(changes).toEqual([expect.objectContaining({ kind: 'add', proposedValue: 'Presented X' })]);
+  });
+
+  it('reports a removal and an insertion in different places as exactly two changes', () => {
+    const changes = computeReviewSectionChanges(bullets(base), bullets(['Built A', 'Built C', 'Built D', 'Built E']))
+      .flatMap((section) => section.changes);
+
+    expect(changes.map((change) => `${change.kind}:${String(change.baselineValue ?? change.proposedValue)}`).sort())
+      .toEqual(['add:Built E', 'remove:Built B']);
+  });
+
+  it('accepting only the insertion keeps every existing bullet', () => {
+    const baseline = bullets(base);
+    const changes = computeReviewSectionChanges(baseline, bullets(['Presented X', 'Built A', 'Built C', 'Built D']));
+    const insert = changes.flatMap((section) => section.changes).find((change) => change.kind === 'add')!;
+
+    const merged = YAML.parse(applyAcceptedReviewChanges(baseline, changes, { [insert.id]: 'accepted' }).cv);
+    expect(merged.cv.sections.experience[0].highlights).toEqual(['Presented X', ...base]);
+  });
+
+  it('pairs an edited bullet as one edit', () => {
+    const changes = computeReviewSectionChanges(bullets(base), bullets(['Built A', 'Built B better', 'Built C', 'Built D']))
+      .flatMap((section) => section.changes);
+
+    expect(changes).toEqual([
+      expect.objectContaining({ kind: 'set', baselineValue: 'Built B', proposedValue: 'Built B better' })
+    ]);
+  });
+});

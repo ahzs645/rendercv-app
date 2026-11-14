@@ -2,6 +2,7 @@ import type { ReviewProposalPackage } from '@rendercv/contracts';
 import {
   createReviewRootFingerprint,
   fileStore,
+  proposalBaseline,
   resolveFileSections,
   reviewStore
 } from '@rendercv/core';
@@ -35,7 +36,7 @@ export function buildProposalPackageFromSession(
     threadId: session.threadId,
     rootFingerprint: session.rootFingerprint,
     fileName: proposal.fileName,
-    rootBaselineSections: session.rootBaselineSections,
+    rootBaselineSections: proposalBaseline(session, proposal),
     proposedSections: proposal.proposedSections,
     reviewerName: proposal.reviewerName,
     note: proposal.note,
@@ -64,6 +65,7 @@ export function startReviewForFile(fileId: string) {
   return reviewStore.ensureSession({
     linkedFileId: file.id,
     baseFileName: file.name,
-    rootBaselineSections: resolveFileSections(file)
+    rootBaselineSections: resolveFileSections(file),
+    role: 'reviewer'
   });
 }

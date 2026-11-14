@@ -18,12 +18,15 @@ import {
   fileStore,
   preferencesStore,
   readLocaleName,
+  proposalBaseline,
   readThemeName,
+  sessionRole,
   resolveFileSections,
   reviewStore
 } from '@rendercv/core';
 import { toast } from 'sonner';
 import type { CvFileSections } from '@rendercv/contracts';
+import type { ReviewProposal } from '@rendercv/core';
 import {
   applyAcceptedReviewChanges,
   computeReviewSectionChanges,
@@ -64,10 +67,14 @@ export function ReviewSessionPage() {
   // value. Kept per page visit: it is a decision about the resume as it is now.
   const [forcedChangeIds, setForcedChangeIds] = useState<ReadonlySet<string>>(() => new Set());
 
+  // Each proposal is diffed against the version its reviewer was sent.
+  const activeBaseline =
+    session && activeProposal ? proposalBaseline(session, activeProposal) : session?.rootBaselineSections;
+
   const reviewChanges = useMemo(
     () =>
-      session && activeProposal
-        ? computeReviewSectionChanges(session.rootBaselineSections, activeProposal.proposedSections)
+      activeBaseline && activeProposal
+        ? computeReviewSectionChanges(activeBaseline, activeProposal.proposedSections)
         : [],
     [activeProposal, session]
   );
@@ -78,7 +85,7 @@ export function ReviewSessionPage() {
     }
 
     return applyAcceptedReviewChanges(
-      session.rootBaselineSections,
+      activeBaseline!,
       reviewChanges,
       activeProposal.decisionStates
     );
@@ -106,7 +113,7 @@ export function ReviewSessionPage() {
       return undefined;
     }
     return rebaseAcceptedReviewChanges(
-      session.rootBaselineSections,
+      activeBaseline!,
       resolveFileSections(targetFile),
       reviewChanges,
       activeProposal.decisionStates,
@@ -116,21 +123,24 @@ export function ReviewSessionPage() {
 
   // Which changes would conflict if accepted, whatever their current decision,
   // so each card can say so before the author decides.
-  const conflictsById = useMemo(() => {
-    if (!session || !targetFile) {
-      return new Map<string, ReviewConflict>();
+  const { conflictsById, alreadyAppliedIds } = useMemo(() => {
+    if (!activeBaseline || !targetFile) {
+      return { conflictsById: new Map<string, ReviewConflict>(), alreadyAppliedIds: new Set<string>() };
     }
     const everyChange = Object.fromEntries(
       reviewChanges.flatMap((section) => section.changes).map((change) => [change.id, 'accepted' as const])
     );
-    const { conflicts } = rebaseAcceptedReviewChanges(
-      session.rootBaselineSections,
+    const { conflicts, alreadyApplied } = rebaseAcceptedReviewChanges(
+      activeBaseline,
       resolveFileSections(targetFile),
       reviewChanges,
       everyChange
     );
-    return new Map(conflicts.map((conflict) => [conflict.id, conflict]));
-  }, [reviewChanges, session, targetFile]);
+    return {
+      conflictsById: new Map(conflicts.map((conflict) => [conflict.id, conflict])),
+      alreadyAppliedIds: new Set(alreadyApplied.map((change) => change.id))
+    };
+  }, [activeBaseline, reviewChanges, targetFile]);
 
   function setForced(changeId: string, forced: boolean) {
     setForcedChangeIds((current) => {
@@ -163,6 +173,47 @@ export function ReviewSessionPage() {
 
   const currentSession = session;
 
+  if (sessionRole(session) === 'reviewer') {
+    // A reviewer's own session is their copy of someone else's CV: the place to
+    // work on it is the editor, and proposals are sent from there. This page
+    // is the author's view of proposals coming back.
+    const copy = fileSnapshot.files.find((file) => file.id === session.linkedFileId);
+    const sent = [...session.proposals].sort((left, right) => right.createdAt - left.createdAt)[0];
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-sidebar px-6">
+        <div className="w-full max-w-xl rounded-3xl border border-border bg-background p-8 shadow-2xl">
+          <h1 className="text-xl font-semibold text-foreground">Your review of {session.baseFileName}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {sent
+              ? `You sent a proposal on ${new Date(sent.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. Keep editing your review copy and send an updated proposal whenever you like.`
+              : 'Edit your review copy, then send your changes back to the author as a proposal.'}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {copy ? (
+              <button
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                onClick={() => {
+                  fileStore.selectFile(copy.id);
+                  navigate('/');
+                }}
+                type="button"
+              >
+                Open review copy
+              </button>
+            ) : null}
+            <button
+              className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              onClick={() => navigate('/')}
+              type="button"
+            >
+              Back to workspace
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const totalCount = reviewChanges.reduce((sum, section) => sum + section.changes.length, 0);
   const currentChangeIds = new Set(
     reviewChanges.flatMap((section) => section.changes.map((change) => change.id))
@@ -173,6 +224,8 @@ export function ReviewSessionPage() {
   const acceptedCount = currentDecisions.filter(([, value]) => value === 'accepted').length;
   const rejectedCount = currentDecisions.filter(([, value]) => value === 'rejected').length;
   const pendingCount = totalCount - acceptedCount - rejectedCount;
+  // An applied or rejected proposal is history: viewable, not decidable.
+  const readOnly = Boolean(activeProposal?.outcome);
   const resolveLabel =
     acceptedCount > 0
       ? `Apply ${acceptedCount} accepted change${acceptedCount === 1 ? '' : 's'}`
@@ -185,7 +238,7 @@ export function ReviewSessionPage() {
         : 'No accepted changes will be applied.';
 
   function buildTargetSections() {
-    return rebased?.sections ?? mergedSections ?? currentSession.rootBaselineSections;
+    return rebased?.sections ?? mergedSections ?? activeBaseline ?? currentSession.rootBaselineSections;
   }
 
   function createFileFromSections(fileName: string, sections: CvFileSections) {
@@ -280,31 +333,48 @@ export function ReviewSessionPage() {
     navigate('/');
   }
 
-  async function handleForwardProposal(reviewerName: string, note?: string) {
+  async function handleForwardProposal(forwarderName: string, note?: string) {
     if (!activeProposal) {
       return;
     }
 
-    preferencesStore.patch({ reviewDisplayName: reviewerName });
-    const proposalPackage = reviewStore.createProposalPackage({
-      sessionId: currentSession.sessionId,
-      linkedFileId: currentSession.linkedFileId,
-      fileName: activeProposal.fileName,
-      proposedSections: activeProposal.proposedSections,
-      reviewerName,
-      note
-    });
+    preferencesStore.patch({ reviewDisplayName: forwarderName });
+    const original = buildProposalPackageFromSession(currentSession.sessionId, activeProposal.proposalId);
+    if (!original) {
+      toast.error('Active proposal is no longer available.');
+      return;
+    }
+
+    // Forwarding passes the proposal on as it is: the reviewer's name and note
+    // stay, and who forwarded it is added to the note. It used to re-create the
+    // proposal under the forwarder's name, dropping the note and resetting the
+    // author's decisions. A proposal the author edited in a merge draft goes
+    // out as a new proposal that points back at the one it came from.
+    const forwardedLine = `Forwarded by ${forwarderName}${note?.trim() ? `: ${note.trim()}` : '.'}`;
+    const forwardedNote = [original.note, forwardedLine].filter(Boolean).join('\n\n');
+    const proposalPackage = activeProposal.editedLocally
+      ? {
+          ...original,
+          proposalId: crypto.randomUUID(),
+          parentProposalId: original.proposalId,
+          reviewerName: `${original.reviewerName}, edited by ${forwarderName}`,
+          note: forwardedNote,
+          createdAt: Date.now()
+        }
+      : { ...original, note: forwardedNote };
 
     try {
       const url = await buildReviewProposalUrl(proposalPackage);
       await navigator.clipboard.writeText(url);
-      toast.success('Review proposal link copied.');
+      toast.success('Link to this proposal copied.', {
+        description: `${original.reviewerName}'s changes and note are included, with a line saying you forwarded it.`
+      });
     } catch (error) {
       if (error instanceof ReviewProposalTooLargeError) {
         await exportReviewProposalPackage(proposalPackage);
         toast.warning('Proposal was too large for a link, so a review package file was downloaded instead.');
       } else {
-        toast.error(error instanceof Error ? error.message : 'Failed to create review proposal.');
+        toast.error(error instanceof Error ? error.message : 'Failed to forward the proposal.');
       }
     } finally {
       setNameDialogOpen(false);
@@ -386,22 +456,30 @@ export function ReviewSessionPage() {
                   <Send className="size-4" />
                   Forward proposal
                 </button>
-                <button
-                  className="hidden items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:inline-flex"
-                  onClick={handleEditFurther}
-                  type="button"
-                >
-                  <Pencil className="size-4" />
-                  Edit further
-                </button>
-                <button
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                  onClick={handleResolveReview}
-                  type="button"
-                >
-                  <Check className="size-4" />
-                  {resolveLabel}
-                </button>
+                {!readOnly ? (
+                  <>
+                    <button
+                      className="hidden items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:inline-flex"
+                      onClick={handleEditFurther}
+                      type="button"
+                    >
+                      <Pencil className="size-4" />
+                      Edit further
+                    </button>
+                    <button
+                      className={
+                        acceptedCount > 0
+                          ? 'inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90'
+                          : 'inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground'
+                      }
+                      onClick={handleResolveReview}
+                      type="button"
+                    >
+                      {acceptedCount > 0 ? <Check className="size-4" /> : <X className="size-4" />}
+                      {resolveLabel}
+                    </button>
+                  </>
+                ) : null}
               </>
             ) : null}
             {currentSession.archivedHistory.length > 0 ? (
@@ -530,44 +608,74 @@ export function ReviewSessionPage() {
             <GitCompareArrows className="size-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Change review</h2>
           </div>
-          {activeProposal && currentSession.proposals.length > 1 ? (
+          {currentSession.proposals.length > 0 ? (
             <div className="border-b border-border px-5 py-3">
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                Proposals in this review
+                {currentSession.proposals.length === 1 ? 'Review of this CV' : `Reviews of this CV (${currentSession.proposals.length})`}
               </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {currentSession.proposals.map((proposal) => {
-                  const isActive = proposal.proposalId === activeProposal.proposalId;
-                  return (
-                    <button
-                      key={proposal.proposalId}
-                      className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                        isActive
-                          ? 'border-primary/40 bg-primary/10 text-primary'
-                          : 'border-border text-foreground hover:bg-accent hover:text-accent-foreground'
-                      }`}
-                      onClick={() =>
-                        reviewStore.setActiveProposal(currentSession.sessionId, proposal.proposalId)
-                      }
-                      type="button"
-                    >
-                      {proposal.reviewerName}
-                      <span className={`ml-1.5 ${isActive ? 'text-primary/70' : 'text-muted-foreground'}`}>
-                        {new Date(proposal.createdAt).toLocaleString([], {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Every reviewer's note in one place, oldest first, each opening
+                  that reviewer's changes. */}
+              <ul className="mt-2 space-y-1.5" data-testid="review-proposal-list">
+                {[...currentSession.proposals]
+                  .sort((left, right) => left.createdAt - right.createdAt)
+                  .map((proposal) => {
+                    const isActive = proposal.proposalId === activeProposal?.proposalId;
+                    return (
+                      <li key={proposal.proposalId}>
+                        <button
+                          className={`w-full rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
+                            isActive
+                              ? 'border-primary/40 bg-primary/10'
+                              : 'border-border hover:bg-accent hover:text-accent-foreground'
+                          }`}
+                          onClick={() =>
+                            reviewStore.setActiveProposal(currentSession.sessionId, proposal.proposalId)
+                          }
+                          type="button"
+                        >
+                          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className={`font-medium ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                              {proposal.reviewerName}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {new Date(proposal.createdAt).toLocaleString([], {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            <ProposalStatus proposal={proposal} />
+                          </span>
+                          {proposal.note ? (
+                            <span className="mt-1 block line-clamp-3 whitespace-pre-wrap text-muted-foreground">
+                              {proposal.note}
+                            </span>
+                          ) : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+              </ul>
             </div>
           ) : null}
           {activeProposal ? (
             <div className="px-5 py-4 lg:max-h-[calc(100vh-10rem)] lg:overflow-auto">
+              {readOnly ? (
+                <div
+                  className="mb-4 rounded-2xl border border-border bg-muted/40 px-4 py-3 text-xs leading-5 text-muted-foreground"
+                  data-testid="proposal-read-only"
+                >
+                  <span className="font-medium text-foreground">
+                    {activeProposal.outcome === 'applied' ? 'Applied' : 'Rejected'}
+                    {activeProposal.resolvedAt
+                      ? ` on ${new Date(activeProposal.resolvedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
+                      : ''}
+                    .
+                  </span>{' '}
+                  Kept for reference; it can no longer be applied.
+                </div>
+              ) : null}
               {activeProposal.note ? (
                 <div className="mb-4 flex gap-2.5 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
                   <MessageSquareQuote className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -585,7 +693,7 @@ export function ReviewSessionPage() {
                 Accept the changes you want to apply. Rejected and pending changes keep the original resume values when you finish.
                 <span className="mt-1 block font-medium text-foreground">{resolveHelpText}</span>
               </div>
-              {totalCount > 1 ? (
+              {totalCount > 1 && !readOnly ? (
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <p className="text-xs text-muted-foreground">{totalCount} changes in total</p>
                   <div className="flex items-center gap-2">
@@ -635,7 +743,7 @@ export function ReviewSessionPage() {
                           {section.changes.length} change{section.changes.length === 1 ? '' : 's'}
                         </p>
                       </div>
-                      {section.changes.length > 0 ? (
+                      {section.changes.length > 0 && !readOnly ? (
                         <div className="flex items-center gap-2">
                           <button
                             className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
@@ -702,7 +810,11 @@ export function ReviewSessionPage() {
                                   <DecisionBadge decision={decision} />
                                   {conflict ? (
                                     <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
-                                      Conflicts with your edit
+                                      Conflicts with your CV
+                                    </span>
+                                  ) : alreadyAppliedIds.has(change.id) ? (
+                                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-800 dark:text-emerald-200">
+                                      Already in your CV
                                     </span>
                                   ) : null}
                                 </div>
@@ -733,10 +845,10 @@ export function ReviewSessionPage() {
                                   </pre>
                                   <p>
                                     {!conflict.forceable
-                                      ? 'You changed this part of the CV after sending it, so this change will be skipped even if accepted.'
+                                      ? 'This part of your CV has changed since this review started, so this change will be skipped even if accepted.'
                                       : forced
-                                        ? 'Your edit will be replaced by the proposed value when you apply.'
-                                        : 'You edited this after sending the CV. Your edit is kept and this change is skipped, unless you choose to use the proposed value.'}
+                                        ? 'The current value will be replaced by the proposed value when you apply.'
+                                        : 'Your CV has changed here since this review started (your own edit, or another review you applied). The current value is kept and this change is skipped, unless you choose to use the proposed value.'}
                                   </p>
                                   {conflict.forceable ? (
                                     <button
@@ -754,12 +866,12 @@ export function ReviewSessionPage() {
                                       }}
                                       type="button"
                                     >
-                                      {forced ? 'Keep my edit' : 'Use the proposed value instead'}
+                                      {forced ? 'Keep the current value' : 'Use the proposed value instead'}
                                     </button>
                                   ) : null}
                                 </div>
                               ) : null}
-                              <div className="mt-3 flex items-center justify-end gap-2">
+                              <div className={`mt-3 items-center justify-end gap-2 ${readOnly ? 'hidden' : 'flex'}`}>
                                 <button
                                   className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                                   onClick={() =>
@@ -839,7 +951,7 @@ export function ReviewSessionPage() {
             <div className="h-[calc(100%-3rem)]">
               <PreviewPane
                 fileName={`${currentSession.baseFileName} (Base)`}
-                sections={currentSession.rootBaselineSections}
+                sections={activeBaseline ?? currentSession.rootBaselineSections}
                 showHeader={false}
                 controls={{ downloadPdf: false, downloadTypst: false, popup: false }}
               />
@@ -897,8 +1009,8 @@ export function ReviewSessionPage() {
                 }
                 sections={
                   proposalPane === 'merged'
-                    ? rebased?.sections ?? mergedSections ?? currentSession.rootBaselineSections
-                    : activeProposal?.proposedSections ?? currentSession.rootBaselineSections
+                    ? rebased?.sections ?? mergedSections ?? activeBaseline ?? currentSession.rootBaselineSections
+                    : activeProposal?.proposedSections ?? activeBaseline ?? currentSession.rootBaselineSections
                 }
                 showHeader={false}
                 controls={{ downloadPdf: false, downloadTypst: false, popup: false }}
@@ -910,7 +1022,7 @@ export function ReviewSessionPage() {
 
       <ReviewerNameDialog
         confirmLabel={nameAction === 'forward' ? 'Forward proposal' : 'Continue'}
-        description="Add the name that should appear on the forwarded review proposal."
+        description="Pass this proposal on as it is. Your name and note are added to it so the recipient knows who forwarded it."
         initialName={preferences.reviewDisplayName}
         onConfirm={(name, note) => void handleForwardProposal(name, note)}
         onOpenChange={(open) => {
@@ -920,7 +1032,7 @@ export function ReviewSessionPage() {
           }
         }}
         open={nameDialogOpen}
-        title="Reviewer name"
+        title="Forward proposal"
       />
     </div>
   );
@@ -998,6 +1110,29 @@ function StatusPill({
       <span>{label}</span>
       <span>{value}</span>
     </span>
+  );
+}
+
+function ProposalStatus({ proposal }: { proposal: ReviewProposal }) {
+  const label = proposal.outcome === 'applied'
+    ? 'Applied'
+    : proposal.outcome === 'rejected'
+      ? 'Rejected'
+      : 'To review';
+  const tone = proposal.outcome === 'applied'
+    ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200'
+    : proposal.outcome === 'rejected'
+      ? 'bg-rose-500/15 text-rose-800 dark:text-rose-200'
+      : 'bg-amber-500/15 text-amber-800 dark:text-amber-200';
+  return (
+    <>
+      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${tone}`}>{label}</span>
+      {proposal.editedLocally ? (
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          Edited by you
+        </span>
+      ) : null}
+    </>
   );
 }
 

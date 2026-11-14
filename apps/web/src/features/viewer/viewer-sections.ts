@@ -131,10 +131,19 @@ export function prepareViewerSections(
   // Entries the author marked `show: false` stay in the YAML but never render
   // or export.
   const cv = filterFlagHiddenEntriesFromCvYaml(sections.cv);
-  return compileRenderCvSections({
-    sections: { ...sections, cv, design },
-    variant: variant ?? undefined
-  }).sections;
+  try {
+    return compileRenderCvSections({
+      sections: { ...sections, cv, design },
+      variant: variant ?? undefined
+    }).sections;
+  } catch {
+    // The compiler throws on YAML it can't shape (e.g. a `cv:` that is not a
+    // mapping while it is being retyped). This runs during render, so letting
+    // it escape took the whole app down, and because the text is already
+    // saved, every reload crashed again. Hand the sections on unchanged: the
+    // renderer reports them as a normal, fixable validation error.
+    return { ...sections, cv, design };
+  }
 }
 
 function sectionEntries(cvYaml: string | undefined, sectionKey: string): unknown[] | undefined {

@@ -20,7 +20,15 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import type { CvFile } from '@rendercv/contracts';
-import { fileStore, preferencesStore, reviewStore } from '@rendercv/core';
+import {
+  fileStore,
+  pendingProposals,
+  preferencesStore,
+  reviewStore,
+  sessionRole,
+  type ReviewProposal,
+  type ReviewSession
+} from '@rendercv/core';
 import { API_ENABLED } from '../lib/api';
 import { ENABLE_PDF_IMPORT } from '../lib/feature-flags';
 import { useStore } from '../lib/use-store';
@@ -89,16 +97,45 @@ export function Sidebar({
   );
   const isCompact = mode !== 'full';
   const isMini = mode === 'mini';
+  // Reviews belong under the CV they are about: proposals sent back to you
+  // nest under your CV, and a CV you are reviewing for someone is marked as a
+  // review copy. Only reviews whose CV is gone are listed on their own.
+  const fileIds = useMemo(() => new Set(snapshot.files.map((file) => file.id)), [snapshot.files]);
+  const reviewsByFile = useMemo(() => {
+    const byFile = new Map<string, ReviewSession[]>();
+    for (const session of reviewSnapshot.sessions) {
+      if (sessionRole(session) !== 'author' || !session.linkedFileId) continue;
+      byFile.set(session.linkedFileId, [...(byFile.get(session.linkedFileId) ?? []), session]);
+    }
+    return byFile;
+  }, [reviewSnapshot.sessions]);
+  const fileBadges = useMemo(() => {
+    const badges = new Map<string, FileBadge>();
+    for (const session of reviewSnapshot.sessions) {
+      if (session.mergeDraft?.draftFileId) {
+        badges.set(session.mergeDraft.draftFileId, { label: 'Merge draft', tone: 'draft' });
+      }
+      if (sessionRole(session) === 'reviewer' && session.linkedFileId) {
+        badges.set(session.linkedFileId, {
+          label: session.proposals.length > 0 ? 'Review sent' : 'Review copy',
+          tone: 'review'
+        });
+      }
+    }
+    return badges;
+  }, [reviewSnapshot.sessions]);
   const reviewSessions = useMemo(
     () =>
       reviewSnapshot.sessions
         .filter((session) => session.status !== 'resolved')
+        .filter((session) => sessionRole(session) === 'author')
+        .filter((session) => !session.linkedFileId || !fileIds.has(session.linkedFileId))
         .sort((left, right) => {
           const leftProposalTime = left.proposals[0]?.createdAt ?? 0;
           const rightProposalTime = right.proposals[0]?.createdAt ?? 0;
           return rightProposalTime - leftProposalTime;
         }),
-    [reviewSnapshot.sessions]
+    [reviewSnapshot.sessions, fileIds]
   );
   const archivedReviewSessions = useMemo(
     () => reviewSnapshot.sessions.filter((session) => session.status === 'resolved'),
@@ -175,11 +212,18 @@ export function Sidebar({
           {activeFiles.map((file) => (
             <li key={file.id}>
               <SidebarFileRow
+                badge={fileBadges.get(file.id)}
                 compact={isCompact}
                 file={file}
                 mini={isMini}
                 selected={snapshot.selectedFileId === file.id}
               />
+              {!isMini ? (
+                <FileReviewRows
+                  pathname={location.pathname}
+                  sessions={reviewsByFile.get(file.id) ?? []}
+                />
+              ) : null}
             </li>
           ))}
         </ul>
@@ -422,12 +466,70 @@ function FileGroup({
   );
 }
 
+type FileBadge = { label: string; tone: 'review' | 'draft' };
+
+/**
+ * The reviews of one of your CVs, nested under it: one row per reviewer whose
+ * proposal is waiting for you, or a note that the CV is out for review.
+ */
+function FileReviewRows({ sessions, pathname }: { sessions: ReviewSession[]; pathname: string }) {
+  type Row = { key: string; session: ReviewSession; proposal?: ReviewProposal };
+  const rows = sessions.flatMap((session): Row[] => {
+    const waiting = pendingProposals(session).sort((left, right) => left.createdAt - right.createdAt);
+    if (waiting.length === 0) {
+      return session.status !== 'resolved' && session.proposals.length === 0
+        ? [{ key: `${session.sessionId}:waiting`, session, proposal: undefined }]
+        : [];
+    }
+    return waiting.map((proposal) => ({ key: proposal.proposalId, session, proposal }));
+  });
+  if (rows.length === 0) return null;
+
+  return (
+    <ul className="mt-0.5 space-y-0.5 pl-4" data-testid="file-review-rows">
+      {rows.map(({ key, session, proposal }) =>
+        proposal ? (
+          <li key={key}>
+            <Link
+              className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors ${
+                pathname === `/review/${session.sessionId}` && session.activeProposalId === proposal.proposalId
+                  ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+              }`}
+              onClick={() => reviewStore.setActiveProposal(session.sessionId, proposal.proposalId)}
+              title={proposal.note ? `${proposal.reviewerName}: ${proposal.note}` : proposal.reviewerName}
+              to={`/review/${session.sessionId}`}
+            >
+              <GitCompareArrows className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span className="min-w-0 flex-1 truncate">{proposal.reviewerName}</span>
+              <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200">
+                To review
+              </span>
+            </Link>
+          </li>
+        ) : (
+          <li
+            key={key}
+            className="flex items-center gap-2 px-2 py-1 text-xs text-sidebar-foreground/55"
+            title="You copied a review link for this CV. Proposals sent back from it will appear here."
+          >
+            <GitCompareArrows className="size-3.5 shrink-0" />
+            <span className="truncate">Sent for review · waiting</span>
+          </li>
+        )
+      )}
+    </ul>
+  );
+}
+
 function SidebarFileRow({
+  badge,
   compact,
   file,
   mini,
   selected
 }: {
+  badge?: FileBadge;
   compact: boolean;
   file: CvFile;
   mini: boolean;
@@ -492,6 +594,18 @@ function SidebarFileRow({
             <>
               {file.isLocked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : null}
               <span className="truncate">{file.name}</span>
+              {badge ? (
+                <span
+                  className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                    badge.tone === 'draft'
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-sky-500/15 text-sky-800 dark:text-sky-200'
+                  }`}
+                  data-testid="file-badge"
+                >
+                  {badge.label}
+                </span>
+              ) : null}
             </>
           )}
         </button>

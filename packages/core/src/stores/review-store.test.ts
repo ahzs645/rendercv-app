@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CvFileSections, ReviewProposalPackage } from '@rendercv/contracts';
-import { ReviewStore } from './review-store';
+import { createReviewRootFingerprint, ReviewStore } from './review-store';
 
 function makeSections(overrides?: Partial<CvFileSections>): CvFileSections {
   return {
@@ -127,7 +127,7 @@ describe('ReviewStore', () => {
     expect(store.sessions).toHaveLength(1);
   });
 
-  it('rejects proposals whose baseline does not match an existing thread', () => {
+  it('keeps a proposal made from a different version of the CV in the thread, with its own baseline', () => {
     const store = new ReviewStore();
     const baseline = makeSections();
     const session = store.ensureSession({
@@ -149,7 +149,11 @@ describe('ReviewStore', () => {
       createdAt: 1_700_000_000_000
     };
 
-    expect(() => store.importProposal(proposal)).toThrow(/baseline does not match/);
+    const imported = store.importProposal(proposal);
+
+    expect(imported.sessionId).toBe(session.sessionId);
+    expect(imported.rootBaselineSections).toEqual(baseline);
+    expect(imported.proposals[0]?.rootBaselineSections).toEqual(proposal.rootBaselineSections);
   });
 
   it('migrates legacy review copies into a pending session without losing the original baseline', () => {
@@ -206,5 +210,111 @@ describe('ReviewStore', () => {
       reviewerName: 'Alex',
       outcome: 'applied'
     });
+  });
+});
+
+describe('ReviewStore multiple reviewers', () => {
+  function pkg(overrides: Partial<ReviewProposalPackage>, baseline = makeSections()): ReviewProposalPackage {
+    return {
+      version: 1,
+      proposalId: 'p',
+      threadId: 'thread-1',
+      rootFingerprint: createReviewRootFingerprint(baseline),
+      fileName: 'Resume',
+      rootBaselineSections: baseline,
+      proposedSections: makeSections({ cv: 'cv:\n  name: Changed' }),
+      reviewerName: 'Someone',
+      createdAt: 1,
+      ...overrides
+    };
+  }
+
+  it('files every reviewer of a thread under the author\'s CV and keeps the others open after one is applied', () => {
+    const store = new ReviewStore();
+    const author = store.ensureSession({
+      linkedFileId: 'file-1',
+      baseFileName: 'Resume',
+      rootBaselineSections: makeSections(),
+      threadId: 'thread-1',
+      role: 'author'
+    });
+
+    store.importProposal(pkg({ proposalId: 'jane', reviewerName: 'Jane', createdAt: 1 }));
+    const both = store.importProposal(pkg({ proposalId: 'bob', reviewerName: 'Bob', createdAt: 2 }));
+    expect(both.sessionId).toBe(author.sessionId);
+    expect(both.linkedFileId).toBe('file-1');
+    expect(both.proposals.map((proposal) => proposal.reviewerName)).toEqual(['Bob', 'Jane']);
+
+    store.setActiveProposal(author.sessionId, 'jane');
+    store.resolveSession(author.sessionId, makeSections(), 'applied');
+    const afterJane = store.getSession(author.sessionId)!;
+    expect(afterJane.status).toBe('pending');
+    expect(afterJane.activeProposalId).toBe('bob');
+    expect(afterJane.proposals.find((proposal) => proposal.proposalId === 'jane')?.outcome).toBe('applied');
+
+    store.resolveSession(author.sessionId, makeSections(), 'rejected');
+    expect(store.getSession(author.sessionId)?.status).toBe('resolved');
+  });
+
+  it('does not reset or reopen a proposal when its link is opened again', () => {
+    const store = new ReviewStore();
+    const session = store.importProposal(pkg({ proposalId: 'jane' }));
+    store.setProposalDecision(session.sessionId, 'jane', 'change-1', 'accepted');
+    store.resolveSession(session.sessionId, makeSections(), 'applied');
+
+    const again = store.importProposal(pkg({ proposalId: 'jane' }));
+    const proposal = again.proposals.find((entry) => entry.proposalId === 'jane')!;
+    expect(again.status).toBe('resolved');
+    expect(proposal.outcome).toBe('applied');
+    expect(proposal.decisionStates).toEqual({ 'change-1': 'accepted' });
+  });
+
+  it('never merges a reviewer\'s copy into the author\'s session for the same thread', () => {
+    const store = new ReviewStore();
+    const author = store.ensureSession({
+      linkedFileId: 'own-cv',
+      baseFileName: 'Resume',
+      rootBaselineSections: makeSections(),
+      threadId: 'thread-1',
+      role: 'author'
+    });
+    const reviewer = store.ensureSession({
+      linkedFileId: 'review-copy',
+      baseFileName: 'Resume',
+      rootBaselineSections: makeSections(),
+      threadId: 'thread-1',
+      role: 'reviewer'
+    });
+
+    expect(reviewer.sessionId).not.toBe(author.sessionId);
+    expect(store.getSession(author.sessionId)?.linkedFileId).toBe('own-cv');
+  });
+});
+
+describe('ReviewStore.restoreSessions', () => {
+  it('adds missing sessions and proposals without overwriting what is already here', () => {
+    const backup = new ReviewStore();
+    const session = backup.importProposal({
+      version: 1,
+      proposalId: 'jane',
+      threadId: 'thread-1',
+      rootFingerprint: createReviewRootFingerprint(makeSections()),
+      fileName: 'Resume',
+      rootBaselineSections: makeSections(),
+      proposedSections: makeSections({ cv: 'cv:\n  name: Jane edit' }),
+      reviewerName: 'Jane',
+      note: 'Looks good',
+      createdAt: 1
+    });
+    const snapshot = structuredClone(backup.sessions);
+
+    const fresh = new ReviewStore();
+    expect(fresh.restoreSessions(snapshot)).toEqual({ addedSessions: 1, addedProposals: 1 });
+    expect(fresh.getSession(session.sessionId)?.proposals[0]?.note).toBe('Looks good');
+
+    // Restoring again changes nothing, and a local decision survives it.
+    fresh.setProposalDecision(session.sessionId, 'jane', 'change-1', 'rejected');
+    expect(fresh.restoreSessions(snapshot)).toEqual({ addedSessions: 0, addedProposals: 0 });
+    expect(fresh.getSession(session.sessionId)?.proposals[0]?.decisionStates).toEqual({ 'change-1': 'rejected' });
   });
 });

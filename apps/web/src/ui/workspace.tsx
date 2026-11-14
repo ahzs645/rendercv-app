@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react';
 import { GitCompareArrows, Check, FilePlus2, FileText, Pencil, Upload, WandSparkles, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { visibleThemeKeys, classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, preferencesStore, resolveFileSections, reviewStore, variantLabel } from '@rendercv/core';
+import { visibleThemeKeys, classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, pendingProposals, preferencesStore, resolveFileSections, reviewStore, sessionRole, variantLabel, type ReviewSession } from '@rendercv/core';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels';
 import { toast } from 'sonner';
@@ -708,13 +708,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
           </span>
         </div>
       ) : selectedFile && selectedReviewSession?.linkedFileId === selectedFile.id ? (
-        <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/5 px-4 py-2 text-xs text-primary">
-          <GitCompareArrows className="size-3.5 shrink-0" />
-          <span>
-            This resume is attached to a local review thread. Use Download &amp; share to send or
-            forward review proposals.
-          </span>
-        </div>
+        <ReviewBanner session={selectedReviewSession} />
       ) : null}
       <div className="min-h-0 flex-1 p-4 pt-3 sm:p-5 sm:pt-4">
         {!selectedFile ? (
@@ -1114,4 +1108,68 @@ function MobileSidebarDrawer({
       </div>
     </>
   );
+}
+
+export const SEND_PROPOSAL_EVENT = 'rendercv:send-proposal';
+
+/**
+ * What the review attached to this CV means for you right now, with the one
+ * action that moves it forward.
+ */
+function ReviewBanner({ session }: { session: ReviewSession }) {
+  const navigate = useNavigate();
+  const className =
+    'flex flex-wrap items-center gap-2 border-b border-primary/20 bg-primary/5 px-4 py-2 text-xs text-primary';
+  const button =
+    'ml-auto inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1 font-medium text-primary-foreground transition-colors hover:bg-primary/90';
+
+  if (sessionRole(session) === 'reviewer') {
+    const sent = session.proposals.length > 0;
+    return (
+      <div className={className} data-testid="review-banner">
+        <GitCompareArrows className="size-3.5 shrink-0" />
+        <span>
+          {sent
+            ? 'You sent a proposal for this CV. Keep editing and send an updated one whenever you like.'
+            : "You're reviewing this CV. Edit it, then send your changes back to its author as a proposal."}
+        </span>
+        <button
+          className={button}
+          onClick={() => window.dispatchEvent(new CustomEvent(SEND_PROPOSAL_EVENT))}
+          type="button"
+        >
+          {sent ? 'Send updated proposal' : 'Send proposal'}
+        </button>
+      </div>
+    );
+  }
+
+  // Oldest first, matching the sidebar and the review page.
+  const waiting = pendingProposals(session).sort((left, right) => left.createdAt - right.createdAt);
+  if (waiting.length > 0) {
+    return (
+      <div className={className} data-testid="review-banner">
+        <GitCompareArrows className="size-3.5 shrink-0" />
+        <span>
+          {waiting.length === 1
+            ? `${waiting[0]!.reviewerName} sent a review of this CV.`
+            : `${waiting.length} reviews of this CV are waiting: ${waiting.map((proposal) => proposal.reviewerName).join(', ')}.`}
+        </span>
+        <button className={button} onClick={() => navigate(`/review/${session.sessionId}`)} type="button">
+          Open review
+        </button>
+      </div>
+    );
+  }
+
+  if (session.status !== 'resolved' && session.proposals.length === 0) {
+    return (
+      <div className={className} data-testid="review-banner">
+        <GitCompareArrows className="size-3.5 shrink-0" />
+        <span>Out for review. Proposals sent back from your review link will appear under this CV.</span>
+      </div>
+    );
+  }
+
+  return null;
 }

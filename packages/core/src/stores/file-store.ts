@@ -420,6 +420,38 @@ export class FileStore {
     preferencesStore.patch({ selectedFileId });
   }
 
+  /**
+   * Add complete CV records from a workspace backup, keeping their ids so the
+   * review sessions in the same backup still point at them. A CV whose id is
+   * already here is left as it is: restoring never overwrites current work.
+   * Returns the ids that were added.
+   */
+  restoreFiles(files: Omit<CvFile, 'isReadOnly'>[]) {
+    const existing = new Set(this.files.map((file) => file.id));
+    const added = files
+      .filter((file) => file && typeof file.id === 'string' && !existing.has(file.id))
+      .map((file) =>
+        withReadOnly({
+          ...normalizeHydratedFile(file),
+          chatMessages: file.chatMessages ?? [],
+          editCount: file.editCount ?? 0
+        })
+      );
+    if (added.length === 0) {
+      return [];
+    }
+
+    this.#store.update((current) => ({
+      ...current,
+      files: [...current.files, ...added],
+      selectedFileId: current.selectedFileId ?? added[0]?.id
+    }));
+    for (const file of added) {
+      this.persistence?.onCreateFile?.(file);
+    }
+    return added.map((file) => file.id);
+  }
+
   loadDefaults() {
     const files = createDefaultFiles();
     const selectedFileId = files[0]?.id;

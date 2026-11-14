@@ -114,7 +114,9 @@ export function EncodedSharePage() {
       reviewStore.ensureSession({
         linkedFileId: file.id,
         baseFileName: importedFileName,
-        rootBaselineSections: payload.origin ?? payload.sections
+        rootBaselineSections: payload.origin ?? payload.sections,
+        threadId: payload.review?.threadId,
+        role: 'reviewer'
       });
       toast.success(`Imported "${importedFileName}". You can send changes back as a review proposal later.`);
     }

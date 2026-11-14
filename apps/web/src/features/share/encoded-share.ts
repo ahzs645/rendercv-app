@@ -6,6 +6,12 @@ export interface EncodedSharePayload {
   fileName: string;
   sections: CvFileSections;
   origin?: CvFileSections;
+  /**
+   * Present on review links: the author's review thread. The reviewer's copy
+   * keeps it, every proposal sent back carries it, and the author's app files
+   * each proposal under the CV it was asked for, even after that CV changed.
+   */
+  review?: { threadId: string };
 }
 
 export type DecodedSharePayload = EncodedSharePayload;
@@ -76,10 +82,16 @@ export function validateSharePayload(value: unknown): DecodedSharePayload {
     throw new Error('Invalid share payload.');
   }
 
+  const review =
+    isRecord(value.review) && typeof value.review.threadId === 'string' && value.review.threadId
+      ? { threadId: value.review.threadId }
+      : undefined;
+
   return {
     version: 1,
     fileName: value.fileName,
     sections: value.sections,
-    ...(value.origin ? { origin: value.origin } : {})
+    ...(value.origin ? { origin: value.origin } : {}),
+    ...(review ? { review } : {})
   };
 }

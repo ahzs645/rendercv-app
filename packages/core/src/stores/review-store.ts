@@ -10,6 +10,16 @@ export type ReviewArchiveOutcome = 'applied' | 'rejected';
 export interface ReviewProposal
   extends Omit<ReviewProposalPackage, 'rootBaselineSections'> {
   decisionStates: Record<string, ProposalDecision>;
+  /**
+   * The version of the CV this reviewer worked from, when it differs from the
+   * session's baseline (the author shared an updated version later).
+   */
+  rootBaselineSections?: CvFileSections;
+  /** Set once the proposal has been applied or rejected; it is then read-only. */
+  outcome?: ReviewArchiveOutcome;
+  resolvedAt?: number;
+  /** The author edited this proposal in a merge draft before applying it. */
+  editedLocally?: boolean;
 }
 
 export interface ReviewArchiveEntry {
@@ -28,8 +38,16 @@ export interface MergeDraftState {
   reviewerName?: string;
 }
 
+/**
+ * `author`: your own CV that others review; proposals come back into it.
+ * `reviewer`: a review copy of someone else's CV; you send proposals out.
+ * Sessions from before roles existed have none and are treated as `author`.
+ */
+export type ReviewSessionRole = 'author' | 'reviewer';
+
 export interface ReviewSession {
   sessionId: string;
+  role?: ReviewSessionRole;
   threadId: string;
   linkedFileId?: string;
   baseFileName: string;
@@ -51,6 +69,7 @@ type EnsureReviewSessionOptions = {
   baseFileName: string;
   rootBaselineSections: CvFileSections;
   threadId?: string;
+  role?: ReviewSessionRole;
 };
 
 type ImportReviewProposalOptions = {
@@ -111,6 +130,19 @@ function sectionsEqual(left: CvFileSections, right: CvFileSections) {
   return SECTION_KEYS.every((key) => left[key] === right[key]);
 }
 
+export function sessionRole(session: Pick<ReviewSession, 'role'>): ReviewSessionRole {
+  return session.role ?? 'author';
+}
+
+/** The baseline a proposal's changes were computed against. */
+export function proposalBaseline(session: ReviewSession, proposal: ReviewProposal) {
+  return proposal.rootBaselineSections ?? session.rootBaselineSections;
+}
+
+export function pendingProposals(session: ReviewSession) {
+  return session.proposals.filter((proposal) => !proposal.outcome);
+}
+
 export class ReviewStore {
   readonly #store = createStore<ReviewStateSnapshot>({ sessions: [] });
 
@@ -158,10 +190,19 @@ export class ReviewStore {
 
   ensureSession(options: EnsureReviewSessionOptions) {
     const rootFingerprint = createReviewRootFingerprint(options.rootBaselineSections);
+    const role = options.role ?? 'author';
+    // Only match sessions of the same role: the author's review of a CV and a
+    // reviewer's copy of it share a thread id (and, in one browser, can share a
+    // fingerprint), and must never be merged into one session.
+    const sameRole = (session: ReviewSession) => sessionRole(session) === role;
     const existing =
       (options.linkedFileId ? this.findByLinkedFileId(options.linkedFileId) : undefined) ??
-      (options.threadId ? this.findByThreadId(options.threadId) : undefined) ??
-      this.findByRootFingerprint(rootFingerprint);
+      (options.threadId
+        ? this.sessions.find((session) => session.threadId === options.threadId && sameRole(session))
+        : undefined) ??
+      this.sessions.find(
+        (session) => session.rootFingerprint === rootFingerprint && sameRole(session)
+      );
 
     if (existing) {
       this.#store.update((current) => ({
@@ -169,6 +210,7 @@ export class ReviewStore {
           session.sessionId === existing.sessionId
             ? {
                 ...session,
+                role: session.role ?? options.role,
                 linkedFileId: options.linkedFileId ?? session.linkedFileId,
                 threadId: options.threadId ?? session.threadId,
                 baseFileName: options.baseFileName || session.baseFileName
@@ -181,6 +223,7 @@ export class ReviewStore {
 
     const nextSession: ReviewSession = {
       sessionId: generateId(),
+      role,
       threadId: options.threadId ?? generateId(),
       linkedFileId: options.linkedFileId,
       baseFileName: options.baseFileName,
@@ -199,13 +242,16 @@ export class ReviewStore {
   }
 
   importProposal(pkg: ReviewProposalPackage, options?: ImportReviewProposalOptions) {
+    // Proposals come back to the author: match the author's session for this
+    // thread (the review link carries its id), then fall back to the CV's
+    // fingerprint for links made before thread ids were shared.
+    const authorSessions = this.sessions.filter((session) => sessionRole(session) === 'author');
     const matchedSession =
-      this.findByThreadId(pkg.threadId) ??
-      this.findByRootFingerprint(pkg.rootFingerprint);
-
-    if (matchedSession && !sectionsEqual(matchedSession.rootBaselineSections, pkg.rootBaselineSections)) {
-      throw new Error('Review proposal baseline does not match the existing review session.');
-    }
+      authorSessions.find((session) => session.threadId === pkg.threadId) ??
+      authorSessions.find((session) => session.rootFingerprint === pkg.rootFingerprint) ??
+      (options?.linkedFileId
+        ? authorSessions.find((session) => session.linkedFileId === options.linkedFileId)
+        : undefined);
 
     const session =
       matchedSession ??
@@ -213,8 +259,27 @@ export class ReviewStore {
         linkedFileId: options?.linkedFileId,
         baseFileName: pkg.fileName,
         rootBaselineSections: pkg.rootBaselineSections,
-        threadId: pkg.threadId
+        threadId: pkg.threadId,
+        role: 'author'
       });
+
+    const existing = session.proposals.find((proposal) => proposal.proposalId === pkg.proposalId);
+    if (existing) {
+      // Opening the same link again must not reset decisions or turn an
+      // applied proposal back into new work: just show it.
+      this.#store.update((current) => ({
+        sessions: current.sessions.map((entry) =>
+          entry.sessionId === session.sessionId
+            ? {
+                ...entry,
+                activeProposalId: existing.proposalId,
+                status: existing.outcome ? entry.status : 'pending'
+              }
+            : entry
+        )
+      }));
+      return this.getSession(session.sessionId)!;
+    }
 
     const proposal = normalizeProposal({
       version: 1,
@@ -227,7 +292,11 @@ export class ReviewStore {
       reviewerName: pkg.reviewerName,
       note: pkg.note,
       createdAt: pkg.createdAt,
-      decisionStates: {}
+      decisionStates: {},
+      // Reviewers may have been sent different versions of the CV.
+      ...(sectionsEqual(session.rootBaselineSections, pkg.rootBaselineSections)
+        ? {}
+        : { rootBaselineSections: pkg.rootBaselineSections })
     });
 
     this.#store.update((current) => ({
@@ -236,19 +305,12 @@ export class ReviewStore {
           return entry;
         }
 
-        const nextProposals = isProposalDuplicate(entry.proposals, proposal.proposalId)
-          ? entry.proposals.map((currentProposal) =>
-              currentProposal.proposalId === proposal.proposalId ? proposal : currentProposal
-            )
-          : [proposal, ...entry.proposals];
-
         return {
           ...entry,
-          linkedFileId: options?.linkedFileId ?? entry.linkedFileId,
-          baseFileName: pkg.fileName || entry.baseFileName,
+          linkedFileId: entry.linkedFileId ?? options?.linkedFileId,
           status: 'pending',
           activeProposalId: proposal.proposalId,
-          proposals: nextProposals
+          proposals: [proposal, ...entry.proposals]
         };
       })
     }));
@@ -283,7 +345,8 @@ export class ReviewStore {
       this.ensureSession({
         linkedFileId,
         baseFileName: fileName,
-        rootBaselineSections: proposedSections
+        rootBaselineSections: proposedSections,
+        role: 'reviewer'
       });
 
     const proposalId = generateId();
@@ -328,11 +391,19 @@ export class ReviewStore {
 
   setActiveProposal(sessionId: string, proposalId: string) {
     this.#store.update((current) => ({
-      sessions: current.sessions.map((session) =>
-        session.sessionId === sessionId
-          ? { ...session, activeProposalId: proposalId, status: 'pending' }
-          : session
-      )
+      sessions: current.sessions.map((session) => {
+        if (session.sessionId !== sessionId) {
+          return session;
+        }
+        // Viewing an applied or rejected proposal is reading history; only an
+        // open proposal makes the review pending again.
+        const proposal = session.proposals.find((entry) => entry.proposalId === proposalId);
+        return {
+          ...session,
+          activeProposalId: proposalId,
+          status: proposal && !proposal.outcome ? 'pending' : session.status
+        };
+      })
     }));
   }
 
@@ -455,16 +526,19 @@ export class ReviewStore {
           return session;
         }
 
+        // The draft is named "… (Merge Draft)"; keep the review's and the
+        // proposal's names, and keep the reviewer's name on it, marking that
+        // the author edited it.
+        void fileName;
         return {
           ...session,
-          baseFileName: fileName || session.baseFileName,
           proposals: session.proposals.map((proposal) =>
             proposal.proposalId === session.activeProposalId
               ? {
                   ...proposal,
-                  fileName,
                   proposedSections,
-                  decisionStates: {}
+                  decisionStates: {},
+                  editedLocally: true
                 }
               : proposal
           )
@@ -499,22 +573,35 @@ export class ReviewStore {
         const activeProposal = session.activeProposalId
           ? session.proposals.find((proposal) => proposal.proposalId === session.activeProposalId)
           : undefined;
+        const resolvedAt = Date.now();
 
         const archiveEntry: ReviewArchiveEntry | undefined = activeProposal
           ? {
               archiveId: generateId(),
               proposalId: activeProposal.proposalId,
               reviewerName: activeProposal.reviewerName,
-              resolvedAt: Date.now(),
+              resolvedAt,
               outcome,
               finalSections
             }
           : undefined;
 
+        const proposals = session.proposals.map((proposal) =>
+          proposal.proposalId === activeProposal?.proposalId
+            ? { ...proposal, outcome, resolvedAt }
+            : proposal
+        );
+        // Other reviewers' proposals stay open: resolving one review must not
+        // hide the next one.
+        const nextPending = proposals
+          .filter((proposal) => !proposal.outcome)
+          .sort((left, right) => right.createdAt - left.createdAt)[0];
+
         return {
           ...session,
-          status: 'resolved',
-          activeProposalId: undefined,
+          proposals,
+          status: nextPending ? 'pending' : 'resolved',
+          activeProposalId: nextPending?.proposalId,
           mergeDraft: undefined,
           archivedHistory: archiveEntry
             ? [archiveEntry, ...session.archivedHistory]
@@ -539,6 +626,52 @@ export class ReviewStore {
           : session
       )
     }));
+  }
+
+  /**
+   * Merge review sessions from a workspace backup: new sessions are added, and
+   * for sessions already here only the proposals and archive entries they lack
+   * are added. Nothing here is overwritten. Returns how many sessions and
+   * proposals were added.
+   */
+  restoreSessions(sessions: ReviewSession[]) {
+    let addedSessions = 0;
+    let addedProposals = 0;
+
+    this.#store.update((current) => {
+      const next = [...current.sessions];
+      for (const incoming of sessions) {
+        if (!incoming || typeof incoming.sessionId !== 'string') continue;
+        const normalized = normalizeSession(incoming);
+        const index = next.findIndex((session) => session.sessionId === normalized.sessionId);
+        if (index < 0) {
+          next.push(normalized);
+          addedSessions += 1;
+          addedProposals += normalized.proposals.length;
+          continue;
+        }
+
+        const existing = next[index]!;
+        const knownProposals = new Set(existing.proposals.map((proposal) => proposal.proposalId));
+        const knownArchive = new Set(existing.archivedHistory.map((entry) => entry.archiveId));
+        const missingProposals = normalized.proposals.filter(
+          (proposal) => !knownProposals.has(proposal.proposalId)
+        );
+        const missingArchive = normalized.archivedHistory.filter((entry) => !knownArchive.has(entry.archiveId));
+        if (missingProposals.length === 0 && missingArchive.length === 0) continue;
+
+        addedProposals += missingProposals.length;
+        next[index] = {
+          ...existing,
+          proposals: [...existing.proposals, ...missingProposals],
+          archivedHistory: [...existing.archivedHistory, ...missingArchive],
+          status: missingProposals.some((proposal) => !proposal.outcome) ? 'pending' : existing.status
+        };
+      }
+      return { sessions: next };
+    });
+
+    return { addedSessions, addedProposals };
   }
 
   migrateLegacyReviewCopy(legacy: LegacyReviewCopy) {

@@ -484,94 +484,90 @@ function diffArrayValues(
       return;
     }
 
-    const maxLength = Math.max(baselineValue.length, proposedValue.length);
-    for (let index = 0; index < maxLength; index += 1) {
-      if (index >= baselineValue.length) {
-        pushChange(
-          changes,
-          section,
-          [...path, index],
-          'add',
-          undefined,
-          proposedValue[index],
-          baselineRoot,
-          proposedRoot
-        );
-        continue;
-      }
-
-      if (index >= proposedValue.length) {
-        pushChange(
-          changes,
-          section,
-          [...path, index],
-          'remove',
-          baselineValue[index],
-          undefined,
-          baselineRoot,
-          proposedRoot
-        );
-        continue;
-      }
-
-      if (!deepEqual(baselineValue[index], proposedValue[index])) {
-        pushChange(
-          changes,
-          section,
-          [...path, index],
-          'set',
-          baselineValue[index],
-          proposedValue[index],
-          baselineRoot,
-          proposedRoot
-        );
-      }
-    }
-
+    diffSequence(section, path, baselineValue, proposedValue, changes, baselineRoot, proposedRoot);
     return;
   }
 
-  const maxLength = Math.max(baselineValue.length, proposedValue.length);
-  for (let index = 0; index < maxLength; index += 1) {
-    if (index >= baselineValue.length) {
-      pushChange(
-        changes,
-        section,
-        [...path, index],
-        'add',
-        undefined,
-        proposedValue[index],
-        baselineRoot,
-        proposedRoot
-      );
+  diffSequence(section, path, baselineValue, proposedValue, changes, baselineRoot, proposedRoot);
+}
+
+/**
+ * Diff two lists by their longest common subsequence instead of position by
+ * position. Comparing by index turned one bullet inserted at the top into a
+ * change to every bullet after it, and accepting just that insert overwrote an
+ * existing bullet. Items left between two matches are paired up as edits; the
+ * rest are removals (at their baseline index) or additions (at their proposed
+ * index), which is what applyAcceptedReviewChanges expects.
+ */
+function diffSequence(
+  section: SectionKey,
+  path: Array<string | number>,
+  baselineValue: unknown[],
+  proposedValue: unknown[],
+  changes: ReviewChange[],
+  baselineRoot: unknown,
+  proposedRoot: unknown
+) {
+  const rows = baselineValue.length;
+  const cols = proposedValue.length;
+  const table: number[][] = Array.from({ length: rows + 1 }, () => new Array<number>(cols + 1).fill(0));
+  for (let i = rows - 1; i >= 0; i -= 1) {
+    for (let j = cols - 1; j >= 0; j -= 1) {
+      table[i]![j] = deepEqual(baselineValue[i], proposedValue[j])
+        ? table[i + 1]![j + 1]! + 1
+        : Math.max(table[i + 1]![j]!, table[i]![j + 1]!);
+    }
+  }
+
+  type Gap = { baselineStart: number; baselineEnd: number; proposedStart: number; proposedEnd: number };
+  const gaps: Gap[] = [];
+  let i = 0;
+  let j = 0;
+  let gap: Gap | null = null;
+  const closeGap = () => {
+    if (gap && (gap.baselineEnd > gap.baselineStart || gap.proposedEnd > gap.proposedStart)) gaps.push(gap);
+    gap = null;
+  };
+  while (i < rows || j < cols) {
+    if (i < rows && j < cols && deepEqual(baselineValue[i], proposedValue[j])) {
+      closeGap();
+      i += 1;
+      j += 1;
       continue;
     }
-
-    if (index >= proposedValue.length) {
-      pushChange(
-        changes,
-        section,
-        [...path, index],
-        'remove',
-        baselineValue[index],
-        undefined,
-        baselineRoot,
-        proposedRoot
-      );
-      continue;
+    gap ??= { baselineStart: i, baselineEnd: i, proposedStart: j, proposedEnd: j };
+    if (j < cols && (i >= rows || table[i]![j + 1]! >= table[i + 1]![j]!)) {
+      j += 1;
+      gap.proposedEnd = j;
+    } else {
+      i += 1;
+      gap.baselineEnd = i;
     }
+  }
+  closeGap();
 
-    if (!deepEqual(baselineValue[index], proposedValue[index])) {
+  for (const entry of gaps) {
+    // An edited item is one whole-item change, as before: these lists have no
+    // stable key per item, so a field-level path would be fragile.
+    const paired = Math.min(entry.baselineEnd - entry.baselineStart, entry.proposedEnd - entry.proposedStart);
+    for (let offset = 0; offset < paired; offset += 1) {
+      const baselineIndex = entry.baselineStart + offset;
       pushChange(
         changes,
         section,
-        [...path, index],
+        [...path, baselineIndex],
         'set',
-        baselineValue[index],
-        proposedValue[index],
+        baselineValue[baselineIndex],
+        proposedValue[entry.proposedStart + offset],
         baselineRoot,
         proposedRoot
       );
+    }
+    for (let index = entry.baselineStart + paired; index < entry.baselineEnd; index += 1) {
+      pushChange(changes, section, [...path, index], 'remove', baselineValue[index], undefined, baselineRoot, proposedRoot);
+    }
+    for (let index = entry.proposedStart + paired; index < entry.proposedEnd; index += 1) {
+      pushChange(changes, section, [...path, index], 'add', undefined, proposedValue[index], baselineRoot, proposedRoot);
     }
   }
 }
@@ -781,8 +777,27 @@ export interface RebasedReviewResult {
    * the review started, with what the resume holds there now.
    */
   conflicts: ReviewConflict[];
+  /**
+   * Accepted changes the current resume already contains (applied earlier, or
+   * the same edit came from another reviewer). Nothing to do for these.
+   */
+  alreadyApplied: ReviewChange[];
   /** True when the current resume no longer matches the review's baseline. */
   diverged: boolean;
+}
+
+function alreadyInResume(currentRoot: unknown, change: ReviewChange) {
+  if (change.path.length === 0) return false;
+  const current = getIn(currentRoot, change.path);
+  if (change.kind === 'remove') {
+    // Only a removed key can be checked; a removed list item leaves its index
+    // occupied by the next one.
+    return typeof change.path[change.path.length - 1] === 'string' && current === undefined;
+  }
+  if (change.kind === 'add' && typeof change.path[change.path.length - 1] === 'number') {
+    return false;
+  }
+  return deepEqual(current, change.proposedValue);
 }
 
 /**
@@ -809,6 +824,7 @@ export function rebaseAcceptedReviewChanges(
   const nextSections = { ...currentSections };
   const applied: ReviewChange[] = [];
   const conflicts: ReviewConflict[] = [];
+  const alreadyApplied: ReviewChange[] = [];
   let diverged = false;
 
   for (const key of SECTION_KEYS) {
@@ -848,6 +864,11 @@ export function rebaseAcceptedReviewChanges(
         pathStillAddressesSameEntries(baselineRoot, currentRoot, change.path);
       const forced = forceable && Boolean(options.force?.has(change.id));
 
+      if (!appliesCleanly && !forced && alreadyInResume(currentRoot, change)) {
+        alreadyApplied.push(change);
+        continue;
+      }
+
       if (!appliesCleanly && !forced) {
         conflicts.push({ ...change, currentValue: getIn(currentRoot, change.path), forceable });
         continue;
@@ -871,5 +892,5 @@ export function rebaseAcceptedReviewChanges(
     }
   }
 
-  return { sections: nextSections, applied, conflicts, diverged };
+  return { sections: nextSections, applied, conflicts, alreadyApplied, diverged };
 }

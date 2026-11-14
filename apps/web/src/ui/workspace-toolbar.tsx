@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { lazy, Suspense, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { RefObject, ReactNode } from 'react';
 import {
   AppWindow,
@@ -43,6 +43,7 @@ import { cvYamlToJson, cvYamlToMarkdown } from '../features/viewer/format-export
 import { buildEncodedShareUrl, buildEncodedSharePdfUrl } from '../features/share/encoded-share';
 import { buildSourceShareUrl, sectionsMatch } from './cv-url-import';
 import { exportShareFile, importShareFile } from '../features/share/file-share';
+import { describeRestore, restoreWorkspaceBackup } from '../features/files/workspace-backup';
 import { ChangesDialog } from '../features/share/changes-dialog';
 import {
   buildReviewProposalUrl,
@@ -220,14 +221,23 @@ export function WorkspaceToolbar({
     }
 
     try {
+      // Open (or reuse) this CV's review thread, so every proposal sent back
+      // from this link files under this CV: the link carries the thread id.
+      const session = reviewStore.ensureSession({
+        linkedFileId: selectedFile.id,
+        baseFileName: selectedFile.name,
+        rootBaselineSections: fileSections,
+        role: 'author'
+      });
       // Review copies carry the full file (not the variant-filtered view): the
-      // returned proposal is fingerprinted against this file's full sections,
-      // and merging must never silently drop variant-hidden content.
+      // returned proposal is diffed against this file's full sections, and
+      // merging must never silently drop variant-hidden content.
       const result = await buildEncodedShareUrl({
         version: 1,
         fileName: selectedFile.name,
         sections: fileSections,
-        origin: fileSections
+        origin: fileSections,
+        review: { threadId: session.threadId }
       });
       await navigator.clipboard.writeText(result.url);
       toast.success('Review link copied.');
@@ -394,14 +404,18 @@ export function WorkspaceToolbar({
 
   async function importJson() {
     try {
-      const payload = await importShareFile();
-      if (!payload) return;
+      const imported = await importShareFile();
+      if (!imported) return;
 
+      if (imported.kind === 'workspace') {
+        toast.success(describeRestore(restoreWorkspaceBackup(imported.backup)));
+        return;
+      }
+
+      const payload = imported.payload;
       const designKey = readThemeName(payload.sections.design) ?? 'classic';
       const localeKey = readLocaleName(payload.sections.locale) ?? 'english';
-      const fileName = fileStore.uniqueName(
-        payload.fileName
-      );
+      const fileName = fileStore.uniqueName(payload.fileName);
 
       const file = fileStore.createFile(fileName, {
         cv: payload.sections.cv,
@@ -412,17 +426,33 @@ export function WorkspaceToolbar({
         selectedLocale: localeKey
       });
 
-      reviewStore.ensureSession({
-        linkedFileId: file.id,
-        baseFileName: fileName,
-        rootBaselineSections: payload.sections
-      });
-
-      toast.success(`Imported "${fileName}" as a review copy. Edit it, then send a proposal back.`);
+      // Only a review-copy file (it carries the original) starts a review. A
+      // plain backup of your own CV used to be turned into a review copy too.
+      if (payload.origin) {
+        reviewStore.ensureSession({
+          linkedFileId: file.id,
+          baseFileName: fileName,
+          rootBaselineSections: payload.origin,
+          threadId: payload.review?.threadId,
+          role: 'reviewer'
+        });
+        toast.success(`Imported "${fileName}" as a review copy. Edit it, then send a proposal back.`);
+      } else {
+        toast.success(`Restored "${fileName}" from the backup file.`);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to import file.');
     }
   }
+
+  // The review banner above the editor asks for the send-proposal dialog.
+  useEffect(() => {
+    const open = () => {
+      if (canSendProposal) setReviewerDialogOpen(true);
+    };
+    window.addEventListener('rendercv:send-proposal', open);
+    return () => window.removeEventListener('rendercv:send-proposal', open);
+  }, [canSendProposal]);
 
   function startReview() {
     if (!selectedFile || !fileSections || selectedReviewSession) {
@@ -453,6 +483,15 @@ export function WorkspaceToolbar({
 
   async function handleReviewerConfirm(reviewerName: string, note?: string) {
     if (!selectedFile || !fileSections || !canSendProposal || !selectedReviewSession) {
+      return;
+    }
+
+    // A proposal with no changes and nothing to say just puts an empty review
+    // in the author's inbox. A note on its own ("looks good") is fine.
+    if (!note?.trim() && sectionsMatch(fileSections, selectedReviewSession.rootBaselineSections)) {
+      toast.error("You haven't changed anything yet.", {
+        description: 'Edit the CV first, or add a note to send feedback without changes.'
+      });
       return;
     }
 

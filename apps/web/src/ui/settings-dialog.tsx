@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Eye, EyeOff, FolderDown, KeyRound, Sparkles, Trash2, TriangleAlert } from 'lucide-react';
-import { fileStore, preferencesStore, resolveFileSections } from '@rendercv/core';
+import { DatabaseBackup, Eye, EyeOff, FolderDown, KeyRound, Sparkles, Trash2, TriangleAlert } from 'lucide-react';
+import { fileStore, preferencesStore, resolveFileSections, reviewStore } from '@rendercv/core';
 import type { AiApiKeys, AiProviderId } from '@rendercv/contracts';
 import { toast } from 'sonner';
 import { useStore } from '../lib/use-store';
@@ -9,6 +9,11 @@ import { DialogOverlay, DialogShell } from './dialog-shell';
 import { LOCAL_STORAGE_KEYS, PYODIDE_CACHE_DB_NAME } from '../lib/storage-keys';
 import { downloadBlob } from '../features/viewer/download';
 import type { ZipFile } from '../features/files/zip.worker';
+import {
+  describeRestore,
+  downloadWorkspaceBackup,
+  pickAndRestoreWorkspaceBackup
+} from '../features/files/workspace-backup';
 import { UI_LANGUAGES, type UiLanguage } from '../lib/i18n/messages';
 import { useTranslation } from '../lib/i18n/use-translation';
 
@@ -298,6 +303,7 @@ function AppearancePanel() {
 function DataPanel() {
   const { t } = useTranslation();
   const snapshot = useStore(fileStore);
+  const reviewSnapshot = useStore(reviewStore);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [clearDraft, setClearDraft] = useState('');
@@ -409,6 +415,51 @@ function DataPanel() {
             >
               {isDownloading ? 'Downloading…' : 'Download zip'}
             </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-start gap-3">
+          <DatabaseBackup className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">Full backup</p>
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+              One file with every CV and every review — {reviewSnapshot.sessions.length} review
+              {reviewSnapshot.sessions.length === 1 ? '' : 's'}, with their proposals, notes, decisions and
+              history — that you can restore here or in another browser. The zip above only holds each
+              CV&apos;s YAML. Restoring adds what is missing and never overwrites what is already here.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  void downloadWorkspaceBackup()
+                    .then(() => toast.success('Full backup downloaded.'))
+                    .catch((error: unknown) =>
+                      toast.error(error instanceof Error ? error.message : 'Failed to create the backup.')
+                    );
+                }}
+                type="button"
+              >
+                Download full backup
+              </button>
+              <button
+                className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                onClick={() => {
+                  void pickAndRestoreWorkspaceBackup()
+                    .then((summary) => {
+                      if (summary) toast.success(describeRestore(summary));
+                    })
+                    .catch((error: unknown) =>
+                      toast.error(error instanceof Error ? error.message : 'Failed to restore the backup.')
+                    );
+                }}
+                type="button"
+              >
+                Restore from backup
+              </button>
+            </div>
           </div>
         </div>
       </section>

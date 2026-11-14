@@ -462,3 +462,17 @@ describe('show: false and click mapping', () => {
     expect(mapRenderedEntryIndexToSource(cv, cv, 'experience', 1)).toBe(1);
   });
 });
+
+describe('prepareViewerSections with YAML the compiler cannot shape', () => {
+  it('returns the sections instead of throwing, so the workspace keeps rendering', () => {
+    const sections = {
+      cv: 'p',
+      design: 'design:\n  theme: classic\n',
+      locale: 'locale:\n  language: english\n',
+      settings: 'settings: {}\n'
+    };
+    expect(() => prepareViewerSections(sections)).not.toThrow();
+    expect(prepareViewerSections(sections).cv).toBe('p');
+    expect(() => prepareViewerSections({ ...sections, cv: 'cv: [1, 2]' })).not.toThrow();
+  });
+});
