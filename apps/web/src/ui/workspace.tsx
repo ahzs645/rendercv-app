@@ -22,6 +22,7 @@ import {
 import {
   normalizeLegacyDesignYaml,
   changesYamlData,
+  keepTextUnlessChanged,
   mapRenderedEntryIndexToSource,
   prepareViewerSections,
   resolveViewerSections
@@ -92,7 +93,9 @@ function looksLikeLegacyDesignSchema(design: string) {
 }
 
 function normalizeCompatibilitySections(sections: ImportedSections): ImportedSections {
-  const normalizedCv = sections.cv ? normalizeCompatibilityCvYaml(sections.cv) : sections.cv;
+  const normalizedCv = sections.cv
+    ? keepTextUnlessChanged(sections.cv, normalizeCompatibilityCvYaml(sections.cv))
+    : sections.cv;
   const normalizedDesign = sections.design
     ? normalizeLegacyDesignYaml(sections.design)
     : sections.design;
@@ -421,7 +424,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
       return;
     }
 
-    const strippedCv = stripPositionMarkersFromCvYaml(rawSections.cv);
+    const strippedCv = keepTextUnlessChanged(rawSections.cv, stripPositionMarkersFromCvYaml(rawSections.cv));
     if (strippedCv !== rawSections.cv) {
       fileStore.updateSection('cv', strippedCv, { normalization: true });
     }
@@ -451,7 +454,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
       return;
     }
 
-    const repairedCv = repairFlattenedPositionDatesInCvYaml(rawSections.cv);
+    const repairedCv = keepTextUnlessChanged(rawSections.cv, repairFlattenedPositionDatesInCvYaml(rawSections.cv));
     if (changesYamlData(rawSections.cv, repairedCv)) {
       fileStore.updateSection('cv', repairedCv, { normalization: true });
     }

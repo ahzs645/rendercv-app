@@ -65,9 +65,18 @@ type RendererWorkerService = {
   typstWorker: Worker;
   pyodidePending: Map<number, PendingRequest>;
   typstPending: Map<number, PendingRequest>;
+  /** What each pending Typst request asked for, so a restart can re-send it. */
+  typstRequests: Map<number, { type: string; payload?: unknown }>;
   nextPyodideId: number;
   nextTypstId: number;
   initPromise: Promise<void>;
+  /**
+   * Fonts the current Typst worker was built with. The worker is shared by
+   * every preview on the page, so this lives here rather than in each hook.
+   */
+  typstFontUrls: Set<string>;
+  /** The worker restart in progress, if any; restarts run one at a time. */
+  typstRestart: Promise<void>;
 };
 
 type ValidationSource = 'cache' | 'inflight' | 'worker';
@@ -137,6 +146,7 @@ function attachTypstWorkerHandler(service: RendererWorkerService) {
       pending.resolve(payload);
     }
     service.typstPending.delete(id);
+    service.typstRequests.delete(id);
   };
 }
 
@@ -149,19 +159,87 @@ function attachTypstWorkerHandler(service: RendererWorkerService) {
 async function replaceTypstWorker(service: RendererWorkerService, fontUrls: string[]) {
   const TypstWorker = (await import('./typst.worker?worker')).default;
 
-  service.typstWorker.terminate();
-  for (const pending of service.typstPending.values()) {
-    pending.reject(new Error('Typst worker restarted to load new fonts.'));
+  // Every preview on the page shares this worker. Rejecting the requests in
+  // flight here made the *other* preview fail with "Typst worker restarted to
+  // load new fonts" whenever one preview needed a new font (the review page
+  // shows two). Carry them over to the new worker instead.
+  const carried: Array<{ pending: PendingRequest; request: { type: string; payload?: unknown } }> = [];
+  const initWaiters: PendingRequest[] = [];
+  for (const [id, pending] of service.typstPending) {
+    const request = service.typstRequests.get(id);
+    if (!request || request.type === 'INIT') {
+      initWaiters.push(pending);
+    } else {
+      carried.push({ pending, request });
+    }
   }
+
+  service.typstWorker.terminate();
   service.typstPending.clear();
+  service.typstRequests.clear();
   service.nextTypstId = 0;
   service.typstWorker = new TypstWorker();
   attachTypstWorkerHandler(service);
 
-  await postRendererMessage(service, 'typst', 'INIT', { fontUrls });
+  // The worker handles messages strictly in order, so requests posted after
+  // INIT run once the new fonts are loaded.
+  const init = postRendererMessage(service, 'typst', 'INIT', { fontUrls });
+  for (const { pending, request } of carried) {
+    const id = ++service.nextTypstId;
+    service.typstPending.set(id, pending);
+    service.typstRequests.set(id, request);
+    service.typstWorker.postMessage({ id, type: request.type, payload: request.payload });
+  }
+
+  try {
+    await init;
+    for (const waiter of initWaiters) waiter.resolve(undefined);
+  } catch (error) {
+    for (const waiter of initWaiters) waiter.reject(error instanceof Error ? error : new Error(String(error)));
+    throw error;
+  }
 }
 
-async function getRendererWorkerService(fontUrls: string[]) {
+/**
+ * Make sure the shared Typst worker has these fonts, restarting it only when
+ * one is genuinely new to it. Each preview used to track its own font list, so
+ * a second preview restarted the worker for fonts it already had.
+ */
+function ensureTypstFonts(service: RendererWorkerService, fontUrls: string[]) {
+  const missing = fontUrls.filter((url) => !service.typstFontUrls.has(url));
+  if (missing.length === 0) {
+    return service.typstRestart;
+  }
+  for (const url of missing) service.typstFontUrls.add(url);
+  service.typstRestart = service.typstRestart
+    .catch(() => undefined)
+    .then(() => replaceTypstWorker(service, [...service.typstFontUrls]));
+  return service.typstRestart;
+}
+
+let rendererWorkerServicePromise: Promise<RendererWorkerService> | null = null;
+
+/**
+ * The one renderer every preview on the page shares. Two previews mounting
+ * together (the review page has two) both used to find no renderer yet and
+ * each build their own Typst worker *and* Python runtime; hand out one promise
+ * so simultaneous callers share a single instance.
+ */
+function getRendererWorkerService(fontUrls: string[]) {
+  if (!rendererWorkerServicePromise) {
+    rendererWorkerServicePromise = createRendererWorkerService(fontUrls).catch((error: unknown) => {
+      rendererWorkerServicePromise = null;
+      throw error;
+    });
+  }
+  return rendererWorkerServicePromise.then(async (service) => {
+    // A later preview may need fonts the first one did not ask for.
+    await ensureTypstFonts(service, fontUrls);
+    return service;
+  });
+}
+
+async function createRendererWorkerService(fontUrls: string[]) {
   if (rendererWorkerService) {
     await rendererWorkerService.initPromise;
     return rendererWorkerService;
@@ -175,10 +253,13 @@ async function getRendererWorkerService(fontUrls: string[]) {
     typstWorker: new TypstWorker(),
     pyodideWorker: new PyodideWorker(),
     typstPending: new Map(),
+    typstRequests: new Map(),
     pyodidePending: new Map(),
     nextTypstId: 0,
     nextPyodideId: 0,
-    initPromise: Promise.resolve()
+    initPromise: Promise.resolve(),
+    typstFontUrls: new Set(fontUrls),
+    typstRestart: Promise.resolve()
   };
 
   attachTypstWorkerHandler(service);
@@ -226,6 +307,7 @@ function postRendererMessage<T = unknown>(
 
     const id = ++service.nextTypstId;
     service.typstPending.set(id, { resolve: resolve as (value: unknown) => void, reject });
+    service.typstRequests.set(id, { type, payload });
     service.typstWorker.postMessage({ id, type, payload });
   });
 }
@@ -439,9 +521,10 @@ export function useViewerRenderer(sections?: CvFileSections) {
       });
 
       if (!result.content) return null;
-      const fontsChanged = checkAndLoadFonts(result.content);
-      if (fontsChanged && rendererServiceRef.current) {
-        await replaceTypstWorker(rendererServiceRef.current, loadedFonts.current);
+      checkAndLoadFonts(result.content);
+      if (rendererServiceRef.current) {
+        // Also waits for a restart another preview started for the same fonts.
+        await ensureTypstFonts(rendererServiceRef.current, loadedFonts.current);
       }
       lastTypstSectionsKey.current = key;
       lastTypstContent.current = result.content;
@@ -645,9 +728,9 @@ export function useViewerRenderer(sections?: CvFileSections) {
           lastTypstContent.current = typst;
           lastTypstAssets.current = typstAssetsFor(result.photo);
 
-          const fontsChanged = checkAndLoadFonts(typst);
-          if (fontsChanged && rendererServiceRef.current) {
-            await replaceTypstWorker(rendererServiceRef.current, loadedFonts.current);
+          checkAndLoadFonts(typst);
+          if (rendererServiceRef.current) {
+            await ensureTypstFonts(rendererServiceRef.current, loadedFonts.current);
           }
           if (requestId !== currentRenderRequest.current || pendingPreviewSections.current) {
             continue;

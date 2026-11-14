@@ -15,7 +15,7 @@ import {
   normalizeCompatibilityCvYaml,
   stripPositionMarkersFromCvYaml
 } from '@rendercv/primitives';
-import { normalizeLegacyDesignYaml } from '../features/viewer/viewer-sections';
+import { keepTextUnlessChanged, normalizeLegacyDesignYaml } from '../features/viewer/viewer-sections';
 import { i18nStore } from './i18n/i18n-store';
 
 const BUILT_IN_THEME_KEYS = new Set(Object.keys(defaultDesigns));
@@ -92,7 +92,8 @@ function migrateStaleSourceBaselines() {
     }
 
     const strippedCv = stripPositionMarkersFromCvYaml(baseline.cv);
-    const cvCandidates = [strippedCv, normalizeCompatibilityCvYaml(strippedCv)];
+    const normalizedCv = normalizeCompatibilityCvYaml(strippedCv);
+    const cvCandidates = [strippedCv, normalizedCv, keepTextUnlessChanged(strippedCv, normalizedCv)];
     const designCandidates = [baseline.design, normalizeLegacyDesignYaml(baseline.design) ?? baseline.design];
 
     const cv = cvCandidates.find((candidate) => candidate === sections.cv);

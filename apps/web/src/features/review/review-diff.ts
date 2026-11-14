@@ -1,6 +1,7 @@
 import type { CvFileSections, SectionKey } from '@rendercv/contracts';
 import { SECTION_KEYS, SECTION_LABELS } from '@rendercv/contracts';
 import YAML from 'yaml';
+import { stringifyCvYaml } from '@rendercv/core';
 import { customConnectionTemplate, cvPersonalInfoGroup, socialNetworkTemplate } from '../form/schema/cv-schema';
 import { getDesignSchema } from '../form/schema/design-schema';
 import { detectEntryType } from '../form/schema/entry-templates';
@@ -102,7 +103,7 @@ function parseSectionRoot(section: SectionKey, yamlSource: string) {
 }
 
 function stringifySectionRoot(section: SectionKey, root: unknown) {
-  return YAML.stringify({ [section]: root ?? {} });
+  return stringifyCvYaml({ [section]: root ?? {} });
 }
 
 function serializePath(path: Array<string | number>) {

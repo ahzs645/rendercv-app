@@ -3,10 +3,12 @@ import {
   filterDisabledSectionsFromCvYaml,
   filterFlagHiddenEntriesFromCvYaml,
   filterHiddenEntriesFromCvYaml,
-  resolveFileSections
+  CV_YAML_STRINGIFY_OPTIONS,
+  resolveFileSections,
+  stringifyCvYaml
 } from '@rendercv/core';
 import { compileRenderCvSections } from '@rendercv/primitives';
-import YAML from 'yaml';
+import YAML, { isMap } from 'yaml';
 
 const LEGACY_DESIGN_KEY_PATTERN =
   /^\s*(font_size|page_size|keep_sections_together|keep_entries_together|prevent_orphaned_headers|section_heading_size)\s*:/m;
@@ -21,62 +23,35 @@ export function normalizeLegacyDesignYaml(designContent: string | undefined) {
   }
 
   try {
-    const parsed = YAML.parse(designContent);
-    if (!parsed || typeof parsed !== 'object' || !('design' in parsed)) {
+    // Edit the YAML as a document so comments and the rest of the formatting
+    // survive; re-serialising the parsed value dropped every comment.
+    const document = YAML.parseDocument(designContent);
+    if (document.errors.length > 0 || !isMap(document.get('design', true))) {
       return designContent;
     }
 
-    const root = parsed as Record<string, unknown> & { design?: Record<string, unknown> };
-    if (!root.design || typeof root.design !== 'object') {
-      return designContent;
-    }
-
-    const design = { ...root.design };
-    let changed = false;
-
-    if (typeof design.font_size === 'string') {
-      const typography =
-        design.typography && typeof design.typography === 'object'
-          ? { ...(design.typography as Record<string, unknown>) }
-          : {};
-      const fontSize =
-        typography.font_size && typeof typography.font_size === 'object'
-          ? { ...(typography.font_size as Record<string, unknown>) }
-          : {};
-
-      if (fontSize.body !== design.font_size) {
-        fontSize.body = design.font_size;
+    // Move a legacy flat key to its nested place, replacing anything in the
+    // way that is not a mapping (the old code did the same with plain objects).
+    const move = (from: string, to: [string, string, ...string[]]) => {
+      const value = document.getIn(['design', from]);
+      if (typeof value !== 'string') return false;
+      for (let depth = 2; depth < to.length; depth += 1) {
+        const path = ['design', ...to.slice(0, depth - 1)];
+        const node = document.getIn(path, true);
+        if (node !== undefined && !isMap(node)) document.deleteIn(path);
       }
+      document.setIn(['design', ...to], value);
+      document.deleteIn(['design', from]);
+      return true;
+    };
 
-      typography.font_size = fontSize;
-      design.typography = typography;
-      delete design.font_size;
-      changed = true;
-    }
-
-    if (typeof design.page_size === 'string') {
-      const page =
-        design.page && typeof design.page === 'object'
-          ? { ...(design.page as Record<string, unknown>) }
-          : {};
-
-      if (page.size !== design.page_size) {
-        page.size = design.page_size;
-      }
-
-      design.page = page;
-      delete design.page_size;
-      changed = true;
-    }
-
-    if (!changed) {
+    const changedFontSize = move('font_size', ['typography', 'font_size', 'body']);
+    const changedPageSize = move('page_size', ['page', 'size']);
+    if (!changedFontSize && !changedPageSize) {
       return designContent;
     }
 
-    return YAML.stringify({
-      ...root,
-      design
-    });
+    return document.toString(CV_YAML_STRINGIFY_OPTIONS);
   } catch {
     return designContent;
   }
@@ -95,6 +70,22 @@ export function changesYamlData(before: string, after: string) {
     return JSON.stringify(YAML.parse(before)) !== JSON.stringify(YAML.parse(after));
   } catch {
     return true;
+  }
+}
+
+/**
+ * The result of an automatic rewrite of the user's YAML, as text to save: the
+ * original text when the rewrite didn't change the data (so comments and line
+ * breaks survive), otherwise the new data written without folding long lines.
+ */
+export function keepTextUnlessChanged(before: string, after: string) {
+  if (!changesYamlData(before, after)) {
+    return before;
+  }
+  try {
+    return stringifyCvYaml(YAML.parse(after));
+  } catch {
+    return after;
   }
 }
 

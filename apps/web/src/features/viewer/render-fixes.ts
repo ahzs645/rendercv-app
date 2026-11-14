@@ -1,5 +1,6 @@
 import type { CvFileSections, SectionKey } from '@rendercv/contracts';
 import YAML, { isMap } from 'yaml';
+import { CV_YAML_STRINGIFY_OPTIONS } from '@rendercv/core';
 
 /**
  * A change the renderer knows will fix (or make permanent) a problem it found,
@@ -81,7 +82,7 @@ export function applyRenderFixes(
   const nextSections: Partial<CvFileSections> = {};
   for (const [section, document] of documents) {
     if (applied.some((fix) => fix.section === section)) {
-      nextSections[section] = document.toString();
+      nextSections[section] = document.toString(CV_YAML_STRINGIFY_OPTIONS);
     }
   }
 

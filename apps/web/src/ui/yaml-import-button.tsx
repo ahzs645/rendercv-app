@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import YAML from 'yaml';
-import { defaultDesigns, fileStore } from '@rendercv/core';
+import { defaultDesigns, fileStore, stringifyCvYaml } from '@rendercv/core';
 import type { CvFileSections } from '@rendercv/contracts';
 import { BUNDLED_THEMES } from '../features/viewer/bundled-themes.generated';
 import type { RenderError } from '../features/viewer/use-viewer-renderer';
@@ -28,15 +28,43 @@ const KNOWN_THEMES = new Set([
   ...BUNDLED_THEMES.map((theme) => theme.themeKey)
 ]);
 
-function stringifySection<T>(key: keyof CvFileSections, value: T | undefined) {
+const TOP_LEVEL_KEY = /^([A-Za-z_][\w-]*)\s*:/;
+
+/**
+ * The text of one top-level section exactly as the file wrote it, comments and
+ * line breaks included. Re-serialising the parsed value folded long bullets at
+ * 80 columns and dropped every comment. The slice is used only if it parses to
+ * exactly the same data as the whole file says that section holds.
+ */
+function originalSectionText(content: string, key: keyof CvFileSections, value: unknown) {
+  const lines = content.split(/\r?\n/);
+  const start = lines.findIndex((line) => TOP_LEVEL_KEY.exec(line)?.[1] === key);
+  if (start < 0) return undefined;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (TOP_LEVEL_KEY.test(lines[index]!) || lines[index] === '---' || lines[index] === '...') {
+      end = index;
+      break;
+    }
+  }
+  while (end > start + 1 && !lines[end - 1]!.trim()) end -= 1;
+  const text = `${lines.slice(start, end).join('\n')}\n`;
+  try {
+    return JSON.stringify(YAML.parse(text)) === JSON.stringify({ [key]: value }) ? text : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function stringifySection<T>(key: keyof CvFileSections, value: T | undefined, content: string) {
   if (value === undefined) {
     return undefined;
   }
 
-  return YAML.stringify({ [key]: value });
+  return originalSectionText(content, key, value) ?? stringifyCvYaml({ [key]: value });
 }
 
-function parseImportedYaml(content: string): ImportedYamlSections {
+export function parseImportedYaml(content: string): ImportedYamlSections {
   const parsed = YAML.parse(content);
   if (!parsed || typeof parsed !== 'object' || !('cv' in parsed)) {
     throw new Error('Expected a RenderCV YAML file with a top-level cv: key.');
@@ -59,10 +87,10 @@ function parseImportedYaml(content: string): ImportedYamlSections {
       : undefined;
 
   return {
-    cv: stringifySection('cv', document.cv),
-    design: stringifySection('design', document.design),
-    locale: stringifySection('locale', document.locale),
-    settings: stringifySection('settings', document.settings),
+    cv: stringifySection('cv', document.cv, content),
+    design: stringifySection('design', document.design, content),
+    locale: stringifySection('locale', document.locale, content),
+    settings: stringifySection('settings', document.settings, content),
     selectedTheme: theme,
     selectedLocale: locale
   };

@@ -1,4 +1,5 @@
 import YAML from 'yaml';
+import { stringifyCvYaml } from './yaml-text';
 import {
   entryFingerprint,
   topLevelEntryListFromKey
@@ -97,7 +98,7 @@ export function filterHiddenEntriesFromCvYaml(
     return cvYaml;
   }
 
-  return YAML.stringify(parsed);
+  return stringifyCvYaml(parsed);
 }
 
 /**
@@ -136,7 +137,7 @@ export function stripEmptySectionsFromCvYaml(cvYaml: string): string {
     return cvYaml;
   }
 
-  return YAML.stringify(parsed);
+  return stringifyCvYaml(parsed);
 }
 
 /**
@@ -180,7 +181,7 @@ export function filterDisabledSectionsFromCvYaml(
     return cvYaml;
   }
 
-  return YAML.stringify(parsed);
+  return stringifyCvYaml(parsed);
 }
 
 /** Count how many entries the given hidden map actually hides. */
@@ -285,5 +286,5 @@ export function filterFlagHiddenEntriesFromCvYaml(cvYaml: string): string {
     }
   }
 
-  return changed ? YAML.stringify(parsed) : cvYaml;
+  return changed ? stringifyCvYaml(parsed) : cvYaml;
 }

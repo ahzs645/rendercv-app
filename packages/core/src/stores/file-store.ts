@@ -6,6 +6,7 @@ import type {
   SectionKey
 } from '@rendercv/contracts';
 import YAML from 'yaml';
+import { stringifyCvYaml } from '../cv/yaml-text';
 import { preferencesStore } from './preferences-store';
 import { createStore } from './store';
 import { toKeySlug } from '../utils/keys';
@@ -107,7 +108,7 @@ function stringifySection<T>(key: keyof CvFileSections, value: T | undefined) {
     return undefined;
   }
 
-  return YAML.stringify({ [key]: value });
+  return stringifyCvYaml({ [key]: value });
 }
 
 function resolveEmbeddedSections(cvContent: string) {

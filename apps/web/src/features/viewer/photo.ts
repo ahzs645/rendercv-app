@@ -1,4 +1,5 @@
 import YAML from 'yaml';
+import { stringifyCvYaml } from '@rendercv/core';
 
 /**
  * Header photo support for the browser renderer.
@@ -152,7 +153,7 @@ export function withResolvedPhotoPath(cvYaml: string, fileName: string) {
   }
 
   parsed.cv.photo = fileName;
-  return YAML.stringify(parsed);
+  return stringifyCvYaml(parsed);
 }
 
 /**

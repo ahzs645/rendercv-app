@@ -5,7 +5,7 @@ import { computeVariantVisibility } from '@rendercv/primitives';
 import { VariantVisibilityProvider } from './variant-visibility-context';
 import { Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import YAML from 'yaml';
-import { preferencesStore, themeLabel } from '@rendercv/core';
+import { preferencesStore, themeLabel, stringifyCvYaml } from '@rendercv/core';
 import {
   cvPersonalInfoGroup
 } from './schema/cv-schema';
@@ -116,7 +116,7 @@ export function FormEditor({
     }
 
     const timeoutId = window.setTimeout(() => {
-      const nextValue = YAML.stringify({ [section]: draftRootValue });
+      const nextValue = stringifyCvYaml({ [section]: draftRootValue });
       if (nextValue === value) {
         return;
       }

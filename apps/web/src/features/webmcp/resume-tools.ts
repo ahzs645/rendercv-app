@@ -1,4 +1,4 @@
-import { entryFingerprint, fileStore, resolveFileSections } from '@rendercv/core';
+import { entryFingerprint, fileStore, resolveFileSections, stringifyCvYaml } from '@rendercv/core';
 import type { CvFile, SectionKey } from '@rendercv/contracts';
 import YAML from 'yaml';
 import { formatRenderErrorMessage } from '../viewer/render-error-format';
@@ -355,7 +355,7 @@ export function createResumeWebMcpTools(): WebMcpTool[] {
         try {
           const current = parseCvDocument(resolveFileSections(file).cv);
           const patched = applyResumePatch(current, input.operations as PatchOperation[]);
-          const nextYaml = YAML.stringify(patched);
+          const nextYaml = stringifyCvYaml(patched);
           fileStore.updateSection('cv', nextYaml);
           const summary = typeof input.summary === 'string' ? input.summary.trim() : '';
           emitActivity(summary || 'The agent updated the active resume.');

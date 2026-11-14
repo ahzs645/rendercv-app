@@ -35,7 +35,8 @@ import {
   readThemeName,
   readLocaleName,
   resolveFileSections,
-  reviewStore
+  reviewStore,
+  sessionRole
 } from '@rendercv/core';
 import { toast } from 'sonner';
 import { downloadBlob } from '../features/viewer/download';
@@ -173,6 +174,14 @@ export function WorkspaceToolbar({
         (proposal) => proposal.proposalId === selectedReviewSession.activeProposalId
       )
     : undefined;
+  // A review copy is someone else's CV: what you send back is a proposal, and a
+  // review link from it would start a review of a review copy.
+  const isReviewCopy = Boolean(
+    selectedFile &&
+      selectedReviewSession &&
+      sessionRole(selectedReviewSession) === 'reviewer' &&
+      selectedReviewSession.linkedFileId === selectedFile.id
+  );
   const canStartReview = Boolean(selectedFile && fileSections && !selectedReviewSession && !isReadOnly);
   const canSendProposal = Boolean(
     selectedFile &&
@@ -217,6 +226,12 @@ export function WorkspaceToolbar({
 
   async function copyReviewLink() {
     if (!selectedFile || !fileSections) {
+      return;
+    }
+    if (isReviewCopy) {
+      toast.error('This is a review copy of someone else\'s CV.', {
+        description: 'Send your changes back to its author with Send proposal instead.'
+      });
       return;
     }
 
@@ -817,6 +832,7 @@ export function WorkspaceToolbar({
           canPreviewActions={canPreviewActions}
           canReviewActions={canSendProposal}
           canStartReview={canStartReview}
+          isReviewCopy={isReviewCopy}
           onStartReview={startReview}
           fileName={selectedFile?.name}
           onCopyMarkdown={() => void copyCvMarkdown()}
@@ -1008,6 +1024,8 @@ export function WorkspaceToolbar({
           menuOpen={shareMenuOpen}
           onCopyPdfLink={() => void copyPdfLink()}
           onCopyReviewLink={() => void copyReviewLink()}
+          isReviewCopy={isReviewCopy}
+          onSendProposal={() => setReviewerDialogOpen(true)}
           onCopyShareLink={() => void copyShareLink()}
           onMenuOpenChange={setShareMenuOpen}
           onOpenShareDialog={() => setDownloadDialogOpen(true)}
@@ -1060,6 +1078,7 @@ export function WorkspaceToolbar({
         canPreviewActions={canPreviewActions}
         canReviewActions={canSendProposal}
         canStartReview={canStartReview}
+        isReviewCopy={isReviewCopy}
         onStartReview={startReview}
         fileName={selectedFile?.name}
         onCopyMarkdown={() => void copyCvMarkdown()}
@@ -1226,11 +1245,15 @@ function ShareComboButton({
   onCopyShareLink,
   onMenuOpenChange,
   onOpenShareDialog,
-  onSharePdf
+  onSharePdf,
+  isReviewCopy = false,
+  onSendProposal
 }: {
   tutorialId?: string;
   disabled?: boolean;
   menuOpen: boolean;
+  isReviewCopy?: boolean;
+  onSendProposal?: () => void;
   onCopyPdfLink: () => void | Promise<void>;
   onCopyReviewLink: () => void | Promise<void>;
   onCopyShareLink: () => void | Promise<void>;
@@ -1293,14 +1316,25 @@ function ShareComboButton({
             void onCopyShareLink();
           }}
         />
-        <ToolbarMenuItem
-          icon={<GitCompareArrows className="size-4" />}
-          label="Copy review link"
-          onClick={() => {
-            onMenuOpenChange(false);
-            void onCopyReviewLink();
-          }}
-        />
+        {isReviewCopy && onSendProposal ? (
+          <ToolbarMenuItem
+            icon={<Send className="size-4" />}
+            label="Send proposal"
+            onClick={() => {
+              onMenuOpenChange(false);
+              onSendProposal();
+            }}
+          />
+        ) : (
+          <ToolbarMenuItem
+            icon={<GitCompareArrows className="size-4" />}
+            label="Copy review link"
+            onClick={() => {
+              onMenuOpenChange(false);
+              void onCopyReviewLink();
+            }}
+          />
+        )}
         <ToolbarMenuItem
           icon={<FileDown className="size-4" />}
           label="Copy PDF download link"
@@ -1488,8 +1522,10 @@ function DownloadShareDialog({
   sendProposalLabel,
   open,
   canStartReview = false,
-  onStartReview
+  onStartReview,
+  isReviewCopy = false
 }: {
+  isReviewCopy?: boolean;
   canLinkActions: boolean;
   canPreviewActions: boolean;
   canReviewActions: boolean;
@@ -1586,8 +1622,12 @@ function DownloadShareDialog({
                   title={t('toolbar.copyShareLink')}
                 />
                 <DialogActionButton
-                  description="Copy an editable copy. The recipient can make changes and send a proposal back."
-                  disabled={!canLinkActions}
+                  description={
+                    isReviewCopy
+                      ? "This is a review copy of someone else's CV. Send your changes back with Send proposal below."
+                      : 'Copy an editable copy. The recipient can make changes and send a proposal back.'
+                  }
+                  disabled={!canLinkActions || isReviewCopy}
                   icon={<GitCompareArrows className="size-4" />}
                   onClick={onCopyReviewLink}
                   title={t('review.copyLink')}
