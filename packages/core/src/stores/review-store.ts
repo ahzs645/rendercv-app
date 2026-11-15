@@ -216,10 +216,18 @@ export class ReviewStore {
     // reviewer's copy of it share a thread id (and, in one browser, can share a
     // fingerprint), and must never be merged into one session.
     const sameRole = (session: ReviewSession) => sessionRole(session) === role;
+    // A reviewer sent a newer version of the CV (a second round, after the
+    // author applied the first) starts a new review of that version. Reusing
+    // the old one kept its old original, so the author's own applied changes
+    // came back as the reviewer's, and moved the old review copy's session.
+    const sameVersion = (session: ReviewSession) =>
+      role !== 'reviewer' || session.rootFingerprint === rootFingerprint;
     const existing =
       (options.linkedFileId ? this.findByLinkedFileId(options.linkedFileId) : undefined) ??
       (options.threadId
-        ? this.sessions.find((session) => session.threadId === options.threadId && sameRole(session))
+        ? this.sessions.find(
+            (session) => session.threadId === options.threadId && sameRole(session) && sameVersion(session)
+          )
         : undefined) ??
       this.sessions.find(
         (session) => session.rootFingerprint === rootFingerprint && sameRole(session)

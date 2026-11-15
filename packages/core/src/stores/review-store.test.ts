@@ -355,3 +355,25 @@ describe('review comments', () => {
     expect(author.getSession(authorSession.sessionId)!.proposals[0]!.comments![0]).not.toHaveProperty('resolution');
   });
 });
+
+describe('second review round', () => {
+  const v1 = { cv: 'cv:\n  name: A\n', design: 'design:\n  theme: classic\n', locale: 'locale:\n  language: english\n', settings: 'settings: {}\n' };
+  const v2 = { ...v1, cv: 'cv:\n  name: A B\n' };
+
+  it('starts a new reviewer session for a newer version of the same CV, and keeps the first one', () => {
+    const store = new ReviewStore();
+    const first = store.ensureSession({ linkedFileId: 'copy-1', baseFileName: 'CV', rootBaselineSections: v1, threadId: 't1', role: 'reviewer' });
+    const second = store.ensureSession({ linkedFileId: 'copy-2', baseFileName: 'CV', rootBaselineSections: v2, threadId: 't1', role: 'reviewer' });
+    expect(second.sessionId).not.toBe(first.sessionId);
+    expect(second.rootBaselineSections).toEqual(v2);
+    expect(second.threadId).toBe('t1');
+    expect(store.getSession(first.sessionId)!.linkedFileId).toBe('copy-1');
+  });
+
+  it('still reuses the session when the same version is opened again', () => {
+    const store = new ReviewStore();
+    const first = store.ensureSession({ linkedFileId: 'copy-1', baseFileName: 'CV', rootBaselineSections: v1, threadId: 't1', role: 'reviewer' });
+    const again = store.ensureSession({ linkedFileId: 'copy-2', baseFileName: 'CV', rootBaselineSections: v1, threadId: 't1', role: 'reviewer' });
+    expect(again.sessionId).toBe(first.sessionId);
+  });
+});
