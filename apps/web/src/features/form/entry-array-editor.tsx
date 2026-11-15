@@ -35,7 +35,8 @@ import {
 } from './schema/entry-templates';
 import type { EntryTemplate, FieldDef } from './schema/types';
 import { FieldControl } from './field-controls';
-import { DiffScopeProvider } from './diff-context';
+import { DiffScopeProvider, FieldScopeProvider } from './diff-context';
+import { CommentTarget } from '../review/review-annotations';
 import { MobileReorderControls, TextRow, Divider } from './primitives';
 import {
   asRecord,
@@ -391,11 +392,23 @@ function SortableEntryArrayItem({
             also cleared are `sm:inline` only, so none of it applied on mobile. */}
         <div className={`pl-10 sm:pr-12 sm:pl-0 ${isHidden ? 'opacity-45' : ''}`}>
           {template === 'text' ? (
-            <TextRow
-              value={typeof entry === 'string' ? entry : ''}
-              onChange={(nextValue) => onChange(index, nextValue)}
-              placeholder="Enter text..."
-            />
+            originPath ? (
+              <FieldScopeProvider path={[...originPath, index]}>
+                <CommentTarget>
+                  <TextRow
+                    value={typeof entry === 'string' ? entry : ''}
+                    onChange={(nextValue) => onChange(index, nextValue)}
+                    placeholder="Enter text..."
+                  />
+                </CommentTarget>
+              </FieldScopeProvider>
+            ) : (
+              <TextRow
+                value={typeof entry === 'string' ? entry : ''}
+                onChange={(nextValue) => onChange(index, nextValue)}
+                placeholder="Enter text..."
+              />
+            )
           ) : originPath ? (
             <DiffScopeProvider path={[...originPath, index]}>
               <TemplateEntryFields

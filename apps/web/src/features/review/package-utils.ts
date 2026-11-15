@@ -1,5 +1,11 @@
 import createWebShareEngine from '@firstform/json-url/web-share';
-import type { CvFileSections, ReviewProposalPackage } from '@rendercv/contracts';
+import type {
+  CvFileSections,
+  ReviewComment,
+  ReviewCommentKind,
+  ReviewCommentReply,
+  ReviewProposalPackage
+} from '@rendercv/contracts';
 import { downloadBlob } from '../viewer/download';
 
 const REVIEW_PACKAGE_EXTENSION = '.rendercv.review.json';
@@ -109,6 +115,66 @@ function isSections(value: unknown): value is CvFileSections {
   );
 }
 
+const COMMENT_KINDS: ReviewCommentKind[] = ['comment', 'suggestion', 'confirm', 'missing', 'structure', 'layout'];
+const ANCHOR_SECTIONS = ['cv', 'design', 'locale', 'settings'] as const;
+const RESOLUTIONS = ['confirmed', 'corrected', 'not_applicable'] as const;
+
+function optionalString(value: unknown, max = 4000) {
+  return typeof value === 'string' && value.length > 0 ? value.slice(0, max) : undefined;
+}
+
+function validateReply(value: unknown): ReviewCommentReply | null {
+  if (!isRecord(value) || typeof value.body !== 'string') return null;
+  return {
+    id: typeof value.id === 'string' ? value.id : crypto.randomUUID(),
+    author: typeof value.author === 'string' ? value.author.slice(0, 200) : '',
+    body: value.body.slice(0, 4000),
+    createdAt: typeof value.createdAt === 'number' ? value.createdAt : Date.now()
+  };
+}
+
+/**
+ * Comments arrive from someone else's browser: keep only well-formed ones and
+ * only the fields the app knows, rather than rejecting the whole proposal.
+ */
+export function validateReviewComments(value: unknown): ReviewComment[] {
+  if (!Array.isArray(value)) return [];
+  const comments: ReviewComment[] = [];
+  for (const entry of value.slice(0, 500)) {
+    if (!isRecord(entry) || !isRecord(entry.anchor) || typeof entry.body !== 'string') continue;
+    const anchor = entry.anchor;
+    const section = ANCHOR_SECTIONS.find((key) => key === anchor.section);
+    if (!section || !Array.isArray(anchor.path)) continue;
+    const path = anchor.path.filter(
+      (segment): segment is string | number => typeof segment === 'string' || typeof segment === 'number'
+    );
+    if (path.length !== anchor.path.length) continue;
+    const kind = COMMENT_KINDS.find((candidate) => candidate === entry.kind) ?? 'comment';
+    const resolution = RESOLUTIONS.find((candidate) => candidate === entry.resolution);
+    comments.push({
+      id: typeof entry.id === 'string' ? entry.id : crypto.randomUUID(),
+      kind,
+      anchor: {
+        section,
+        path,
+        ...(optionalString(anchor.quote) ? { quote: optionalString(anchor.quote) } : {}),
+        ...(optionalString(anchor.text) ? { text: optionalString(anchor.text) } : {}),
+        ...(optionalString(anchor.label, 300) ? { label: optionalString(anchor.label, 300) } : {})
+      },
+      body: entry.body.slice(0, 4000),
+      ...(optionalString(entry.suggestion) ? { suggestion: optionalString(entry.suggestion) } : {}),
+      author: typeof entry.author === 'string' ? entry.author.slice(0, 200) : '',
+      createdAt: typeof entry.createdAt === 'number' ? entry.createdAt : Date.now(),
+      status: entry.status === 'resolved' ? 'resolved' : 'open',
+      ...(resolution ? { resolution } : {}),
+      replies: Array.isArray(entry.replies)
+        ? entry.replies.map(validateReply).filter((reply): reply is ReviewCommentReply => reply !== null)
+        : []
+    });
+  }
+  return comments;
+}
+
 export function validateReviewProposalPackage(value: unknown): ReviewProposalPackage {
   if (!isRecord(value)) {
     throw new Error('Invalid review proposal payload.');
@@ -141,6 +207,9 @@ export function validateReviewProposalPackage(value: unknown): ReviewProposalPac
     proposedSections: value.proposedSections,
     reviewerName: value.reviewerName,
     ...(value.note ? { note: value.note } : {}),
+    ...(Array.isArray(value.comments) && value.comments.length
+      ? { comments: validateReviewComments(value.comments) }
+      : {}),
     createdAt: value.createdAt
   };
 }

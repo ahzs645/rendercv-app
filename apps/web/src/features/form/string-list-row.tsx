@@ -18,6 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Plus, X } from 'lucide-react';
 import type { FieldDef } from './schema/types';
+import { ReviewItemMarker, useReviewMarkersEnabled } from '../review/review-annotations';
 import { MobileReorderControls, TextRow } from './primitives';
 import { toKeySlug } from '@rendercv/core';
 
@@ -80,6 +81,7 @@ function SortableStringItem({
     transition,
     isDragging
   } = useSortable({ id });
+  const reviewMarkers = useReviewMarkersEnabled();
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -98,7 +100,10 @@ function SortableStringItem({
       transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
     >
       {/* Gutter only from `sm` up — see the note in entry-array-editor.tsx. */}
-      <div className="form-item-wrapper relative border-b border-border/25 last:border-b-0 sm:-mx-7 sm:px-7">
+      <div
+        className="form-item-wrapper relative border-b border-border/25 last:border-b-0 sm:-mx-7 sm:px-7"
+        data-review-item-index={index}
+      >
         <div
           ref={setActivatorNodeRef}
           {...listeners}
@@ -120,7 +125,8 @@ function SortableStringItem({
         >
           <X className="size-4 sm:size-3" />
         </button>
-        <div className="pr-11 pl-10 sm:pr-7 sm:pl-0">
+        <ReviewItemMarker index={index} text={item} />
+        <div className={`pl-10 sm:pl-0 ${reviewMarkers ? 'pr-20 sm:pr-14' : 'pr-11 sm:pr-7'}`}>
           <TextRow
             ariaLabel={`Item ${index + 1}`}
             value={item}

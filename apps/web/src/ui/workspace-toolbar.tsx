@@ -53,6 +53,15 @@ import {
   ReviewProposalTooLargeError
 } from '../features/review/package-utils';
 import { ReviewerNameDialog } from '../features/review/reviewer-name-dialog';
+import type { ProposalReadyState } from '../features/review/proposal-ready-dialog';
+
+// Review-only code: loaded when a proposal is created or opened, not up front.
+const ProposalReadyDialog = lazy(() =>
+  import('../features/review/proposal-ready-dialog').then((module) => ({ default: module.ProposalReadyDialog }))
+);
+const prepareProposalReadyState = async (
+  ...args: Parameters<typeof import('../features/review/proposal-ready-dialog').prepareProposalReadyState>
+) => (await import('../features/review/proposal-ready-dialog')).prepareProposalReadyState(...args);
 import {
   buildProposalPackageFromSession,
   importReviewProposalIntoSession,
@@ -160,6 +169,7 @@ export function WorkspaceToolbar({
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [reviewerDialogOpen, setReviewerDialogOpen] = useState(false);
+  const [readyState, setReadyState] = useState<ProposalReadyState | null>(null);
   const showMobileEditorControls = mobilePane === 'editor';
   const hasSharedOrigin = Boolean(selectedFile?.sharedOrigin);
   const selectedReviewSession = selectedFile
@@ -230,7 +240,7 @@ export function WorkspaceToolbar({
     }
     if (isReviewCopy) {
       toast.error('This is a review copy of someone else\'s CV.', {
-        description: 'Send your changes back to its author with Send proposal instead.'
+        description: 'Create a proposal to pass your changes back to its author instead.'
       });
       return;
     }
@@ -460,14 +470,34 @@ export function WorkspaceToolbar({
     }
   }
 
-  // The review banner above the editor asks for the send-proposal dialog.
+  // The review banner above the editor asks for the create-proposal dialog,
+  // or for the proposal created last.
   useEffect(() => {
     const open = () => {
       if (canSendProposal) setReviewerDialogOpen(true);
     };
+    const show = () => {
+      if (!selectedReviewSession) return;
+      const latest = [...selectedReviewSession.proposals].sort((left, right) => right.createdAt - left.createdAt)[0];
+      const proposalPackage = latest
+        ? buildProposalPackageFromSession(selectedReviewSession.sessionId, latest.proposalId)
+        : null;
+      if (proposalPackage) {
+        void prepareProposalReadyState(proposalPackage, false).then(setReadyState);
+      }
+    };
     window.addEventListener('rendercv:send-proposal', open);
-    return () => window.removeEventListener('rendercv:send-proposal', open);
-  }, [canSendProposal]);
+    window.addEventListener('rendercv:show-proposal', show);
+    return () => {
+      window.removeEventListener('rendercv:send-proposal', open);
+      window.removeEventListener('rendercv:show-proposal', show);
+    };
+  }, [canSendProposal, selectedReviewSession]);
+
+  const draftCommentCount = selectedReviewSession?.comments?.length ?? 0;
+  const proposalDialogDescription =
+    `Packages your edits${draftCommentCount ? `, your ${draftCommentCount} comment${draftCommentCount === 1 ? '' : 's'}` : ''} and an optional note into a proposal. ` +
+    'Nothing is sent: you get a link and a file to pass to the author yourself.';
 
   function startReview() {
     if (!selectedFile || !fileSections || selectedReviewSession) {
@@ -476,7 +506,7 @@ export function WorkspaceToolbar({
 
     startReviewForFile(selectedFile.id);
     toast.success(`Reviewing "${selectedFile.name}".`, {
-      description: 'Edit the CV, then use Send proposal to share your changes back with its author.'
+      description: 'Edit the CV and comment on it, then create a proposal to pass back to its author.'
     });
   }
 
@@ -521,16 +551,11 @@ export function WorkspaceToolbar({
     });
 
     try {
-      const url = await buildReviewProposalUrl(proposalPackage);
-      await navigator.clipboard.writeText(url);
-      toast.success(activeReviewProposal ? 'Updated proposal link copied.' : 'Review proposal link copied.');
+      // Show what was made and how to pass it on, instead of a toast that
+      // read as if the app had delivered it.
+      setReadyState(await prepareProposalReadyState(proposalPackage, true));
     } catch (error) {
-      if (error instanceof ReviewProposalTooLargeError) {
-        await exportReviewProposalPackage(proposalPackage);
-        toast.warning('Proposal was too large for a link, so a review package file was downloaded instead.');
-      } else {
-        toast.error(error instanceof Error ? error.message : 'Failed to create review proposal.');
-      }
+      toast.error(error instanceof Error ? error.message : 'Failed to create review proposal.');
     } finally {
       setReviewerDialogOpen(false);
     }
@@ -853,7 +878,7 @@ export function WorkspaceToolbar({
             setReviewerDialogOpen(true);
           }}
           onSharePdf={() => void sharePdf()}
-          sendProposalLabel={activeReviewProposal ? 'Send updated proposal' : 'Send proposal'}
+          sendProposalLabel={activeReviewProposal ? 'Create updated proposal' : 'Create proposal'}
           open={downloadDialogOpen}
         />
         {hasSharedOrigin && sections && selectedFile?.sharedOrigin ? (
@@ -865,14 +890,19 @@ export function WorkspaceToolbar({
           />
         ) : null}
         <ReviewerNameDialog
-          confirmLabel={activeReviewProposal ? 'Forward proposal' : 'Send proposal'}
-          description="Add the name that should appear on the review proposal package."
+          confirmLabel={activeReviewProposal ? 'Create updated proposal' : 'Create proposal'}
+          description={proposalDialogDescription}
           initialName={preferences.reviewDisplayName}
           onConfirm={(name, note) => void handleReviewerConfirm(name, note)}
           onOpenChange={setReviewerDialogOpen}
           open={reviewerDialogOpen}
-          title={t('review.reviewerName')}
+          title={activeReviewProposal ? 'Create updated proposal' : 'Create proposal'}
         />
+        {readyState ? (
+          <Suspense fallback={null}>
+            <ProposalReadyDialog onOpenChange={(open) => (!open ? setReadyState(null) : undefined)} state={readyState} />
+          </Suspense>
+        ) : null}
       </div>
     );
   }
@@ -1099,7 +1129,7 @@ export function WorkspaceToolbar({
           setReviewerDialogOpen(true);
         }}
         onSharePdf={() => void sharePdf()}
-        sendProposalLabel={activeReviewProposal ? 'Send updated proposal' : 'Send proposal'}
+        sendProposalLabel={activeReviewProposal ? 'Create updated proposal' : 'Create proposal'}
         open={downloadDialogOpen}
       />
       {hasSharedOrigin && sections && selectedFile?.sharedOrigin ? (
@@ -1111,14 +1141,19 @@ export function WorkspaceToolbar({
         />
       ) : null}
       <ReviewerNameDialog
-        confirmLabel={activeReviewProposal ? 'Forward proposal' : 'Send proposal'}
-        description="Add the name that should appear on the review proposal package."
+        confirmLabel={activeReviewProposal ? 'Create updated proposal' : 'Create proposal'}
+        description={proposalDialogDescription}
         initialName={preferences.reviewDisplayName}
         onConfirm={(name, note) => void handleReviewerConfirm(name, note)}
         onOpenChange={setReviewerDialogOpen}
         open={reviewerDialogOpen}
-        title={t('review.reviewerName')}
+        title={activeReviewProposal ? 'Create updated proposal' : 'Create proposal'}
       />
+      {readyState ? (
+          <Suspense fallback={null}>
+            <ProposalReadyDialog onOpenChange={(open) => (!open ? setReadyState(null) : undefined)} state={readyState} />
+          </Suspense>
+        ) : null}
     </div>
   );
 }
@@ -1319,7 +1354,7 @@ function ShareComboButton({
         {isReviewCopy && onSendProposal ? (
           <ToolbarMenuItem
             icon={<Send className="size-4" />}
-            label="Send proposal"
+            label="Create proposal"
             onClick={() => {
               onMenuOpenChange(false);
               onSendProposal();
@@ -1624,7 +1659,7 @@ function DownloadShareDialog({
                 <DialogActionButton
                   description={
                     isReviewCopy
-                      ? "This is a review copy of someone else's CV. Send your changes back with Send proposal below."
+                      ? "This is a review copy of someone else's CV. Pass your changes back with Create proposal below."
                       : 'Copy an editable copy. The recipient can make changes and send a proposal back.'
                   }
                   disabled={!canLinkActions || isReviewCopy}
@@ -1672,7 +1707,7 @@ function DownloadShareDialog({
                   />
                 ) : null}
                 <DialogActionButton
-                  description="Package the current edits as a proposal and copy a link when it fits."
+                  description="Package your edits, note and comments as a proposal. Nothing is sent: you get a link and a file to pass on."
                   disabled={!canReviewActions}
                   icon={<Send className="size-4" />}
                   onClick={onSendProposal}

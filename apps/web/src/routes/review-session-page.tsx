@@ -8,6 +8,7 @@ import {
   Download,
   EllipsisVertical,
   GitCompareArrows,
+  MessageSquare,
   MessageSquareQuote,
   Pencil,
   Send,
@@ -16,6 +17,7 @@ import {
 import YAML from 'yaml';
 import {
   fileStore,
+  openComments,
   preferencesStore,
   readLocaleName,
   proposalBaseline,
@@ -25,14 +27,19 @@ import {
   reviewStore
 } from '@rendercv/core';
 import { toast } from 'sonner';
-import type { CvFileSections } from '@rendercv/contracts';
+import type { CvFileSections, ReviewComment } from '@rendercv/contracts';
 import type { ReviewProposal } from '@rendercv/core';
 import {
   applyAcceptedReviewChanges,
   computeReviewSectionChanges,
   rebaseAcceptedReviewChanges,
+  type ReviewChange,
+  type ReviewChangeGroup,
   type ReviewConflict
 } from '../features/review/review-diff';
+import { buildCommentsMarkdown, commentTouchesPath, COMMENT_KIND_LABELS, locateComment } from '../features/review/review-comments';
+import { CommentCard } from '../features/review/comment-card';
+import { downloadCommentsMarkdown } from '../features/review/review-annotations';
 import { ReviewerNameDialog } from '../features/review/reviewer-name-dialog';
 import {
   buildReviewProposalUrl,
@@ -60,12 +67,14 @@ export function ReviewSessionPage() {
   const [nameAction, setNameAction] = useState<'forward' | null>(null);
   const [proposalPane, setProposalPane] = useState<'proposed' | 'merged'>('proposed');
   const [mobilePane, setMobilePane] = useState<MobilePane>('changes');
-  // Which resume the accepted changes go into when the proposal did not link
-  // to one automatically ('' = pick the default, 'new' = create a new CV).
+  // Which resume the accepted changes go into ('' = the linked CV, or the
+  // default when the proposal did not link to one; 'new' = create a new CV).
   const [targetChoice, setTargetChoice] = useState('');
   // Conflicting field edits the author chose to overwrite with the reviewer's
   // value. Kept per page visit: it is a decision about the resume as it is now.
   const [forcedChangeIds, setForcedChangeIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [changeFilter, setChangeFilter] = useState<ChangeFilter>('all');
+  const [noteExpanded, setNoteExpanded] = useState(false);
 
   // Each proposal is diffed against the version its reviewer was sent.
   const activeBaseline =
@@ -98,13 +107,23 @@ export function ReviewSessionPage() {
   const targetCandidates = fileSnapshot.files.filter(
     (file) => !file.isReadOnly && file.id !== mergeDraftId
   );
+  // A reviewer's own copy of a CV has the same name as the CV, and once was
+  // picked as the place to apply a proposal it had produced. Never default to
+  // one, and say which it is in the list.
+  const reviewCopyIds = new Set(
+    reviewSnapshot.sessions
+      .filter((entry) => sessionRole(entry) === 'reviewer' && entry.linkedFileId)
+      .map((entry) => entry.linkedFileId!)
+  );
   const defaultTarget =
-    linkedFile ?? targetCandidates.find((file) => file.name === session?.baseFileName);
-  const targetFile = linkedFile
-    ? linkedFile
-    : targetChoice === 'new'
-      ? undefined
-      : (targetCandidates.find((file) => file.id === targetChoice) ?? defaultTarget);
+    linkedFile ??
+    targetCandidates.find((file) => file.name === session?.baseFileName && !reviewCopyIds.has(file.id));
+  const targetFile =
+    targetChoice === ''
+      ? defaultTarget
+      : targetChoice === 'new'
+        ? undefined
+        : (targetCandidates.find((file) => file.id === targetChoice) ?? defaultTarget);
 
   // Accepted changes applied on top of the target resume as it is now, so
   // edits the author made after sending the review are kept.
@@ -141,6 +160,49 @@ export function ReviewSessionPage() {
       alreadyAppliedIds: new Set(alreadyApplied.map((change) => change.id))
     };
   }, [activeBaseline, reviewChanges, targetFile]);
+
+  // Comments are read against the proposal: that is the text the reviewer
+  // commented on.
+  const proposalComments = activeProposal?.comments ?? [];
+  const locatedComments = useMemo(
+    () =>
+      activeProposal
+        ? (activeProposal.comments ?? []).map((comment) => ({
+            comment,
+            location: locateComment(activeProposal.proposedSections, comment.anchor)
+          }))
+        : [],
+    [activeProposal]
+  );
+  const openCommentCount = locatedComments.filter(({ comment }) => comment.status === 'open').length;
+
+  function commentsForChange(change: ReviewChange) {
+    // Text changes: match on the wording itself. Change paths count list items
+    // as they were in the original, comment paths as they are in the proposal,
+    // so after a combine or move the same position is a different bullet.
+    if (typeof change.proposedValue === 'string' || typeof change.baselineValue === 'string') {
+      if (change.kind === 'rename') return [];
+      return locatedComments.filter(
+        ({ comment, location }) =>
+          comment.anchor.section === change.section &&
+          ((typeof change.proposedValue === 'string' && location.currentText === change.proposedValue) ||
+            (change.kind === 'remove' && location.status === 'missing' && comment.anchor.text === change.baselineValue))
+      );
+    }
+    // Inside a renamed section the reviewer's comments carry the new key.
+    const renamedKey =
+      change.section === 'cv' && change.path[0] === 'sections' && change.path.length >= 2
+        ? renamedSectionKeys.get(String(change.path[1]))
+        : undefined;
+    const paths = [change.path, ...(renamedKey ? [['sections', renamedKey, ...change.path.slice(2)]] : [])];
+    // A section rename or a reorder is about the container, not what is in it.
+    const containerOnly = change.kind === 'rename' || change.kind === 'reorder';
+    return locatedComments.filter(({ comment, location }) => {
+      if (containerOnly && location.path.length > change.path.length) return false;
+      const located = { ...comment, anchor: { ...comment.anchor, path: location.path } };
+      return paths.some((path) => commentTouchesPath(located, change.section, path));
+    });
+  }
 
   function setForced(changeId: string, forced: boolean) {
     setForcedChangeIds((current) => {
@@ -214,6 +276,12 @@ export function ReviewSessionPage() {
     );
   }
 
+  const renamedSectionKeys = new Map(
+    reviewChanges
+      .flatMap((section) => section.changes)
+      .filter((change) => change.kind === 'rename')
+      .map((change) => [String(change.baselineValue), String(change.proposedValue)])
+  );
   const totalCount = reviewChanges.reduce((sum, section) => sum + section.changes.length, 0);
   const currentChangeIds = new Set(
     reviewChanges.flatMap((section) => section.changes.map((change) => change.id))
@@ -226,6 +294,45 @@ export function ReviewSessionPage() {
   const pendingCount = totalCount - acceptedCount - rejectedCount;
   // An applied or rejected proposal is history: viewable, not decidable.
   const readOnly = Boolean(activeProposal?.outcome);
+  const noteIsLong = Boolean(activeProposal?.note && (activeProposal.note.length > 320 || activeProposal.note.split('\n').length > 5));
+  const commentTarget = { sessionId: currentSession.sessionId, proposalId: activeProposal?.proposalId };
+
+  function matchesFilter(change: ReviewChange, filter: ChangeFilter) {
+    switch (filter) {
+      case 'pending':
+        return !activeProposal?.decisionStates[change.id];
+      case 'wording':
+        return change.kind === 'set' && !change.group;
+      case 'structure':
+        return change.kind === 'rename' || change.kind === 'reorder' || Boolean(change.group) || Boolean(change.related?.length) || change.kind === 'add' || change.kind === 'remove';
+      case 'conflicts':
+        return conflictsById.has(change.id);
+      case 'comments':
+        return commentsForChange(change).some(({ comment }) => comment.status === 'open');
+      default:
+        return true;
+    }
+  }
+  const allChanges = reviewChanges.flatMap((section) => section.changes);
+  const filterCounts = Object.fromEntries(
+    CHANGE_FILTERS.map((option) => [option.key, allChanges.filter((change) => matchesFilter(change, option.key)).length])
+  ) as Record<ChangeFilter, number>;
+
+  async function handleExportOpenComments() {
+    if (!activeProposal) return;
+    const markdown = buildCommentsMarkdown({
+      title: `${currentSession.baseFileName} — review comments`,
+      comments: activeProposal.comments ?? [],
+      sections: activeProposal.proposedSections,
+      context: [
+        `Reviewer: ${activeProposal.reviewerName}`,
+        `Proposal created ${new Date(activeProposal.createdAt).toLocaleString()}`,
+        ''
+      ]
+    });
+    await downloadCommentsMarkdown(markdown, currentSession.baseFileName);
+    toast.success('Open comments downloaded.');
+  }
   const resolveLabel =
     acceptedCount > 0
       ? `Apply ${acceptedCount} accepted change${acceptedCount === 1 ? '' : 's'}`
@@ -427,7 +534,7 @@ export function ReviewSessionPage() {
             <p className="text-sm text-muted-foreground">
               {activeProposal
                 ? `${activeProposal.reviewerName} proposed ${totalCount} change${totalCount === 1 ? '' : 's'}.`
-                : 'This review session is resolved locally.'}
+                : 'No proposal is open. Pick one from the list to look at it.'}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -514,7 +621,16 @@ export function ReviewSessionPage() {
                           icon: <Pencil className="size-4" />,
                           label: 'Edit further',
                           onClick: handleEditFurther
-                        }
+                        },
+                        ...(openCommentCount > 0
+                          ? [
+                              {
+                                icon: <Download className="size-4" />,
+                                label: 'Export open comments',
+                                onClick: () => void handleExportOpenComments()
+                              }
+                            ]
+                          : [])
                       ]
                     : []),
                   ...(currentSession.archivedHistory.length > 0
@@ -532,31 +648,70 @@ export function ReviewSessionPage() {
           </div>
         </div>
         {activeProposal ? (
-          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-3 text-sm sm:px-6">
-            {linkedFile ? (
-              <p className="text-muted-foreground">
-                Applies to <span className="font-medium text-foreground">{linkedFile.name}</span>.
-              </p>
-            ) : (
-              <label className="flex flex-wrap items-center gap-2 text-muted-foreground">
-                <span>
-                  This proposal didn&apos;t match a resume here exactly. Apply accepted changes to
-                </span>
-                <select
-                  aria-label="Resume to apply the review to"
-                  className="rounded-lg border border-border bg-background px-2 py-1 text-sm text-foreground"
-                  onChange={(event) => setTargetChoice(event.target.value)}
-                  value={targetFile?.id ?? 'new'}
-                >
-                  {targetCandidates.map((file) => (
-                    <option key={file.id} value={file.id}>
-                      {file.name}
-                    </option>
-                  ))}
-                  <option value="new">A new CV ({currentSession.baseFileName})</option>
-                </select>
-              </label>
-            )}
+          <div className="mx-auto max-w-[1600px] space-y-2 px-4 pb-3 sm:px-6">
+            {/* What is being compared, and where accepted changes will go,
+                named the same way everywhere. */}
+            <dl className="grid gap-2 text-xs sm:grid-cols-3" data-testid="review-identities">
+              <div className="rounded-xl border border-border bg-background px-3 py-2">
+                <dt className="font-medium text-muted-foreground">Original snapshot</dt>
+                <dd className="mt-0.5 text-foreground">
+                  The version {activeProposal.reviewerName} was sent
+                  {activeProposal.rootBaselineSections
+                    ? ' (a later version than the one this review started from)'
+                    : currentSession.createdAt
+                      ? `, ${formatShortDate(currentSession.createdAt)}`
+                      : ''}
+                </dd>
+              </div>
+              <div className="rounded-xl border border-border bg-background px-3 py-2">
+                <dt className="font-medium text-muted-foreground">Proposal</dt>
+                <dd className="mt-0.5 text-foreground">
+                  {activeProposal.reviewerName}, {formatShortDate(activeProposal.createdAt)} · {totalCount} change
+                  {totalCount === 1 ? '' : 's'}
+                  {proposalComments.length
+                    ? ` · ${proposalComments.length} comment${proposalComments.length === 1 ? '' : 's'} (${openCommentCount} open)`
+                    : ''}
+                  {activeProposal.editedLocally ? ' · edited by you' : ''}
+                </dd>
+              </div>
+              <div className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+                <dt className="font-medium text-muted-foreground">
+                  <label htmlFor="review-apply-target">Apply changes to</label>
+                </dt>
+                <dd className="mt-0.5">
+                  {readOnly ? (
+                    <span className="text-foreground">{linkedFile?.name ?? 'No CV'}</span>
+                  ) : (
+                    <select
+                      aria-label="Resume to apply the review to"
+                      className="w-full rounded-lg border border-border bg-background px-2 py-1 text-sm text-foreground"
+                      id="review-apply-target"
+                      onChange={(event) => setTargetChoice(event.target.value)}
+                      value={targetFile?.id ?? 'new'}
+                    >
+                      {targetCandidates.map((file) => (
+                        <option key={file.id} value={file.id}>
+                          {file.name}
+                          {file.id === linkedFile?.id ? ' (the CV this review is for)' : ''}
+                          {reviewCopyIds.has(file.id) ? ' (a review copy)' : ''}
+                        </option>
+                      ))}
+                      <option value="new">A new CV ({currentSession.baseFileName})</option>
+                    </select>
+                  )}
+                  {!readOnly && !linkedFile ? (
+                    <span className="mt-1 block text-[11px] text-muted-foreground">
+                      This proposal didn&apos;t match a CV here exactly; check this before applying.
+                    </span>
+                  ) : null}
+                  {!readOnly && targetFile && reviewCopyIds.has(targetFile.id) ? (
+                    <span className="mt-1 block text-[11px] text-amber-700 dark:text-amber-300">
+                      This is a review copy, not the author&apos;s CV.
+                    </span>
+                  ) : null}
+                </dd>
+              </div>
+            </dl>
             {rebased?.diverged ? (
               <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
                 {targetFile?.name} differs from the version that was sent for review. Accepted changes
@@ -647,9 +802,17 @@ export function ReviewSessionPage() {
                             </span>
                             <ProposalStatus proposal={proposal} />
                           </span>
-                          {proposal.note ? (
-                            <span className="mt-1 block line-clamp-3 whitespace-pre-wrap text-muted-foreground">
+                          {/* The open proposal's note is shown in full below; an
+                              excerpt here would only repeat it. */}
+                          {proposal.note && !isActive ? (
+                            <span className="mt-1 block line-clamp-2 whitespace-pre-wrap text-muted-foreground">
                               {proposal.note}
+                            </span>
+                          ) : null}
+                          {(proposal.comments?.length ?? 0) > 0 ? (
+                            <span className="mt-1 block text-muted-foreground">
+                              {openComments(proposal.comments).length} open comment
+                              {openComments(proposal.comments).length === 1 ? '' : 's'}
                             </span>
                           ) : null}
                         </button>
@@ -683,9 +846,23 @@ export function ReviewSessionPage() {
                     <p className="text-xs font-medium text-primary">
                       Note from {activeProposal.reviewerName}
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm leading-5 text-foreground">
+                    <p
+                      className={`mt-1 whitespace-pre-wrap text-sm leading-5 text-foreground ${
+                        noteIsLong && !noteExpanded ? 'line-clamp-4' : ''
+                      }`}
+                      data-testid="reviewer-note"
+                    >
                       {activeProposal.note}
                     </p>
+                    {noteIsLong ? (
+                      <button
+                        className="mt-1 text-xs font-medium text-primary hover:underline"
+                        onClick={() => setNoteExpanded((value) => !value)}
+                        type="button"
+                      >
+                        {noteExpanded ? 'Show less' : 'Show the whole note'}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -694,7 +871,7 @@ export function ReviewSessionPage() {
                 <span className="mt-1 block font-medium text-foreground">{resolveHelpText}</span>
               </div>
               {totalCount > 1 && !readOnly ? (
-                <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-xs text-muted-foreground">{totalCount} changes in total</p>
                   <div className="flex items-center gap-2">
                     <button
@@ -728,193 +905,221 @@ export function ReviewSessionPage() {
                   </div>
                 </div>
               ) : null}
+              {totalCount > 0 ? (
+                <div className="mb-4 flex flex-wrap gap-1" data-testid="change-filters" role="tablist">
+                  {CHANGE_FILTERS.map((option) => {
+                    const count = filterCounts[option.key];
+                    if (option.key !== 'all' && count === 0) return null;
+                    return (
+                      <button
+                        aria-selected={changeFilter === option.key}
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                          changeFilter === option.key
+                            ? 'bg-foreground text-background'
+                            : 'border border-border text-foreground hover:bg-accent hover:text-accent-foreground'
+                        }`}
+                        key={option.key}
+                        onClick={() => setChangeFilter(option.key)}
+                        role="tab"
+                        type="button"
+                      >
+                        {option.label} {count}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
               {totalCount === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
                   This proposal matches your original resume — there is nothing to accept or reject.
+                  {proposalComments.length ? ' Its comments are below.' : ''}
                 </div>
               ) : null}
               <div className="space-y-5">
-                {reviewChanges.filter((section) => section.changes.length > 0).map((section) => (
-                  <section key={section.key} className="space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground">{section.label}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {section.changes.length} change{section.changes.length === 1 ? '' : 's'}
-                        </p>
-                      </div>
-                      {section.changes.length > 0 && !readOnly ? (
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                            onClick={() =>
-                              reviewStore.setSectionDecision(
-                                currentSession.sessionId,
-                                activeProposal.proposalId,
-                                section.changes.map((change) => change.id),
-                                'accepted'
-                              )
-                            }
-                            type="button"
-                          >
-                            Accept all
-                          </button>
-                          <button
-                            className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                            onClick={() =>
-                              reviewStore.setSectionDecision(
-                                currentSession.sessionId,
-                                activeProposal.proposalId,
-                                section.changes.map((change) => change.id),
-                                'rejected'
-                              )
-                            }
-                            type="button"
-                          >
-                            Reject all
-                          </button>
+                {reviewChanges.map((section) => {
+                  const units = changeUnits(section.changes.filter((change) => matchesFilter(change, changeFilter)));
+                  if (units.length === 0) return null;
+                  return (
+                    <section key={section.key} className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground">{section.label}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {section.changes.length} change{section.changes.length === 1 ? '' : 's'}
+                          </p>
                         </div>
-                      ) : null}
-                    </div>
-                    <div className="space-y-3">
-                      {section.changes.length ? (
-                        section.changes.map((change) => {
-                          const decision = activeProposal.decisionStates[change.id];
-                          const conflict = conflictsById.get(change.id);
-                          const forced = forcedChangeIds.has(change.id);
-                          const diffTokens =
-                            change.kind === 'set'
-                              ? diffWords(
-                                  formatReviewValue(change.baselineValue),
-                                  formatReviewValue(change.proposedValue)
+                        {!readOnly ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                              onClick={() =>
+                                reviewStore.setSectionDecision(
+                                  currentSession.sessionId,
+                                  activeProposal.proposalId,
+                                  section.changes.map((change) => change.id),
+                                  'accepted'
                                 )
-                              : null;
+                              }
+                              type="button"
+                            >
+                              Accept all
+                            </button>
+                            <button
+                              className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                              onClick={() =>
+                                reviewStore.setSectionDecision(
+                                  currentSession.sessionId,
+                                  activeProposal.proposalId,
+                                  section.changes.map((change) => change.id),
+                                  'rejected'
+                                )
+                              }
+                              type="button"
+                            >
+                              Reject all
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="space-y-3">
+                        {units.map((unit) => {
+                          const renderChange = (change: ReviewChange, decidable: boolean) => (
+                            <ChangeCard
+                              alreadyApplied={alreadyAppliedIds.has(change.id)}
+                              change={change}
+                              comments={commentsForChange(change).map(({ comment }) => comment)}
+                              conflict={conflictsById.get(change.id)}
+                              decidable={decidable && !readOnly}
+                              decision={activeProposal.decisionStates[change.id]}
+                              forced={forcedChangeIds.has(change.id)}
+                              key={change.id}
+                              onDecide={(decision) =>
+                                reviewStore.setProposalDecision(
+                                  currentSession.sessionId,
+                                  activeProposal.proposalId,
+                                  change.id,
+                                  decision
+                                )
+                              }
+                              onToggleForce={() => {
+                                const forced = forcedChangeIds.has(change.id);
+                                setForced(change.id, !forced);
+                                if (!forced) {
+                                  reviewStore.setProposalDecision(
+                                    currentSession.sessionId,
+                                    activeProposal.proposalId,
+                                    change.id,
+                                    'accepted'
+                                  );
+                                }
+                              }}
+                            />
+                          );
+                          if (unit.type === 'change') return renderChange(unit.change, true);
+                          const ids = unit.changes.map((change) => change.id);
+                          const decisions = ids.map((id) => activeProposal.decisionStates[id]);
+                          const groupDecision = decisions.every((value) => value === 'accepted')
+                            ? 'accepted'
+                            : decisions.every((value) => value === 'rejected')
+                              ? 'rejected'
+                              : undefined;
                           return (
                             <article
-                              key={change.id}
-                              className={`rounded-2xl border bg-card px-4 py-3 ${
-                                conflict ? 'border-amber-400 dark:border-amber-500/60' : 'border-border'
-                              }`}
-                              data-conflict={conflict ? 'true' : undefined}
+                              className="rounded-2xl border border-primary/25 bg-primary/[0.03] p-3"
+                              data-testid="change-group"
+                              key={unit.group.id}
                             >
-                              <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start justify-between gap-3 px-1 pb-2">
                                 <div className="min-w-0">
-                                  <p className="text-sm font-medium text-foreground">{change.label}</p>
-                                  {change.entryLabel ? (
-                                    <p className="truncate text-xs text-muted-foreground">{change.entryLabel}</p>
-                                  ) : change.detail ? (
-                                    <p className="truncate text-xs text-muted-foreground">{change.detail}</p>
-                                  ) : null}
-                                </div>
-                                <div className="flex shrink-0 flex-col items-end gap-1">
-                                  <DecisionBadge decision={decision} />
-                                  {conflict ? (
-                                    <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
-                                      Conflicts with your CV
-                                    </span>
-                                  ) : alreadyAppliedIds.has(change.id) ? (
-                                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-800 dark:text-emerald-200">
-                                      Already in your CV
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                                <ValueCard
-                                  diffTokens={diffTokens}
-                                  title="Original"
-                                  tone="base"
-                                  value={change.baselineValue}
-                                />
-                                <ValueCard
-                                  diffTokens={diffTokens}
-                                  title="Proposed"
-                                  tone="proposal"
-                                  value={change.proposedValue}
-                                />
-                              </div>
-                              {conflict ? (
-                                <div className="mt-3 space-y-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
-                                  <p className="text-[11px] font-medium uppercase tracking-[0.16em]">
-                                    Your current CV
+                                  <p className="text-sm font-medium text-foreground">{GROUP_TITLES[unit.group.kind]}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {unit.group.summary}
+                                    {unit.changes[0]?.entryLabel ? ` · ${unit.changes[0].entryLabel}` : ''}
                                   </p>
-                                  <pre className="overflow-auto whitespace-pre-wrap break-words">
-                                    {conflict.forceable
-                                      ? formatReviewValue(conflict.currentValue)
-                                      : 'This part of the CV has changed since the review started (entries were added, removed or edited around it).'}
-                                  </pre>
-                                  <p>
-                                    {!conflict.forceable
-                                      ? 'This part of your CV has changed since this review started, so this change will be skipped even if accepted.'
-                                      : forced
-                                        ? 'The current value will be replaced by the proposed value when you apply.'
-                                        : 'Your CV has changed here since this review started (your own edit, or another review you applied). The current value is kept and this change is skipped, unless you choose to use the proposed value.'}
+                                  <p className="mt-1 text-[11px] text-muted-foreground">
+                                    Decided together: accepting only part of it would lose or repeat text.
                                   </p>
-                                  {conflict.forceable ? (
-                                    <button
-                                      className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-background px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-accent"
-                                      onClick={() => {
-                                        setForced(change.id, !forced);
-                                        if (!forced) {
-                                          reviewStore.setProposalDecision(
-                                            currentSession.sessionId,
-                                            activeProposal.proposalId,
-                                            change.id,
-                                            'accepted'
-                                          );
-                                        }
-                                      }}
-                                      type="button"
-                                    >
-                                      {forced ? 'Keep the current value' : 'Use the proposed value instead'}
-                                    </button>
-                                  ) : null}
+                                </div>
+                                <DecisionBadge decision={groupDecision} />
+                              </div>
+                              <div className="space-y-2">{unit.changes.map((change) => renderChange(change, false))}</div>
+                              {!readOnly ? (
+                                <div className="mt-3 flex items-center justify-end gap-2">
+                                  <button
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                                    onClick={() =>
+                                      reviewStore.setSectionDecision(currentSession.sessionId, activeProposal.proposalId, ids, 'rejected')
+                                    }
+                                    type="button"
+                                  >
+                                    <X className="size-3.5" />
+                                    Reject both
+                                  </button>
+                                  <button
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                                    onClick={() =>
+                                      reviewStore.setSectionDecision(currentSession.sessionId, activeProposal.proposalId, ids, 'accepted')
+                                    }
+                                    type="button"
+                                  >
+                                    <Check className="size-3.5" />
+                                    Accept both
+                                  </button>
                                 </div>
                               ) : null}
-                              <div className={`mt-3 items-center justify-end gap-2 ${readOnly ? 'hidden' : 'flex'}`}>
-                                <button
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                                  onClick={() =>
-                                    reviewStore.setProposalDecision(
-                                      currentSession.sessionId,
-                                      activeProposal.proposalId,
-                                      change.id,
-                                      'rejected'
-                                    )
-                                  }
-                                  type="button"
-                                >
-                                  <X className="size-3.5" />
-                                  Reject
-                                </button>
-                                <button
-                                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                                  onClick={() =>
-                                    reviewStore.setProposalDecision(
-                                      currentSession.sessionId,
-                                      activeProposal.proposalId,
-                                      change.id,
-                                      'accepted'
-                                    )
-                                  }
-                                  type="button"
-                                >
-                                  <Check className="size-3.5" />
-                                  Accept
-                                </button>
-                              </div>
                             </article>
                           );
-                        })
-                      ) : (
-                        <div className="rounded-2xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
-                          No changes in this section.
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                ))}
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+                {changeFilter !== 'all' && filterCounts[changeFilter] === 0 ? (
+                  <p className="text-sm text-muted-foreground">No changes match this filter.</p>
+                ) : null}
               </div>
+              {proposalComments.length > 0 ? (
+                <section className="mt-6 space-y-3 border-t border-border pt-5" data-testid="proposal-comments" id="proposal-comments">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Questions and comments</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {openCommentCount} open of {proposalComments.length}. Accepting or rejecting a change
+                        does not answer these: reply, then resolve.
+                      </p>
+                    </div>
+                    <button
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
+                      disabled={openCommentCount === 0}
+                      onClick={() => void handleExportOpenComments()}
+                      type="button"
+                    >
+                      <Download className="size-3.5" />
+                      Export open
+                    </button>
+                  </div>
+                  {locatedComments.map(({ comment, location }) => (
+                    <CommentCard
+                      comment={comment}
+                      id={`comment-${comment.id}`}
+                      key={comment.id}
+                      location={location}
+                      onReopen={() =>
+                        reviewStore.updateComment(commentTarget, comment.id, { status: 'open' })
+                      }
+                      onReply={(body) =>
+                        reviewStore.addCommentReply(commentTarget, comment.id, {
+                          author: preferences.reviewDisplayName || 'Author',
+                          body
+                        })
+                      }
+                      onResolve={(resolution) =>
+                        reviewStore.updateComment(commentTarget, comment.id, { status: 'resolved', resolution })
+                      }
+                    />
+                  ))}
+                </section>
+              ) : null}
             </div>
           ) : (
             <div className="px-5 py-6">
@@ -1035,6 +1240,247 @@ export function ReviewSessionPage() {
         title="Forward proposal"
       />
     </div>
+  );
+}
+
+type ChangeFilter = 'all' | 'pending' | 'wording' | 'structure' | 'conflicts' | 'comments';
+
+const CHANGE_FILTERS: Array<{ key: ChangeFilter; label: string }> = [
+  { key: 'all', label: 'All' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'wording', label: 'Wording' },
+  { key: 'structure', label: 'Structure' },
+  { key: 'conflicts', label: 'Conflicts' },
+  { key: 'comments', label: 'Open questions' }
+];
+
+const GROUP_TITLES: Record<ReviewChangeGroup['kind'], string> = {
+  move: 'Moved item',
+  combine: 'Combined items',
+  split: 'Split item'
+};
+
+type ChangeUnit =
+  | { type: 'change'; change: ReviewChange }
+  | { type: 'group'; group: ReviewChangeGroup; changes: ReviewChange[] };
+
+/** Changes in display order, with the members of a group gathered where its first member is. */
+function changeUnits(changes: ReviewChange[]): ChangeUnit[] {
+  const units: ChangeUnit[] = [];
+  const groups = new Map<string, Extract<ChangeUnit, { type: 'group' }>>();
+  for (const change of changes) {
+    if (!change.group) {
+      units.push({ type: 'change', change });
+      continue;
+    }
+    const existing = groups.get(change.group.id);
+    if (existing) {
+      existing.changes.push(change);
+      continue;
+    }
+    const unit = { type: 'group' as const, group: change.group, changes: [change] };
+    groups.set(change.group.id, unit);
+    units.push(unit);
+  }
+  return units;
+}
+
+function formatShortDate(timestamp: number) {
+  return new Date(timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+const KIND_BADGES: Partial<Record<ReviewChange['kind'], string>> = {
+  add: 'Added',
+  remove: 'Removed',
+  rename: 'Renamed',
+  reorder: 'Reordered'
+};
+
+function scrollToElement(id: string) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  element.classList.add('ring-2', 'ring-primary');
+  window.setTimeout(() => element.classList.remove('ring-2', 'ring-primary'), 1600);
+}
+
+function ChangeCard({
+  alreadyApplied,
+  change,
+  comments,
+  conflict,
+  decidable,
+  decision,
+  forced,
+  onDecide,
+  onToggleForce
+}: {
+  alreadyApplied: boolean;
+  change: ReviewChange;
+  comments: ReviewComment[];
+  conflict?: ReviewConflict;
+  decidable: boolean;
+  decision?: 'accepted' | 'rejected';
+  forced: boolean;
+  onDecide: (decision: 'accepted' | 'rejected') => void;
+  onToggleForce: () => void;
+}) {
+  const hasDisplay = change.displayBefore !== undefined || change.displayAfter !== undefined;
+  const diffTokens =
+    change.kind === 'set' || change.kind === 'rename'
+      ? diffWords(
+          change.displayBefore ?? formatReviewValue(change.baselineValue),
+          change.displayAfter ?? formatReviewValue(change.proposedValue)
+        )
+      : null;
+  const openQuestions = comments.filter((comment) => comment.status === 'open');
+  const kindBadge = KIND_BADGES[change.kind];
+
+  return (
+    <article
+      className={`rounded-2xl border bg-card px-4 py-3 transition-shadow ${
+        conflict ? 'border-amber-400 dark:border-amber-500/60' : 'border-border'
+      }`}
+      data-change-kind={change.kind}
+      data-conflict={conflict ? 'true' : undefined}
+      data-testid="review-change"
+      id={`change-${change.id}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">
+            {change.label}
+            {kindBadge ? (
+              <span className="ml-2 rounded-full bg-muted px-2 py-0.5 align-middle text-[10px] font-medium text-muted-foreground">
+                {kindBadge}
+              </span>
+            ) : null}
+          </p>
+          {change.entryLabel ? (
+            <p className="truncate text-xs text-muted-foreground">{change.entryLabel}</p>
+          ) : change.detail ? (
+            <p className="truncate text-xs text-muted-foreground">{change.detail}</p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {decidable ? <DecisionBadge decision={decision} /> : null}
+          {conflict ? (
+            <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
+              Conflicts with your CV
+            </span>
+          ) : alreadyApplied ? (
+            <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-800 dark:text-emerald-200">
+              Already in your CV
+            </span>
+          ) : null}
+        </div>
+      </div>
+      {change.related?.length ? (
+        <ul className="mt-2 space-y-1">
+          {change.related.map((related) => (
+            <li className="text-xs text-muted-foreground" key={`${related.direction}:${related.changeId}:${related.item}`}>
+              <span className="font-medium text-foreground">“{related.item}”</span>{' '}
+              {related.direction === 'to' ? 'moves to' : 'moves here from'} {related.where}.{' '}
+              <button
+                className="font-medium text-primary hover:underline"
+                onClick={() => scrollToElement(`change-${related.changeId}`)}
+                type="button"
+              >
+                Show that change
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <ValueCard
+          diffTokens={diffTokens}
+          display={change.displayBefore}
+          title="Original"
+          tone="base"
+          value={change.baselineValue}
+        />
+        <ValueCard
+          diffTokens={diffTokens}
+          display={change.displayAfter}
+          title={hasDisplay && change.kind === 'reorder' ? 'Proposed order' : 'Proposed'}
+          tone="proposal"
+          value={change.proposedValue}
+        />
+      </div>
+      {comments.length > 0 ? (
+        <div className="mt-3 space-y-1 rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs">
+          {comments.map((comment) => (
+            <button
+              className="flex w-full items-start gap-2 text-left hover:text-foreground"
+              key={comment.id}
+              onClick={() => scrollToElement(`comment-${comment.id}`)}
+              type="button"
+            >
+              <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0">
+                <span className="font-medium text-foreground">
+                  {COMMENT_KIND_LABELS[comment.kind]}
+                  {comment.status === 'open' ? '' : ' (resolved)'}:
+                </span>{' '}
+                <span className="text-muted-foreground">{comment.body}</span>
+              </span>
+            </button>
+          ))}
+          {decision === 'accepted' && openQuestions.length > 0 ? (
+            <p className="pt-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
+              Accepting this wording does not answer {openQuestions.length === 1 ? 'the open question' : 'the open questions'}.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {conflict ? (
+        <div className="mt-3 space-y-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em]">Your current CV</p>
+          <pre className="overflow-auto whitespace-pre-wrap break-words">
+            {conflict.forceable
+              ? formatReviewValue(conflict.currentValue)
+              : 'This part of the CV has changed since the review started (entries were added, removed or edited around it).'}
+          </pre>
+          <p>
+            {!conflict.forceable
+              ? 'This part of your CV has changed since this review started, so this change will be skipped even if accepted.'
+              : forced
+                ? 'The current value will be replaced by the proposed value when you apply.'
+                : 'Your CV has changed here since this review started (your own edit, or another review you applied). The current value is kept and this change is skipped, unless you choose to use the proposed value.'}
+          </p>
+          {conflict.forceable ? (
+            <button
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-background px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-accent"
+              onClick={onToggleForce}
+              type="button"
+            >
+              {forced ? 'Keep the current value' : 'Use the proposed value instead'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {decidable ? (
+        <div className="mt-3 flex items-center justify-end gap-2">
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+            onClick={() => onDecide('rejected')}
+            type="button"
+          >
+            <X className="size-3.5" />
+            Reject
+          </button>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            onClick={() => onDecide('accepted')}
+            type="button"
+          >
+            <Check className="size-3.5" />
+            Accept
+          </button>
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -1210,11 +1656,14 @@ function DiffText({ mode, tokens }: { mode: 'base' | 'proposal'; tokens: WordDif
 
 function ValueCard({
   diffTokens,
+  display,
   title,
   tone,
   value
 }: {
   diffTokens?: WordDiffToken[] | null;
+  /** Shown instead of the raw value (section titles for a rename, entry names for a reorder). */
+  display?: string;
   title: string;
   tone: 'base' | 'proposal';
   value: unknown;
@@ -1231,7 +1680,7 @@ function ValueCard({
         {title}
       </p>
       <pre className="mt-2 overflow-auto whitespace-pre-wrap break-words text-xs text-foreground">
-        {diffTokens ? <DiffText mode={tone} tokens={diffTokens} /> : formatReviewValue(value)}
+        {diffTokens ? <DiffText mode={tone} tokens={diffTokens} /> : (display ?? formatReviewValue(value))}
       </pre>
     </div>
   );

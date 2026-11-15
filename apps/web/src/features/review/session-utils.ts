@@ -40,6 +40,7 @@ export function buildProposalPackageFromSession(
     proposedSections: proposal.proposedSections,
     reviewerName: proposal.reviewerName,
     note: proposal.note,
+    ...(proposal.comments?.length ? { comments: proposal.comments } : {}),
     createdAt: proposal.createdAt
   };
 }

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { GitCompareArrows, Check, FilePlus2, FileText, Pencil, Upload, WandSparkles, X } from 'lucide-react';
+import { GitCompareArrows, Check, FilePlus2, FileText, MessageSquare, Pencil, Upload, WandSparkles, X } from 'lucide-react';
+import type { CvFileSections } from '@rendercv/contracts';
 import { useNavigate } from 'react-router-dom';
 import { visibleThemeKeys, classicTheme, countHiddenEntries, defaultDesigns, fileStore, filterHiddenEntriesFromCvYaml, pendingProposals, preferencesStore, resolveFileSections, reviewStore, sessionRole, variantLabel, type ReviewSession } from '@rendercv/core';
 import { Group, Panel, Separator } from 'react-resizable-panels';
@@ -63,6 +64,13 @@ const KNOWN_THEMES = new Set([
 const MonacoEditor = lazy(() =>
   import('./monaco-editor').then((module) => ({ default: module.MonacoEditor }))
 );
+// Comments on review copies: loaded only when a review copy is open.
+const ReviewAnnotationsProvider = lazy(() =>
+  import('../features/review/review-annotations').then((module) => ({ default: module.ReviewAnnotationsProvider }))
+);
+const OPEN_REVIEW_COMMENTS_EVENT = 'rendercv:open-review-comments';
+const SHOW_PROPOSAL_EVENT = 'rendercv:show-proposal';
+
 const FormEditor = lazy(() =>
   import('../features/form/form-editor').then((module) => ({ default: module.FormEditor }))
 );
@@ -627,7 +635,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
     />
   );
 
-  const editorPane = (
+  const editorPaneContent = (
     <div className="flex min-h-0 flex-1 flex-col" data-tutorial-id="editor-pane">
       {isMergeDraft && selectedFile && selectedReviewSession ? (
         <div className="flex flex-wrap items-center gap-2 border-b border-primary/20 bg-primary/5 px-4 py-3 text-xs text-primary">
@@ -711,7 +719,7 @@ export function Workspace({ active = true }: { active?: boolean }) {
           </span>
         </div>
       ) : selectedFile && selectedReviewSession?.linkedFileId === selectedFile.id ? (
-        <ReviewBanner session={selectedReviewSession} />
+        <ReviewBanner fileName={selectedFile.name} sections={rawSections} session={selectedReviewSession} />
       ) : null}
       <div className="min-h-0 flex-1 p-4 pt-3 sm:p-5 sm:pt-4">
         {!selectedFile ? (
@@ -785,6 +793,23 @@ export function Workspace({ active = true }: { active?: boolean }) {
         )}
       </div>
     </div>
+  );
+
+  const isReviewCopy = Boolean(
+    selectedFile &&
+      selectedReviewSession &&
+      sessionRole(selectedReviewSession) === 'reviewer' &&
+      selectedReviewSession.linkedFileId === selectedFile.id
+  );
+  const editorPane = isReviewCopy ? (
+    <Suspense fallback={editorPaneContent}>
+      <ReviewAnnotationsProvider fileName={selectedFile?.name} sections={rawSections} session={selectedReviewSession}>
+        {editorPaneContent}
+      </ReviewAnnotationsProvider>
+    </Suspense>
+  ) : (
+    editorPaneContent
+
   );
 
   const canFit = Boolean(selectedFile && !selectedFile.isReadOnly && rawSections?.cv);
@@ -1115,11 +1140,23 @@ function MobileSidebarDrawer({
 
 export const SEND_PROPOSAL_EVENT = 'rendercv:send-proposal';
 
+function sameSections(left: CvFileSections, right: CvFileSections) {
+  return left.cv === right.cv && left.design === right.design && left.locale === right.locale && left.settings === right.settings;
+}
+
 /**
  * What the review attached to this CV means for you right now, with the one
  * action that moves it forward.
  */
-function ReviewBanner({ session }: { session: ReviewSession }) {
+function ReviewBanner({
+  fileName,
+  sections,
+  session
+}: {
+  fileName: string;
+  sections?: CvFileSections;
+  session: ReviewSession;
+}) {
   const navigate = useNavigate();
   const className =
     'flex flex-wrap items-center gap-2 border-b border-primary/20 bg-primary/5 px-4 py-2 text-xs text-primary';
@@ -1127,22 +1164,67 @@ function ReviewBanner({ session }: { session: ReviewSession }) {
     'ml-auto inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1 font-medium text-primary-foreground transition-colors hover:bg-primary/90';
 
   if (sessionRole(session) === 'reviewer') {
-    const sent = session.proposals.length > 0;
+    // Which CV this is a copy of, where the edits and comments stand, and
+    // whether the latest proposal still matches them.
+    const latest = [...session.proposals].sort((left, right) => right.createdAt - left.createdAt)[0];
+    const edited = sections ? !sameSections(sections, session.rootBaselineSections) : false;
+    const editedSinceProposal = Boolean(latest && sections && !sameSections(sections, latest.proposedSections));
+    const comments = session.comments ?? [];
+    const open = comments.filter((comment) => comment.status === 'open').length;
+    const commentsSinceProposal =
+      Boolean(latest) && JSON.stringify(comments) !== JSON.stringify(latest?.comments ?? []);
+    const secondary =
+      'inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-background px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground';
+    const when = (timestamp: number) =>
+      new Date(timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     return (
-      <div className={className} data-testid="review-banner">
+      <div className={`${className} gap-y-1.5`} data-testid="review-banner">
         <GitCompareArrows className="size-3.5 shrink-0" />
-        <span>
-          {sent
-            ? 'You sent a proposal for this CV. Keep editing and send an updated one whenever you like.'
-            : "You're reviewing this CV. Edit it, then send your changes back to its author as a proposal."}
-        </span>
-        <button
-          className={button}
-          onClick={() => window.dispatchEvent(new CustomEvent(SEND_PROPOSAL_EVENT))}
-          type="button"
-        >
-          {sent ? 'Send updated proposal' : 'Send proposal'}
-        </button>
+        {/* Wide enough to stay readable; the buttons wrap below it in a narrow pane. */}
+        <div className="min-w-[15rem] flex-1 space-y-0.5">
+          <p className="font-medium">
+            Review copy of “{session.baseFileName}”
+            {fileName !== session.baseFileName ? <span className="font-normal text-muted-foreground"> · this copy: {fileName}</span> : null}
+          </p>
+          <p className="text-muted-foreground" data-testid="review-status">
+            {session.createdAt ? `Original received ${when(session.createdAt)} · ` : ''}
+            {edited ? 'Edited' : 'No edits yet'} ·{' '}
+            {comments.length === 0
+              ? 'no comments'
+              : `${open} open comment${open === 1 ? '' : 's'}${comments.length > open ? ` of ${comments.length}` : ''}`}{' '}
+            ·{' '}
+            {latest
+              ? `proposal created ${when(latest.createdAt)}${editedSinceProposal || commentsSinceProposal ? ', changed since' : ', up to date'}`
+              : 'no proposal created yet'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            className={secondary}
+            onClick={() => window.dispatchEvent(new CustomEvent(OPEN_REVIEW_COMMENTS_EVENT))}
+            title="Right-click any field or bullet, or select words, to add a comment"
+            type="button"
+          >
+            <MessageSquare className="size-3.5" />
+            Comments{comments.length ? ` (${open})` : ''}
+          </button>
+          {latest ? (
+            <button
+              className={secondary}
+              onClick={() => window.dispatchEvent(new CustomEvent(SHOW_PROPOSAL_EVENT))}
+              type="button"
+            >
+              Open current proposal
+            </button>
+          ) : null}
+          <button
+            className={button.replace('ml-auto ', '')}
+            onClick={() => window.dispatchEvent(new CustomEvent(SEND_PROPOSAL_EVENT))}
+            type="button"
+          >
+            {latest ? 'Create updated proposal' : 'Create proposal'}
+          </button>
+        </div>
       </div>
     );
   }

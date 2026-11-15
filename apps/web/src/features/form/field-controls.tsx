@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import {
   AlignCenter,
   AlignJustify,
@@ -23,6 +23,7 @@ import {
 } from './utils';
 import { useFieldDiff } from './diff-context';
 import { PositionedMenu } from '../../ui/positioned-menu';
+import { CommentTarget } from '../review/review-annotations';
 
 type ChoiceOption = SelectOption & {
   icon?: ComponentType<{ className?: string }>;
@@ -137,14 +138,32 @@ export function FieldControl({
     }
   })();
 
-  if (!diff.changed) return control;
+  // Text a reviewer can comment on: free text, dates and lists of either.
+  const commentMode =
+    field.type === 'string_list'
+      ? 'list'
+      : field.type === 'delimited_list'
+        ? 'delimited'
+        : field.type === 'date' || field.type === 'string'
+          ? 'field'
+          : null;
+  const withComments = (node: ReactNode) =>
+    commentMode ? (
+      <CommentTarget mode={commentMode} path={field.path}>
+        {node}
+      </CommentTarget>
+    ) : (
+      node
+    );
+
+  if (!diff.changed) return withComments(control);
 
   const originalDisplay =
     diff.originalValue === undefined || diff.originalValue === null || diff.originalValue === ''
       ? '(empty)'
       : String(diff.originalValue);
 
-  return (
+  return withComments(
     <div className="relative border-l-2 border-l-amber-500 bg-amber-500/5 pl-2">
       {control}
       <span

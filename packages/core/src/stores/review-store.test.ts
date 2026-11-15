@@ -318,3 +318,40 @@ describe('ReviewStore.restoreSessions', () => {
     expect(fresh.getSession(session.sessionId)?.proposals[0]?.decisionStates).toEqual({ 'change-1': 'rejected' });
   });
 });
+
+describe('review comments', () => {
+  const sections = { cv: 'cv:\n  name: A\n', design: 'design:\n  theme: classic\n', locale: 'locale:\n  language: english\n', settings: 'settings: {}\n' };
+
+  it('carries a review copy\'s comments in each proposal, and keeps the author\'s replies on the proposal', () => {
+    const store = new ReviewStore();
+    const session = store.ensureSession({ baseFileName: 'CV', rootBaselineSections: sections, role: 'reviewer' });
+    store.addComment({ sessionId: session.sessionId }, {
+      kind: 'confirm',
+      anchor: { section: 'cv', path: ['name'], text: 'A' },
+      body: 'Is this your full name?',
+      author: ''
+    });
+    const pkg = store.createProposalPackage({
+      sessionId: session.sessionId,
+      fileName: 'CV',
+      proposedSections: sections,
+      reviewerName: 'Ahmad',
+      note: 'See questions'
+    });
+    expect(pkg.comments).toHaveLength(1);
+    expect(pkg.comments?.[0]).toMatchObject({ author: 'Ahmad', status: 'open', kind: 'confirm' });
+
+    const author = new ReviewStore();
+    const authorSession = author.importProposal(pkg);
+    const target = { sessionId: authorSession.sessionId, proposalId: pkg.proposalId };
+    const commentId = pkg.comments![0]!.id;
+    author.addCommentReply(target, commentId, { author: 'Amir', body: 'Yes.' });
+    author.updateComment(target, commentId, { status: 'resolved', resolution: 'confirmed' });
+    const stored = author.getSession(authorSession.sessionId)!.proposals[0]!.comments![0]!;
+    expect(stored).toMatchObject({ status: 'resolved', resolution: 'confirmed' });
+    expect(stored.replies.map((reply) => reply.body)).toEqual(['Yes.']);
+
+    author.updateComment(target, commentId, { status: 'open' });
+    expect(author.getSession(authorSession.sessionId)!.proposals[0]!.comments![0]).not.toHaveProperty('resolution');
+  });
+});

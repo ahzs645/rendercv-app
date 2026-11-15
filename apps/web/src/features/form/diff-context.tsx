@@ -10,6 +10,28 @@ interface DiffContextValue {
 
 const DiffContext = createContext<DiffContextValue>({ originRoot: null });
 
+/**
+ * Where the fields inside a provider live in the document: the section and the
+ * path from its root. Review comments use it to anchor to the exact field.
+ */
+interface FieldScopeValue {
+  section: SectionKey | null;
+  path: Array<string | number>;
+}
+
+const FieldScopeContext = createContext<FieldScopeValue>({ section: null, path: [] });
+
+export function useFieldScope() {
+  return useContext(FieldScopeContext);
+}
+
+/** Extends the field scope without touching the diff origin (for rows rendered outside a DiffScopeProvider). */
+export function FieldScopeProvider({ children, path }: { children: ReactNode; path: Array<string | number> }) {
+  const parent = useContext(FieldScopeContext);
+  const value = useMemo(() => ({ section: parent.section, path: [...parent.path, ...path] }), [parent, path.join('\u0000')]);
+  return <FieldScopeContext.Provider value={value}>{children}</FieldScopeContext.Provider>;
+}
+
 export function DiffProvider({
   children,
   section,
@@ -34,7 +56,12 @@ export function DiffProvider({
     return null;
   }, [origin, section]);
 
-  return <DiffContext.Provider value={{ originRoot }}>{children}</DiffContext.Provider>;
+  const scope = useMemo(() => ({ section, path: [] }), [section]);
+  return (
+    <FieldScopeContext.Provider value={scope}>
+      <DiffContext.Provider value={{ originRoot }}>{children}</DiffContext.Provider>
+    </FieldScopeContext.Provider>
+  );
 }
 
 /**
@@ -66,7 +93,11 @@ export function DiffScopeProvider({
     return null;
   }, [parentRoot, path]);
 
-  return <DiffContext.Provider value={{ originRoot: scopedRoot }}>{children}</DiffContext.Provider>;
+  return (
+    <FieldScopeProvider path={path}>
+      <DiffContext.Provider value={{ originRoot: scopedRoot }}>{children}</DiffContext.Provider>
+    </FieldScopeProvider>
+  );
 }
 
 /**

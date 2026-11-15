@@ -1,4 +1,9 @@
-import type { CvFileSections, ReviewProposalPackage } from '@rendercv/contracts';
+import type {
+  CvFileSections,
+  ReviewComment,
+  ReviewCommentReply,
+  ReviewProposalPackage
+} from '@rendercv/contracts';
 import { SECTION_KEYS } from '@rendercv/contracts';
 import { createStore } from './store';
 import { generateId } from '../utils/uuid';
@@ -47,6 +52,8 @@ export type ReviewSessionRole = 'author' | 'reviewer';
 
 export interface ReviewSession {
   sessionId: string;
+  /** When the review started: for a reviewer, when they received the original. Missing on older sessions. */
+  createdAt?: number;
   role?: ReviewSessionRole;
   threadId: string;
   linkedFileId?: string;
@@ -58,6 +65,11 @@ export interface ReviewSession {
   proposals: ReviewProposal[];
   archivedHistory: ReviewArchiveEntry[];
   mergeDraft?: MergeDraftState;
+  /**
+   * A reviewer's comments on their review copy. Each proposal they create
+   * carries a copy; the author's replies and resolutions live on that copy.
+   */
+  comments?: ReviewComment[];
 }
 
 type ReviewStateSnapshot = {
@@ -143,6 +155,15 @@ export function pendingProposals(session: ReviewSession) {
   return session.proposals.filter((proposal) => !proposal.outcome);
 }
 
+export function openComments(comments: ReviewComment[] | undefined) {
+  return (comments ?? []).filter((comment) => comment.status === 'open');
+}
+
+export type NewReviewComment = Omit<ReviewComment, 'id' | 'createdAt' | 'status' | 'replies'> &
+  Partial<Pick<ReviewComment, 'id' | 'createdAt' | 'status' | 'replies'>>;
+
+type CommentTarget = { sessionId: string; proposalId?: string };
+
 export class ReviewStore {
   readonly #store = createStore<ReviewStateSnapshot>({ sessions: [] });
 
@@ -223,6 +244,7 @@ export class ReviewStore {
 
     const nextSession: ReviewSession = {
       sessionId: generateId(),
+      createdAt: Date.now(),
       role,
       threadId: options.threadId ?? generateId(),
       linkedFileId: options.linkedFileId,
@@ -291,6 +313,7 @@ export class ReviewStore {
       proposedSections: pkg.proposedSections,
       reviewerName: pkg.reviewerName,
       note: pkg.note,
+      ...(pkg.comments?.length ? { comments: pkg.comments } : {}),
       createdAt: pkg.createdAt,
       decisionStates: {},
       // Reviewers may have been sent different versions of the CV.
@@ -327,7 +350,8 @@ export class ReviewStore {
     reviewerName,
     note,
     linkedFileId,
-    sessionId
+    sessionId,
+    comments
   }: {
     fileName: string;
     proposedSections: CvFileSections;
@@ -335,6 +359,8 @@ export class ReviewStore {
     note?: string;
     linkedFileId?: string;
     sessionId?: string;
+    /** Defaults to the session's own comments. */
+    comments?: ReviewComment[];
   }) {
     const existingSession =
       (sessionId ? this.getSession(sessionId) : undefined) ??
@@ -351,6 +377,12 @@ export class ReviewStore {
 
     const proposalId = generateId();
     const createdAt = Date.now();
+    const packagedComments = (comments ?? session.comments ?? []).map((comment) => ({
+      ...comment,
+      // Comments written before the reviewer chose a name carry a placeholder.
+      author: comment.author.trim() ? comment.author : reviewerName,
+      replies: [...comment.replies]
+    }));
 
     const proposalPackage: ReviewProposalPackage = {
       version: 1,
@@ -363,6 +395,7 @@ export class ReviewStore {
       proposedSections,
       reviewerName,
       ...(note?.trim() ? { note: note.trim() } : {}),
+      ...(packagedComments.length ? { comments: packagedComments } : {}),
       createdAt
     };
 
@@ -380,13 +413,78 @@ export class ReviewStore {
               baseFileName: fileName || entry.baseFileName,
               status: 'pending',
               activeProposalId: proposalId,
-              proposals: [proposal, ...entry.proposals]
+              proposals: [proposal, ...entry.proposals],
+              // The reviewer's name is now known: keep the working copy of the
+              // comments the same as what was packaged.
+              ...(entry.comments ? { comments: packagedComments.map((comment) => ({ ...comment, replies: [...comment.replies] })) } : {})
             }
           : entry
       )
     }));
 
     return proposalPackage;
+  }
+
+  #updateComments(target: CommentTarget, update: (comments: ReviewComment[]) => ReviewComment[]) {
+    this.#store.update((current) => ({
+      sessions: current.sessions.map((session) => {
+        if (session.sessionId !== target.sessionId) {
+          return session;
+        }
+        if (!target.proposalId) {
+          return { ...session, comments: update(session.comments ?? []) };
+        }
+        return {
+          ...session,
+          proposals: session.proposals.map((proposal) =>
+            proposal.proposalId === target.proposalId
+              ? { ...proposal, comments: update(proposal.comments ?? []) }
+              : proposal
+          )
+        };
+      })
+    }));
+  }
+
+  /** Add a comment to a review copy (no proposalId) or to a received proposal. */
+  addComment(target: CommentTarget, comment: NewReviewComment) {
+    const next: ReviewComment = {
+      ...comment,
+      id: comment.id ?? generateId(),
+      createdAt: comment.createdAt ?? Date.now(),
+      status: comment.status ?? 'open',
+      replies: comment.replies ?? []
+    };
+    this.#updateComments(target, (comments) => [...comments, next]);
+    return next;
+  }
+
+  updateComment(
+    target: CommentTarget,
+    commentId: string,
+    patch: Partial<Pick<ReviewComment, 'kind' | 'body' | 'suggestion' | 'status' | 'resolution' | 'anchor'>>
+  ) {
+    this.#updateComments(target, (comments) =>
+      comments.map((comment) => {
+        if (comment.id !== commentId) return comment;
+        const next = { ...comment, ...patch };
+        if (patch.status === 'open') delete next.resolution;
+        return next;
+      })
+    );
+  }
+
+  removeComment(target: CommentTarget, commentId: string) {
+    this.#updateComments(target, (comments) => comments.filter((comment) => comment.id !== commentId));
+  }
+
+  addCommentReply(target: CommentTarget, commentId: string, reply: Omit<ReviewCommentReply, 'id' | 'createdAt'>) {
+    const next: ReviewCommentReply = { ...reply, id: generateId(), createdAt: Date.now() };
+    this.#updateComments(target, (comments) =>
+      comments.map((comment) =>
+        comment.id === commentId ? { ...comment, replies: [...comment.replies, next] } : comment
+      )
+    );
   }
 
   setActiveProposal(sessionId: string, proposalId: string) {

@@ -79,7 +79,9 @@ describe('computeReviewSectionChanges', () => {
       (section) => section.key === 'cv'
     )!;
 
-    expect(cvChanges.changes).toHaveLength(1);
+    // The edit is narrowed to the field; the swapped order is its own change
+    // (matching by signature used to drop it silently).
+    expect(cvChanges.changes).toHaveLength(2);
     expect(cvChanges.changes[0]).toMatchObject({
       id: 'cv:set:sections.experience.0.position',
       label: 'Position',
@@ -87,6 +89,7 @@ describe('computeReviewSectionChanges', () => {
       baselineValue: 'Engineer',
       proposedValue: 'Staff Engineer'
     });
+    expect(cvChanges.changes[1]).toMatchObject({ kind: 'reorder', label: 'Order of entries' });
   });
 
   it('falls back to whole-entry changes when array entries have no stable signature', () => {
@@ -429,6 +432,156 @@ describe('list changes', () => {
 
     expect(changes).toEqual([
       expect.objectContaining({ kind: 'set', baselineValue: 'Built B', proposedValue: 'Built B better' })
+    ]);
+  });
+});
+
+describe('structural changes', () => {
+  const cvWith = (sections: Record<string, unknown>) =>
+    makeSections({ cv: yamlSection('cv', { name: 'Amir', sections }) });
+  const projects = [
+    {
+      name: 'LeagueFlow',
+      summary: 'League registration system',
+      highlights: ['Designed the SQL database tables', 'Developed a PHP WordPress plugin']
+    }
+  ];
+  const cvChangesOf = (baseline: CvFileSections, proposed: CvFileSections) =>
+    computeReviewSectionChanges(baseline, proposed).find((section) => section.key === 'cv')!.changes;
+
+  it('shows a renamed section as one rename, with the edits inside it reviewed separately', () => {
+    const baseline = cvWith({ experience: [{ company: 'Acme', position: 'Dev' }], projects });
+    const proposed = cvWith({
+      experience: [{ company: 'Acme', position: 'Dev' }],
+      selected_projects: [{ ...projects[0], highlights: ['Designed the data schema', 'Developed a PHP WordPress plugin'] }]
+    });
+
+    const changes = cvChangesOf(baseline, proposed);
+    expect(changes.map((change) => change.kind)).toEqual(['rename', 'set']);
+    expect(changes[0]).toMatchObject({
+      id: 'cv:rename:sections.projects',
+      label: 'Section renamed',
+      entryLabel: 'Projects → Selected Projects'
+    });
+    expect(changes[1]).toMatchObject({ detail: 'Selected Projects', proposedValue: 'Designed the data schema' });
+
+    const all = Object.fromEntries(changes.map((change) => [change.id, 'accepted' as const]));
+    expect(YAML.parse(applyAcceptedReviewChanges(baseline, computeReviewSectionChanges(baseline, proposed), all).cv))
+      .toEqual(YAML.parse(proposed.cv));
+
+    // Rejecting the rename keeps the old name but still takes the accepted edit.
+    const editOnly = { [changes[1]!.id]: 'accepted' as const };
+    const merged = YAML.parse(applyAcceptedReviewChanges(baseline, computeReviewSectionChanges(baseline, proposed), editOnly).cv);
+    expect(Object.keys(merged.cv.sections)).toEqual(['experience', 'projects']);
+    expect(merged.cv.sections.projects[0].highlights[0]).toBe('Designed the data schema');
+  });
+
+  it('keeps a renamed section in its place when applied on top of the current CV', () => {
+    const baseline = cvWith({ projects, education: [{ institution: 'UNBC', area: 'CS' }] });
+    const proposed = cvWith({ selected_projects: projects, education: [{ institution: 'UNBC', area: 'CS' }] });
+    const changes = computeReviewSectionChanges(baseline, proposed);
+    const rename = changes.flatMap((section) => section.changes).find((change) => change.kind === 'rename')!;
+    const result = rebaseAcceptedReviewChanges(baseline, baseline, changes, { [rename.id]: 'accepted' });
+    expect(Object.keys(YAML.parse(result.sections.cv).cv.sections)).toEqual(['selected_projects', 'education']);
+  });
+
+  it('reports moving a section as one reorder and applies it', () => {
+    const baseline = cvWith({ experience: [{ company: 'Acme', position: 'Dev' }], education: [{ institution: 'UNBC', area: 'CS' }] });
+    const proposed = cvWith({ education: [{ institution: 'UNBC', area: 'CS' }], experience: [{ company: 'Acme', position: 'Dev' }] });
+    const changes = computeReviewSectionChanges(baseline, proposed);
+    const cvChanges = changes.find((section) => section.key === 'cv')!.changes;
+    expect(cvChanges).toEqual([expect.objectContaining({ kind: 'reorder', label: 'Order of sections' })]);
+    const merged = YAML.parse(applyAcceptedReviewChanges(baseline, changes, { [cvChanges[0]!.id]: 'accepted' }).cv);
+    expect(Object.keys(merged.cv.sections)).toEqual(['education', 'experience']);
+  });
+
+  it('pairs a rewritten bullet with the bullet it rewrites, not the one at the same position', () => {
+    const before = [
+      'Collect, clean and standardize health research data with Python in Jupyter notebooks',
+      'Protect confidential faculty interview data and unpublished research',
+      'Interview faculty and code the transcripts in NVivo to identify recurring themes',
+      'Develop and maintain the project website and online atlas'
+    ];
+    const after = [
+      'Clean, standardize and validate research datasets in Python before analysis',
+      'Conduct faculty interviews and code transcripts in NVivo to identify recurring research themes',
+      'Handle confidential interview material and unpublished research, sharing summarized themes',
+      'Develop and maintain the project website and online atlas'
+    ];
+    const baseline = cvWith({ experience: [{ company: 'NHHR', position: 'Data Specialist', highlights: before }] });
+    const proposed = cvWith({ experience: [{ company: 'NHHR', position: 'Data Specialist', highlights: after }] });
+    const changes = cvChangesOf(baseline, proposed);
+
+    // Each edit compares a bullet with its own rewrite; the swapped interview
+    // and confidentiality bullets read as a move, not as cross-matched edits.
+    const edits = changes.filter((change) => change.kind === 'set');
+    expect(edits.some((change) => String(change.baselineValue).startsWith('Interview') && String(change.proposedValue).startsWith('Handle'))).toBe(false);
+    expect(edits.some((change) => String(change.baselineValue).startsWith('Collect') && String(change.proposedValue).startsWith('Clean'))).toBe(true);
+
+    const all = Object.fromEntries(changes.map((change) => [change.id, 'accepted' as const]));
+    const merged = YAML.parse(applyAcceptedReviewChanges(baseline, computeReviewSectionChanges(baseline, proposed), all).cv);
+    expect(merged.cv.sections.experience[0].highlights).toEqual(after);
+  });
+
+  it('groups a moved bullet so it is decided as one change', () => {
+    const baseline = cvWith({ experience: [{ company: 'Acme', position: 'Dev', highlights: ['Alpha work done', 'Beta work done', 'Gamma work done'] }] });
+    const proposed = cvWith({ experience: [{ company: 'Acme', position: 'Dev', highlights: ['Gamma work done', 'Alpha work done', 'Beta work done'] }] });
+    const changes = cvChangesOf(baseline, proposed);
+    expect(changes).toHaveLength(2);
+    expect(changes[0]!.group).toMatchObject({ kind: 'move', summary: 'Moved from item 3 to item 1' });
+    expect(changes[1]!.group?.id).toBe(changes[0]!.group?.id);
+  });
+
+  it('groups two bullets combined into one', () => {
+    const baseline = cvWith({
+      experience: [{
+        company: 'Acme',
+        position: 'Dev',
+        highlights: [
+          'Integrated the process with Google Calendar and added duplicate prevention',
+          'Kept a change log of every calendar update for bulk edits',
+          'Built a Power Apps dashboard'
+        ]
+      }]
+    });
+    const proposed = cvWith({
+      experience: [{
+        company: 'Acme',
+        position: 'Dev',
+        highlights: [
+          'Integrated Google Calendar with duplicate prevention and a change log of every calendar update',
+          'Built a Power Apps dashboard'
+        ]
+      }]
+    });
+    const changes = cvChangesOf(baseline, proposed);
+    expect(changes.map((change) => change.kind).sort()).toEqual(['remove', 'set']);
+    expect(changes[0]!.group).toMatchObject({ kind: 'combine', summary: 'Combined items 1 and 2 into item 1' });
+    expect(changes[1]!.group?.id).toBe(changes[0]!.group?.id);
+  });
+
+  it('links a skill moved from one line to another', () => {
+    const baseline = cvWith({
+      skills: [
+        { label: 'Data', details: 'Python; SQL; Excel' },
+        { label: 'Development', details: 'PHP; WordPress; Next.js' }
+      ]
+    });
+    const proposed = cvWith({
+      skills: [
+        { label: 'Data', details: 'Python; SQL' },
+        { label: 'Development', details: 'WordPress; Next.js' },
+        { label: 'Languages', details: 'PHP; Python' }
+      ]
+    });
+    const changes = cvChangesOf(baseline, proposed);
+    const development = changes.find((change) => change.path.join('.') === 'sections.skills.1.details')!;
+    const languages = changes.find((change) => change.kind === 'add')!;
+    expect(development.related).toEqual([
+      { item: 'PHP', direction: 'to', changeId: languages.id, where: 'Languages' }
+    ]);
+    expect(languages.related).toEqual([
+      expect.objectContaining({ item: 'PHP', direction: 'from', changeId: development.id })
     ]);
   });
 });

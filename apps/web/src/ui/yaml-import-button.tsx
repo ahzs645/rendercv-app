@@ -182,7 +182,7 @@ export function useYamlImport({ prepareYamlImport, validateYamlImport }: YamlImp
         onClick: () => {
           if (startReviewForFile(createdFile.id)) {
             toast.success(`Reviewing "${createdFile.name}".`, {
-              description: 'Edit the CV, then use Share › Export, backup and review… › Send proposal.'
+              description: 'Edit and comment on the CV, then use Share › Export, backup and review… › Create proposal.'
             });
           }
         }
